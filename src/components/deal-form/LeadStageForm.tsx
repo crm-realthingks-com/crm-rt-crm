@@ -25,8 +25,7 @@ export const LeadStageForm = ({ formData, onFieldChange, onLeadSelect, fieldErro
               key={field}
               field={field}
               value={formData[field as keyof Deal]}
-              onChange={onFieldChange}
-              onLeadSelect={onLeadSelect}
+              onChange={(value) => onFieldChange(field, value)}
               error={fieldErrors[field]}
             />
           ))}

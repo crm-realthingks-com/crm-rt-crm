@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -6,7 +6,6 @@ import {
   useReactTable,
   getPaginationRowModel,
   getFilteredRowModel,
-  FilterFn,
   SortingState,
   getSortedRowModel,
 } from "@tanstack/react-table";
@@ -88,18 +87,18 @@ export const ContactTableBody = ({
 
     try {
       const formattedContacts = contactsToImport.map(contact => ({
-        contact_name: contact.lead_name || contact.contact_name || 'Unknown',
-        company: contact.company_name || contact.company || '',
+        contact_name: contact.contact_name || contact.lead_name || 'Unknown',
+        company: contact.company || contact.company_name || '',
         position: contact.position || '',
         email: contact.email || '',
-        phone: contact.phone_no || contact.phone || '',
+        phone: contact.phone || contact.phone_no || '',
         linkedin: contact.linkedin || '',
         website: contact.website || '',
-        source: contact.contact_source || contact.source || 'Other',
+        source: contact.source || contact.contact_source || 'Other',
         industry: contact.industry || 'Other',
         region: contact.region || 'North America',
         description: contact.description || '',
-        contact_owner: contact.lead_owner || contact.contact_owner || '',
+        contact_owner: contact.contact_owner || contact.lead_owner || '',
         user_id: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
