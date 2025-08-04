@@ -31,7 +31,7 @@ const DealsPage = () => {
       const { data, error } = await supabase
         .from('deals')
         .select('*')
-        .order('modified_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
       if (error) {
         toast({

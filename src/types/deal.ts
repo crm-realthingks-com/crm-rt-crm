@@ -1,11 +1,11 @@
+
 export type DealStage = 'Lead' | 'Discussions' | 'Qualified' | 'RFQ' | 'Offered' | 'Won' | 'Lost' | 'Dropped';
 
 export interface Deal {
   id: string;
   created_at: string;
-  modified_at: string;
-  created_by: string | null;
-  modified_by: string | null;
+  updated_at: string;
+  user_id: string;
   
   // Basic deal info
   deal_name: string;
@@ -28,7 +28,7 @@ export interface Deal {
   relationship_strength?: 'Low' | 'Medium' | 'High';
   
   // Qualified stage fields
-  budget?: string;
+  budget?: number;
   business_value?: 'Open' | 'Ongoing' | 'Done';
   decision_maker_level?: 'Open' | 'Ongoing' | 'Done';
   is_recurring?: 'Yes' | 'No' | 'Unclear';

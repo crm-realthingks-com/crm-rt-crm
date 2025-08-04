@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   ColumnDef,
@@ -36,38 +37,38 @@ import { useToast } from "@/hooks/use-toast";
 import { ContactForm } from '../ContactForm';
 
 interface ContactTableBodyProps {
-  contacts: Contact[];
-  filteredContacts: Contact[];
+  loading: boolean;
+  pageContacts: Contact[];
+  visibleColumns: any[];
   selectedContacts: string[];
-  onContactSelect: (contactId: string, isSelected: boolean) => void;
-  onContactClick: (contact: Contact) => void;
-  visibleColumns: ColumnDef<Contact>[];
-  onUpdateContact: (contactId: string, updates: Partial<Contact>) => Promise<void>;
-  onDeleteContacts: (contactIds: string[]) => Promise<void>;
-  onImportContacts: (contacts: Contact[]) => void;
+  setSelectedContacts: React.Dispatch<React.SetStateAction<string[]>>;
+  onEdit: (contact: Contact) => void;
+  onDelete: (id: string) => void;
+  searchTerm: string;
+  onRefresh: () => Promise<void>;
 }
 
 export const ContactTableBody = ({ 
-  contacts, 
-  filteredContacts, 
-  selectedContacts, 
-  onContactSelect, 
-  onContactClick,
+  loading,
+  pageContacts, 
   visibleColumns,
-  onUpdateContact,
-  onDeleteContacts,
-  onImportContacts
+  selectedContacts,
+  setSelectedContacts,
+  onEdit,
+  onDelete,
+  searchTerm,
+  onRefresh
 }: ContactTableBodyProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState({});
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [globalFilter, setGlobalFilter] = useState(searchTerm);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   const table = useReactTable({
-    data: filteredContacts,
+    data: pageContacts,
     columns: visibleColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -87,6 +88,7 @@ export const ContactTableBody = ({
 
     try {
       const formattedContacts = contactsToImport.map(contact => ({
+        id: crypto.randomUUID(),
         contact_name: contact.contact_name || contact.lead_name || 'Unknown',
         company: contact.company || contact.company_name || '',
         position: contact.position || '',
@@ -115,7 +117,7 @@ export const ContactTableBody = ({
         description: `Imported ${contactsToImport.length} contacts successfully`,
       });
 
-      onImportContacts(formattedContacts);
+      onRefresh();
     } catch (error) {
       console.error('Import error:', error);
       toast({
@@ -138,8 +140,13 @@ export const ContactTableBody = ({
 
   const handleSaveContact = async (contactId: string, updates: Partial<Contact>) => {
     try {
-      await onUpdateContact(contactId, updates);
+      await supabase
+        .from('contacts')
+        .update(updates)
+        .eq('id', contactId);
+      
       handleCloseForm();
+      onRefresh();
     } catch (error) {
       toast({
         title: "Error",
@@ -149,16 +156,19 @@ export const ContactTableBody = ({
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading contacts...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Filter contacts..."
-          value={globalFilter ?? ""}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="max-w-sm"
-        />
-      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -166,9 +176,7 @@ export const ContactTableBody = ({
               <TableRow key={headerGroup.id}>
                 <TableHead className="w-[50px]">
                   <Checkbox
-                    checked={
-                      table.getIsAllPageRowsSelected()
-                    }
+                    checked={table.getIsAllPageRowsSelected()}
                     onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
                     aria-label="Select all"
                   />
@@ -212,7 +220,14 @@ export const ContactTableBody = ({
                   <TableCell className="w-[50px]">
                     <Checkbox
                       checked={row.getIsSelected()}
-                      onCheckedChange={(value) => onContactSelect(row.original.id, !!value)}
+                      onCheckedChange={(value) => {
+                        const contactId = row.original.id;
+                        if (value) {
+                          setSelectedContacts(prev => [...prev, contactId]);
+                        } else {
+                          setSelectedContacts(prev => prev.filter(id => id !== contactId));
+                        }
+                      }}
                       aria-label="Select row"
                     />
                   </TableCell>
@@ -235,7 +250,7 @@ export const ContactTableBody = ({
                           View Contact
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onDeleteContacts([row.original.id])}>
+                        <DropdownMenuItem onClick={() => onDelete(row.original.id)}>
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -245,7 +260,7 @@ export const ContactTableBody = ({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
+                <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
                   No results.
                 </TableCell>
               </TableRow>
@@ -253,29 +268,7 @@ export const ContactTableBody = ({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} of {contacts.length} contact(s)
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+
       <ContactForm
         isOpen={isFormOpen}
         onClose={handleCloseForm}
