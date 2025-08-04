@@ -14,7 +14,243 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contacts: {
+        Row: {
+          company: string | null
+          contact_name: string
+          contact_owner: string | null
+          created_at: string | null
+          description: string | null
+          email: string | null
+          id: string
+          industry: Database["public"]["Enums"]["industry_type"] | null
+          linkedin: string | null
+          phone: string | null
+          position: string | null
+          region: Database["public"]["Enums"]["region_type"] | null
+          source: Database["public"]["Enums"]["contact_source"] | null
+          updated_at: string | null
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          company?: string | null
+          contact_name: string
+          contact_owner?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: Database["public"]["Enums"]["industry_type"] | null
+          linkedin?: string | null
+          phone?: string | null
+          position?: string | null
+          region?: Database["public"]["Enums"]["region_type"] | null
+          source?: Database["public"]["Enums"]["contact_source"] | null
+          updated_at?: string | null
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          company?: string | null
+          contact_name?: string
+          contact_owner?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: Database["public"]["Enums"]["industry_type"] | null
+          linkedin?: string | null
+          phone?: string | null
+          position?: string | null
+          region?: Database["public"]["Enums"]["region_type"] | null
+          source?: Database["public"]["Enums"]["contact_source"] | null
+          updated_at?: string | null
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      deals: {
+        Row: {
+          budget: number | null
+          close_amount: number | null
+          close_date: string | null
+          close_reason: string | null
+          company_name: string | null
+          created_at: string | null
+          deal_name: string
+          decision_maker: string | null
+          discussion_date: string | null
+          discussion_notes: string | null
+          id: string
+          lead_description: string | null
+          lead_name: string | null
+          lead_owner: string | null
+          lead_source: Database["public"]["Enums"]["contact_source"] | null
+          negotiation_status: string | null
+          next_follow_up: string | null
+          offer_amount: number | null
+          offer_date: string | null
+          offer_terms: string | null
+          offer_valid_until: string | null
+          phone_no: string | null
+          qualified_notes: string | null
+          rfq_deadline: string | null
+          rfq_requirements: string | null
+          rfq_sent_date: string | null
+          stage: Database["public"]["Enums"]["deal_stage"] | null
+          timeline: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          budget?: number | null
+          close_amount?: number | null
+          close_date?: string | null
+          close_reason?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          deal_name: string
+          decision_maker?: string | null
+          discussion_date?: string | null
+          discussion_notes?: string | null
+          id?: string
+          lead_description?: string | null
+          lead_name?: string | null
+          lead_owner?: string | null
+          lead_source?: Database["public"]["Enums"]["contact_source"] | null
+          negotiation_status?: string | null
+          next_follow_up?: string | null
+          offer_amount?: number | null
+          offer_date?: string | null
+          offer_terms?: string | null
+          offer_valid_until?: string | null
+          phone_no?: string | null
+          qualified_notes?: string | null
+          rfq_deadline?: string | null
+          rfq_requirements?: string | null
+          rfq_sent_date?: string | null
+          stage?: Database["public"]["Enums"]["deal_stage"] | null
+          timeline?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          budget?: number | null
+          close_amount?: number | null
+          close_date?: string | null
+          close_reason?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          deal_name?: string
+          decision_maker?: string | null
+          discussion_date?: string | null
+          discussion_notes?: string | null
+          id?: string
+          lead_description?: string | null
+          lead_name?: string | null
+          lead_owner?: string | null
+          lead_source?: Database["public"]["Enums"]["contact_source"] | null
+          negotiation_status?: string | null
+          next_follow_up?: string | null
+          offer_amount?: number | null
+          offer_date?: string | null
+          offer_terms?: string | null
+          offer_valid_until?: string | null
+          phone_no?: string | null
+          qualified_notes?: string | null
+          rfq_deadline?: string | null
+          rfq_requirements?: string | null
+          rfq_sent_date?: string | null
+          stage?: Database["public"]["Enums"]["deal_stage"] | null
+          timeline?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          company_name: string | null
+          created_at: string | null
+          description: string | null
+          email: string | null
+          id: string
+          industry: Database["public"]["Enums"]["industry_type"] | null
+          lead_name: string
+          lead_owner: string | null
+          phone_no: string | null
+          region: Database["public"]["Enums"]["region_type"] | null
+          source: Database["public"]["Enums"]["contact_source"] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: Database["public"]["Enums"]["industry_type"] | null
+          lead_name: string
+          lead_owner?: string | null
+          phone_no?: string | null
+          region?: Database["public"]["Enums"]["region_type"] | null
+          source?: Database["public"]["Enums"]["contact_source"] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: Database["public"]["Enums"]["industry_type"] | null
+          lead_name?: string
+          lead_owner?: string | null
+          phone_no?: string | null
+          region?: Database["public"]["Enums"]["region_type"] | null
+          source?: Database["public"]["Enums"]["contact_source"] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          display_name: string
+          email: string
+          id: string
+          last_login: string | null
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name: string
+          email: string
+          id: string
+          last_login?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string
+          email?: string
+          id?: string
+          last_login?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +259,40 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      contact_source:
+        | "Website"
+        | "LinkedIn"
+        | "Referral"
+        | "Cold Call"
+        | "Email Campaign"
+        | "Trade Show"
+        | "Other"
+      deal_stage:
+        | "Lead"
+        | "Discussions"
+        | "Qualified"
+        | "RFQ"
+        | "Offered"
+        | "Won"
+        | "Lost"
+        | "Dropped"
+      industry_type:
+        | "Technology"
+        | "Healthcare"
+        | "Finance"
+        | "Manufacturing"
+        | "Retail"
+        | "Education"
+        | "Government"
+        | "Other"
+      region_type:
+        | "North America"
+        | "Europe"
+        | "Asia Pacific"
+        | "Latin America"
+        | "Middle East"
+        | "Africa"
+      user_role: "Admin" | "Manager" | "User"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +419,45 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      contact_source: [
+        "Website",
+        "LinkedIn",
+        "Referral",
+        "Cold Call",
+        "Email Campaign",
+        "Trade Show",
+        "Other",
+      ],
+      deal_stage: [
+        "Lead",
+        "Discussions",
+        "Qualified",
+        "RFQ",
+        "Offered",
+        "Won",
+        "Lost",
+        "Dropped",
+      ],
+      industry_type: [
+        "Technology",
+        "Healthcare",
+        "Finance",
+        "Manufacturing",
+        "Retail",
+        "Education",
+        "Government",
+        "Other",
+      ],
+      region_type: [
+        "North America",
+        "Europe",
+        "Asia Pacific",
+        "Latin America",
+        "Middle East",
+        "Africa",
+      ],
+      user_role: ["Admin", "Manager", "User"],
+    },
   },
 } as const
