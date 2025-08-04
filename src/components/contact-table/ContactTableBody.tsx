@@ -93,7 +93,8 @@ export const ContactTableBody = ({
         phone: contact.phone || contact.phone_no || '',
         linkedin: contact.linkedin || '',
         website: contact.website || '',
-        source: contact.source || contact.contact_source || 'Other',
+        // Map source values to match database enum
+        source: mapSourceValue(contact.source || contact.contact_source || 'Other'),
         industry: contact.industry || 'Other',
         region: contact.region === 'Other' ? 'North America' : contact.region || 'North America',
         description: contact.description || '',
@@ -125,6 +126,21 @@ export const ContactTableBody = ({
     }
   };
 
+  // Helper function to map source values
+  const mapSourceValue = (source: string): Contact['source'] => {
+    const sourceMapping: Record<string, Contact['source']> = {
+      'Cold Calling': 'Cold Call',
+      'Cold Call': 'Cold Call',
+      'Email Campaign': 'Email Campaign',
+      'Social Media': 'Social Media',
+      'Referral': 'Referral',
+      'Website': 'Website',
+      'Event': 'Event',
+      'Other': 'Other'
+    };
+    return sourceMapping[source] || 'Other';
+  };
+
   const handleContactClick = (contact: Contact) => {
     setSelectedContact(contact);
     setIsFormOpen(true);
@@ -137,8 +153,13 @@ export const ContactTableBody = ({
 
   const handleSaveContact = async (contactId: string, updates: Partial<Contact>) => {
     try {
-      // Remove non-database fields if they exist
+      // Remove non-database fields if they exist and map source
       const { user_id, ...dbUpdates } = updates;
+      
+      // Ensure source is mapped correctly
+      if (dbUpdates.source) {
+        dbUpdates.source = mapSourceValue(dbUpdates.source);
+      }
       
       await supabase
         .from('contacts')
@@ -156,16 +177,7 @@ export const ContactTableBody = ({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading contacts...</p>
-        </div>
-      </div>
-    );
-  }
+  
 
   return (
     <>

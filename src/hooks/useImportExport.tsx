@@ -1,16 +1,51 @@
 
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  parseCSVData, 
-  exportToCSV,
-  ExportOptions 
-} from "@/utils/csvUtils";
 import { createDuplicateChecker } from "./import-export/duplicateChecker";
 import { validateRecord } from "./import-export/recordValidator";
 import { validateValues } from "./import-export/valueValidator";
 import { getColumnConfig } from "./import-export/columnConfig";
 import { mapHeaders } from "./import-export/headerMapper";
+
+// Simple CSV parser
+const parseCSVData = (csvContent: string): any[] => {
+  const lines = csvContent.split('\n').filter(line => line.trim());
+  if (lines.length === 0) return [];
+  
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  const data = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+    const row: any = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] || '';
+    });
+    data.push(row);
+  }
+  
+  return data;
+};
+
+// Simple CSV export
+const exportToCSV = async (data: any[], filename: string, columnConfig: any, options: any = {}) => {
+  const headers = columnConfig.allowedColumns.join(',');
+  const rows = data.map(item => 
+    columnConfig.allowedColumns.map(col => {
+      const value = item[col] || '';
+      return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+    }).join(',')
+  );
+  
+  const csvContent = [headers, ...rows].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${filename}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
 interface UseImportExportProps {
   tableName: 'contacts' | 'deals';
@@ -29,7 +64,7 @@ export const useImportExport = ({
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
-  const duplicateChecker = createDuplicateChecker(tableName as 'contacts' | 'deals');
+  const duplicateChecker = createDuplicateChecker(tableName);
 
   const handleImport = useCallback(async (file: File) => {
     if (!file) return;
@@ -52,7 +87,7 @@ export const useImportExport = ({
       console.log(`Parsed ${parsedData.length} records from CSV`);
       
       const columnConfig = getColumnConfig(tableName);
-      const mappedData = parsedData.map(row => mapHeaders(row, columnConfig));
+      const mappedData = parsedData.map(row => mapHeaders(row, { ...columnConfig, table: tableName }));
       
       // Validate records
       const validRecords = [];
@@ -67,8 +102,8 @@ export const useImportExport = ({
           validRecords.push(record);
         } else {
           const errorMessages = [
-            ...(!recordValidation.isValid ? recordValidation.errors : []),
-            ...(!valueValidation.isValid ? valueValidation.errors : [])
+            ...recordValidation.errors,
+            ...valueValidation.errors
           ];
           errors.push(`Row ${i + 2}: ${errorMessages.join(', ')}`);
         }
@@ -93,11 +128,15 @@ export const useImportExport = ({
       }
       
       // Check for duplicates
-      const { newRecords, updates } = duplicateChecker.processRecords(validRecords, existingData);
+      const duplicates = await duplicateChecker(validRecords);
+      const newRecords = validRecords.filter(record => 
+        !duplicates.some(dup => dup.importRecord === record)
+      );
+      const updates = duplicates.map(dup => ({ ...dup.importRecord, shouldUpdate: true }));
       
       console.log(`Found ${newRecords.length} new records and ${updates.length} updates`);
       
-      const finalData = [...newRecords, ...updates.map(update => ({ ...update, shouldUpdate: true }))];
+      const finalData = [...newRecords, ...updates];
       
       await onImport(finalData);
       
@@ -118,7 +157,7 @@ export const useImportExport = ({
     }
   }, [tableName, existingData, onImport, duplicateChecker, toast]);
 
-  const handleExport = useCallback(async (data: any[], options: ExportOptions = {}) => {
+  const handleExport = useCallback(async (data: any[], options: any = {}) => {
     if (!data || data.length === 0) {
       toast({
         title: "Warning",
