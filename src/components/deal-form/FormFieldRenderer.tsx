@@ -1,554 +1,224 @@
-
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Deal } from "@/types/deal";
-import { LeadSearchableDropdown } from "@/components/LeadSearchableDropdown";
-import { supabase } from "@/integrations/supabase/client";
+import { forwardRef, useState } from "react";
+import { format } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { DEAL_STAGES } from "@/types/deal";
+import { LeadSearchableDropdown } from "@/components/searchable-dropdown/LeadSearchableDropdown";
 
-interface FormFieldRendererProps {
+interface FormFieldProps {
   field: string;
   value: any;
-  onChange: (field: string, value: any) => void;
-  onLeadSelect?: (lead: any) => void;
-  error?: string;
+  onChange: (value: any) => void;
+  label?: string;
 }
 
-export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error }: FormFieldRendererProps) => {
-  const getFieldLabel = (field: string) => {
-    const labels: Record<string, string> = {
-      project_name: 'Project Name',
-      customer_name: 'Customer Name',
-      lead_name: 'Lead Name',
-      lead_owner: 'Lead Owner',
-      region: 'Region',
-      priority: 'Priority',
-      probability: 'Probability (%)',
-      internal_comment: 'Internal Comment',
-      expected_closing_date: 'Expected Closing Date',
-      customer_need: 'Customer Need',
-      customer_challenges: 'Customer Challenges',
-      relationship_strength: 'Relationship Strength',
-      budget: 'Budget',
-      is_recurring: 'Is Recurring?',
-      project_type: 'Project Type',
-      duration: 'Duration (months)',
-      revenue: 'Revenue',
-      start_date: 'Start Date',
-      end_date: 'End Date',
-      total_contract_value: 'Total Contract Value',
-      currency_type: 'Currency Type',
-      project_duration: 'Project Duration (months)',
-      rfq_received_date: 'RFQ Received Date',
-      proposal_due_date: 'Proposal Due Date',
-      rfq_status: 'RFQ Status',
-      quarterly_revenue_q1: 'Q1 Revenue',
-      quarterly_revenue_q2: 'Q2 Revenue',
-      quarterly_revenue_q3: 'Q3 Revenue',
-      quarterly_revenue_q4: 'Q4 Revenue',
-      total_revenue: 'Total Revenue',
-      action_items: 'Action Items',
-      current_status: 'Current Status',
-      closing: 'Closing',
-      won_reason: 'Won Reason',
-      lost_reason: 'Lost Reason',
-      need_improvement: 'Need Improvement',
-      drop_reason: 'Drop Reason',
-      fax: 'Fax',
-      business_value: 'Business Value',
-      decision_maker_level: 'Decision Maker Level',
-      signed_contract_date: 'Signed Contract Date',
-      implementation_start_date: 'Implementation Start Date',
-      handoff_status: 'Handoff Status',
-    };
-    return labels[field] || field;
+export const FormFieldRenderer = ({ field, value, onChange, label }: FormFieldProps) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    onChange(e.target.value);
   };
 
-  const getStringValue = (val: any): string => {
-    if (val === null || val === undefined) return '';
-    return String(val);
+  const handleCheckboxChange = (checked: boolean) => {
+    onChange(checked ? 'Yes' : 'No');
   };
 
-  const handleNumericChange = (fieldName: string, inputValue: string) => {
-    console.log(`=== NUMERIC FIELD CHANGE DEBUG ===`);
-    console.log(`Field: ${fieldName}, Input value: "${inputValue}"`);
-    
-    if (inputValue === '' || inputValue === null || inputValue === undefined) {
-      console.log(`Setting ${fieldName} to 0 (empty input)`);
-      onChange(fieldName, 0);
-      return;
-    }
-    
-    const numericValue = parseFloat(inputValue);
-    if (isNaN(numericValue)) {
-      console.log(`Invalid numeric value for ${fieldName}: "${inputValue}"`);
-      onChange(fieldName, 0);
-      return;
-    }
-    
-    // For revenue fields, ensure positive values
-    if (fieldName.includes('revenue') && numericValue < 0) {
-      console.log(`Setting ${fieldName} to 0 (negative value not allowed)`);
-      onChange(fieldName, 0);
-      return;
-    }
-    
-    console.log(`Setting ${fieldName} to ${numericValue}`);
-    onChange(fieldName, numericValue);
+  const handleSelectChange = (value: string) => {
+    onChange(value);
   };
 
-  const handleLeadSelect = (lead: any) => {
-    console.log("Selected lead:", lead);
-    
-    // Auto-fill available fields based on lead data
-    const updates: Partial<Deal> = {
-      lead_name: lead.lead_name,
-      customer_name: lead.company_name || '',
-      region: lead.country || '',
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const parsedValue = parseFloat(e.target.value);
+    onChange(isNaN(parsedValue) ? null : parsedValue);
+  };
+
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const parsedValue = parseFloat(e.target.value);
+    onChange(isNaN(parsedValue) ? null : parsedValue);
+  };
+
+  const handleDateChange = (date: Date | undefined) => {
+    if (date) {
+      onChange(format(date, 'yyyy-MM-dd'));
+    } else {
+      onChange(undefined);
+    }
+  };
+
+  const DatePicker = forwardRef<HTMLButtonElement, {
+    className?: string;
+  }>(({ className }, ref) => {
+    const [date, setDate] = useState<Date | undefined>(value ? new Date(value) : undefined);
+
+    const handleDateSelect = (newDate: Date | undefined) => {
+      setDate(newDate);
+      handleDateChange(newDate);
     };
 
-    // Update each field individually
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value) {
-        onChange(key, value);
-      }
-    });
-
-    // Get lead owner display name if available
-    if (lead.created_by) {
-      const fetchLeadOwner = async () => {
-        try {
-          const { data, error } = await supabase.functions.invoke('admin-list-users');
-          if (!error && data?.users) {
-            const user = data.users.find((u: any) => u.id === lead.created_by);
-            if (user) {
-              onChange('lead_owner', user.user_metadata?.display_name || "Unknown");
-              return;
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching user display name:", error);
-        }
-        
-        // Fallback if user fetch fails
-        onChange('lead_owner', "Unknown");
-      };
-      
-      fetchLeadOwner();
-    }
-
-    if (onLeadSelect) {
-      onLeadSelect(lead);
-    }
-  };
-
-  const renderDatePicker = (fieldName: string, dateValue: any) => {
-    const date = dateValue ? new Date(dateValue) : undefined;
-    
     return (
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            variant="outline"
+            variant={"outline"}
             className={cn(
-              "w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground"
+              "w-[280px] justify-start text-left font-normal",
+              !date && "text-muted-foreground",
+              className
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, "PPP") : <span>Pick a date</span>}
+            {date ? format(date, "yyyy-MM-dd") : (
+              <span>Pick a date</span>
+            )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0" align="center" side="bottom">
           <Calendar
             mode="single"
             selected={date}
-            onSelect={(selectedDate) => {
-              if (selectedDate) {
-                const formattedDate = format(selectedDate, "yyyy-MM-dd");
-                console.log(`Date field ${fieldName} update: setting to ${formattedDate}`);
-                onChange(fieldName, formattedDate);
-              } else {
-                onChange(fieldName, '');
-              }
-            }}
-            disabled={(date) => date > new Date()} // Disable future dates
+            onSelect={handleDateSelect}
+            disabled={(date) =>
+              date > new Date()
+            }
             initialFocus
-            className={cn("p-3 pointer-events-auto")}
           />
         </PopoverContent>
       </Popover>
-    );
-  };
-
-  const renderField = () => {
-    switch (field) {
-      case 'lead_name':
-        return (
-          <LeadSearchableDropdown
-            value={getStringValue(value)}
-            onValueChange={(val) => onChange(field, val)}
-            onLeadSelect={handleLeadSelect}
-            placeholder="Search and select a lead..."
-          />
-        );
-
-      case 'priority':
-        return (
-          <Select
-            value={value?.toString() || ''}
-            onValueChange={(val) => onChange(field, parseInt(val))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select priority" />
-            </SelectTrigger>
-            <SelectContent>
-              {[1, 2, 3, 4, 5].map(num => (
-                <SelectItem key={num} value={num.toString()}>
-                  Priority {num} {num === 1 ? '(Highest)' : num === 2 ? '(High)' : num === 3 ? '(Medium)' : num === 4 ? '(Low)' : '(Lowest)'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'probability':
-        return (
-          <Select
-            value={value ? value.toString() : ''}
-            onValueChange={(val) => {
-              console.log(`Probability update: setting to ${val}`);
-              onChange(field, parseInt(val));
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select probability" />
-            </SelectTrigger>
-            <SelectContent>
-              {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(percent => (
-                <SelectItem key={percent} value={percent.toString()}>
-                  {percent}%
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'region':
-        return (
-          <Select
-            value={value?.toString() || ''}
-            onValueChange={(val) => onChange(field, val)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select region" />
-            </SelectTrigger>
-            <SelectContent>
-              {['EU', 'US', 'APAC', 'MEA', 'LATAM', 'India', 'Asia'].map(region => (
-                <SelectItem key={region} value={region}>
-                  {region}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'customer_need':
-        return (
-          <Select
-            value={value?.toString() || ''}
-            onValueChange={(val) => onChange(field, val)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select customer need" />
-            </SelectTrigger>
-            <SelectContent>
-              {['Open', 'Ongoing', 'Done'].map(option => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'customer_challenges':
-      case 'business_value':
-      case 'decision_maker_level':
-        return (
-          <Select
-            value={value?.toString() || ''}
-            onValueChange={(val) => {
-              console.log(`${field} update: setting to ${val}`);
-              onChange(field, val);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={`Select ${getFieldLabel(field).toLowerCase()}`} />
-            </SelectTrigger>
-            <SelectContent>
-              {['Open', 'Ongoing', 'Done'].map(option => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'relationship_strength':
-        return (
-          <Select
-            value={value?.toString() || ''}
-            onValueChange={(val) => onChange(field, val)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select relationship strength" />
-            </SelectTrigger>
-            <SelectContent>
-              {['Low', 'Medium', 'High'].map(option => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'budget':
-        return (
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={getStringValue(value)}
-            onChange={(e) => {
-              console.log(`Budget update: setting to ${e.target.value}`);
-              handleNumericChange(field, e.target.value);
-            }}
-            placeholder="Enter budget in euros..."
-          />
-        );
-
-      case 'is_recurring':
-        return (
-          <Select
-            value={value?.toString() || ''}
-            onValueChange={(val) => {
-              console.log(`Is recurring update: setting to ${val}`);
-              onChange(field, val);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select recurring status" />
-            </SelectTrigger>
-            <SelectContent>
-              {['Yes', 'No', 'Unclear'].map(option => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'currency_type':
-        return (
-          <Select
-            value={value?.toString() || 'EUR'}
-            onValueChange={(val) => onChange(field, val)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select currency" />
-            </SelectTrigger>
-            <SelectContent>
-              {[
-                { value: 'EUR', label: '€ EUR' },
-                { value: 'USD', label: '$ USD' },
-                { value: 'INR', label: '₹ INR' },
-              ].map(currency => (
-                <SelectItem key={currency.value} value={currency.value}>
-                  {currency.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'rfq_status':
-        return (
-          <Select
-            value={value?.toString() || ''}
-            onValueChange={(val) => onChange(field, val)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select RFQ status" />
-            </SelectTrigger>
-            <SelectContent>
-              {['Drafted', 'Submitted', 'Rejected', 'Accepted'].map(status => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'handoff_status':
-        return (
-          <Select
-            value={value?.toString() || ''}
-            onValueChange={(val) => {
-              console.log(`Handoff status update: setting to ${val}`);
-              onChange(field, val);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select handoff status" />
-            </SelectTrigger>
-            <SelectContent>
-              {['Not Started', 'In Progress', 'Complete'].map(status => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-
-      case 'signed_contract_date':
-      case 'implementation_start_date':
-        return renderDatePicker(field, value);
-
-      case 'expected_closing_date':
-      case 'start_date':
-      case 'end_date':
-      case 'rfq_received_date':
-      case 'proposal_due_date':
-        return (
-          <Input
-            type="date"
-            value={getStringValue(value)}
-            onChange={(e) => {
-              console.log(`Date field ${field} update: setting to ${e.target.value}`);
-              onChange(field, e.target.value);
-            }}
-          />
-        );
-
-      case 'total_contract_value':
-      case 'project_duration':
-        return (
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={getStringValue(value)}
-            onChange={(e) => {
-              console.log(`RFQ numeric field ${field} update: setting to ${e.target.value}`);
-              handleNumericChange(field, e.target.value);
-            }}
-            placeholder={field === 'project_duration' ? 'Enter duration in months...' : 'Enter value...'}
-          />
-        );
-
-      case 'quarterly_revenue_q1':
-      case 'quarterly_revenue_q2':
-      case 'quarterly_revenue_q3':
-      case 'quarterly_revenue_q4':
-        return (
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={getStringValue(value)}
-            onChange={(e) => {
-              console.log(`Revenue field ${field} update: setting to ${e.target.value}`);
-              handleNumericChange(field, e.target.value);
-            }}
-            placeholder="Enter quarterly revenue..."
-          />
-        );
-
-      case 'total_revenue':
-        return (
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={getStringValue(value)}
-            onChange={(e) => {
-              console.log(`Total revenue field ${field} update: setting to ${e.target.value}`);
-              handleNumericChange(field, e.target.value);
-            }}
-            placeholder="Enter total revenue..."
-          />
-        );
-
-      case 'duration':
-      case 'revenue':
-        return (
-          <Input
-            type="number"
-            value={getStringValue(value)}
-            onChange={(e) => handleNumericChange(field, e.target.value)}
-          />
-        );
-
-      case 'internal_comment':
-      case 'action_items':
-      case 'closing':
-      case 'won_reason':
-      case 'lost_reason':
-      case 'need_improvement':
-      case 'drop_reason':
-        return (
-          <Textarea
-            value={getStringValue(value)}
-            onChange={(e) => {
-              console.log(`Textarea field ${field} update: setting to ${e.target.value}`);
-              onChange(field, e.target.value);
-            }}
-            rows={3}
-            placeholder={`Enter ${getFieldLabel(field).toLowerCase()}...`}
-          />
-        );
-
-      case 'fax':
-        return (
-          <Input
-            type="tel"
-            value={getStringValue(value)}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder={`Enter ${getFieldLabel(field).toLowerCase()}...`}
-          />
-        );
-
-      default:
-        return (
-          <Input
-            value={getStringValue(value)}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder={`Enter ${getFieldLabel(field).toLowerCase()}...`}
-          />
-        );
-    }
-  };
+    )
+  });
+  DatePicker.displayName = "DatePicker"
 
   return (
-    <div className="space-y-2">
-      <Label>{getFieldLabel(field)}</Label>
-      {renderField()}
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
+    <div className="grid gap-2">
+      {field === 'deal_name' && (
+        <Input id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'company_name' && (
+        <Input id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'lead_name' && (
+        <LeadSearchableDropdown
+          value={value}
+          onValueChange={(val) => onChange(val)}
+          placeholder="Select or enter lead name"
+        />
+      )}
+      {field === 'lead_owner' && (
+        <Input id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'region' && (
+        <Input id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'phone_no' && (
+        <Input id={field} type="tel" value={value} onChange={handleChange} />
+      )}
+      {field === 'lead_description' && (
+        <Textarea id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'lead_source' && (
+        <Select onValueChange={handleSelectChange} defaultValue={value || ''}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select lead source" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Cold Calling">Cold Calling</SelectItem>
+            <SelectItem value="Email Campaign">Email Campaign</SelectItem>
+            <SelectItem value="Social Media">Social Media</SelectItem>
+            <SelectItem value="Referral">Referral</SelectItem>
+            <SelectItem value="Website">Website</SelectItem>
+            <SelectItem value="Event">Event</SelectItem>
+            <SelectItem value="Other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
+      {field === 'expected_closing_date' && (
+        <DatePicker />
+      )}
+      {field === 'discussion_date' && (
+        <DatePicker />
+      )}
+      {field === 'discussion_notes' && (
+        <Textarea id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'next_follow_up' && (
+        <Input id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'budget' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleNumberChange} />
+      )}
+      {field === 'qualified_notes' && (
+        <Textarea id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'decision_maker' && (
+        <Input id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'total_contract_value' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleCurrencyChange} />
+      )}
+      {field === 'rfq_sent_date' && (
+        <DatePicker />
+      )}
+      {field === 'rfq_deadline' && (
+        <DatePicker />
+      )}
+      {field === 'rfq_requirements' && (
+        <Textarea id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'timeline' && (
+        <Input id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'offer_amount' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleCurrencyChange} />
+      )}
+      {field === 'offer_date' && (
+        <DatePicker />
+      )}
+      {field === 'offer_valid_until' && (
+        <DatePicker />
+      )}
+      {field === 'offer_terms' && (
+        <Textarea id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'negotiation_status' && (
+        <Input id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'close_date' && (
+        <DatePicker />
+      )}
+      {field === 'close_amount' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleCurrencyChange} />
+      )}
+      {field === 'close_reason' && (
+        <Textarea id={field} value={value} onChange={handleChange} />
+      )}
+      {field === 'total_revenue' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleCurrencyChange} />
+      )}
+      {field === 'quarterly_revenue_q1' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleCurrencyChange} />
+      )}
+      {field === 'quarterly_revenue_q2' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleCurrencyChange} />
+      )}
+      {field === 'quarterly_revenue_q3' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleCurrencyChange} />
+      )}
+      {field === 'quarterly_revenue_q4' && (
+        <Input id={field} type="number" value={value || ''} onChange={handleCurrencyChange} />
+      )}
+      {field === 'closing_date' && (
+        <DatePicker />
+      )}
+      {field === 'signed_contract_date' && (
+        <DatePicker />
       )}
     </div>
   );
 };
+
+import { CalendarIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";

@@ -77,12 +77,14 @@ export type Database = {
           close_amount: number | null
           close_date: string | null
           close_reason: string | null
+          closing_date: string | null
           company_name: string | null
           created_at: string | null
           deal_name: string
           decision_maker: string | null
           discussion_date: string | null
           discussion_notes: string | null
+          expected_closing_date: string | null
           id: string
           lead_description: string | null
           lead_name: string | null
@@ -96,11 +98,18 @@ export type Database = {
           offer_valid_until: string | null
           phone_no: string | null
           qualified_notes: string | null
+          quarterly_revenue_q1: number | null
+          quarterly_revenue_q2: number | null
+          quarterly_revenue_q3: number | null
+          quarterly_revenue_q4: number | null
           rfq_deadline: string | null
           rfq_requirements: string | null
           rfq_sent_date: string | null
+          signed_contract_date: string | null
           stage: Database["public"]["Enums"]["deal_stage"] | null
           timeline: string | null
+          total_contract_value: number | null
+          total_revenue: number | null
           updated_at: string | null
           user_id: string
         }
@@ -109,12 +118,14 @@ export type Database = {
           close_amount?: number | null
           close_date?: string | null
           close_reason?: string | null
+          closing_date?: string | null
           company_name?: string | null
           created_at?: string | null
           deal_name: string
           decision_maker?: string | null
           discussion_date?: string | null
           discussion_notes?: string | null
+          expected_closing_date?: string | null
           id?: string
           lead_description?: string | null
           lead_name?: string | null
@@ -128,11 +139,18 @@ export type Database = {
           offer_valid_until?: string | null
           phone_no?: string | null
           qualified_notes?: string | null
+          quarterly_revenue_q1?: number | null
+          quarterly_revenue_q2?: number | null
+          quarterly_revenue_q3?: number | null
+          quarterly_revenue_q4?: number | null
           rfq_deadline?: string | null
           rfq_requirements?: string | null
           rfq_sent_date?: string | null
+          signed_contract_date?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"] | null
           timeline?: string | null
+          total_contract_value?: number | null
+          total_revenue?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -141,12 +159,14 @@ export type Database = {
           close_amount?: number | null
           close_date?: string | null
           close_reason?: string | null
+          closing_date?: string | null
           company_name?: string | null
           created_at?: string | null
           deal_name?: string
           decision_maker?: string | null
           discussion_date?: string | null
           discussion_notes?: string | null
+          expected_closing_date?: string | null
           id?: string
           lead_description?: string | null
           lead_name?: string | null
@@ -160,11 +180,18 @@ export type Database = {
           offer_valid_until?: string | null
           phone_no?: string | null
           qualified_notes?: string | null
+          quarterly_revenue_q1?: number | null
+          quarterly_revenue_q2?: number | null
+          quarterly_revenue_q3?: number | null
+          quarterly_revenue_q4?: number | null
           rfq_deadline?: string | null
           rfq_requirements?: string | null
           rfq_sent_date?: string | null
+          signed_contract_date?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"] | null
           timeline?: string | null
+          total_contract_value?: number | null
+          total_revenue?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -331,6 +358,33 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      yearly_revenue_targets: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          total_target: number
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          total_target: number
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          total_target?: number
+          updated_at?: string | null
+          year?: number
         }
         Relationships: []
       }
