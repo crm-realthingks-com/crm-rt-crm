@@ -165,7 +165,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         user_id: user.data.user.id,
         created_by: user.data.user.id,
         modified_by: user.data.user.id,
-        contact_owner: user.data.user.id,
+        contact_owner: user.data.user.email || user.data.user.id,
       };
 
       if (contact) {
@@ -173,7 +173,19 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         const { error } = await supabase
           .from('contacts')
           .update({
-            ...contactData,
+            contact_name: contactData.contact_name,
+            company_name: contactData.company_name,
+            position: contactData.position,
+            email: contactData.email,
+            phone_no: contactData.phone_no,
+            linkedin: contactData.linkedin,
+            website: contactData.website,
+            contact_source: contactData.contact_source,
+            industry: contactData.industry as any,
+            country: contactData.country as any,
+            description: contactData.description,
+            modified_by: contactData.modified_by,
+            contact_owner: contactData.contact_owner,
             updated_at: new Date().toISOString(),
           })
           .eq('id', contact.id);
@@ -188,7 +200,23 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         // Create new contact
         const { error } = await supabase
           .from('contacts')
-          .insert(contactData);
+          .insert({
+            contact_name: contactData.contact_name,
+            company_name: contactData.company_name,
+            position: contactData.position,
+            email: contactData.email,
+            phone_no: contactData.phone_no,
+            linkedin: contactData.linkedin,
+            website: contactData.website,
+            contact_source: contactData.contact_source,
+            industry: contactData.industry as any,
+            country: contactData.country as any,
+            description: contactData.description,
+            user_id: contactData.user_id,
+            created_by: contactData.created_by,
+            modified_by: contactData.modified_by,
+            contact_owner: contactData.contact_owner,
+          });
 
         if (error) throw error;
 
@@ -201,6 +229,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       onSuccess();
       onOpenChange(false);
     } catch (error) {
+      console.error('Contact submission error:', error);
       toast({
         title: "Error",
         description: contact ? "Failed to update contact" : "Failed to create contact",

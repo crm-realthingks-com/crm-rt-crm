@@ -173,7 +173,19 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         const { error } = await supabase
           .from('leads')
           .update({
-            ...leadData,
+            lead_name: leadData.lead_name,
+            company_name: leadData.company_name,
+            position: leadData.position,
+            email: leadData.email,
+            phone_no: leadData.phone_no,
+            linkedin: leadData.linkedin,
+            website: leadData.website,
+            contact_source: leadData.contact_source,
+            industry: leadData.industry as any,
+            country: leadData.country as any,
+            description: leadData.description,
+            modified_by: leadData.modified_by,
+            lead_owner: leadData.lead_owner,
             updated_at: new Date().toISOString(),
           })
           .eq('id', lead.id);
@@ -188,7 +200,23 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         // Create new lead
         const { error } = await supabase
           .from('leads')
-          .insert(leadData);
+          .insert({
+            lead_name: leadData.lead_name,
+            company_name: leadData.company_name,
+            position: leadData.position,
+            email: leadData.email,
+            phone_no: leadData.phone_no,
+            linkedin: leadData.linkedin,
+            website: leadData.website,
+            contact_source: leadData.contact_source,
+            industry: leadData.industry as any,
+            country: leadData.country as any,
+            description: leadData.description,
+            user_id: leadData.user_id,
+            created_by: leadData.created_by,
+            modified_by: leadData.modified_by,
+            lead_owner: leadData.lead_owner,
+          });
 
         if (error) throw error;
 
@@ -201,6 +229,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
       onSuccess();
       onOpenChange(false);
     } catch (error) {
+      console.error('Lead submission error:', error);
       toast({
         title: "Error",
         description: lead ? "Failed to update lead" : "Failed to create lead",
