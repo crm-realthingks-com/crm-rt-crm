@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -161,6 +162,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         industry: data.industry || null,
         country: data.country || null,
         description: data.description || null,
+        user_id: user.data.user.id,
         created_by: user.data.user.id,
         modified_by: user.data.user.id,
         contact_owner: user.data.user.id,
@@ -172,7 +174,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
           .from('contacts')
           .update({
             ...contactData,
-            modified_time: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
           .eq('id', contact.id);
 

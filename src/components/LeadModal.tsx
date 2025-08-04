@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,7 +16,7 @@ const leadSchema = z.object({
   lead_name: z.string().min(1, "Lead name is required"),
   company_name: z.string().optional(),
   position: z.string().optional(),
-  email: z.string().email("Invalid email address").min(1, "Email is required"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone_no: z.string().optional(),
   linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
@@ -49,7 +50,7 @@ interface LeadModalProps {
   onSuccess: () => void;
 }
 
-const leadSources = [
+const contactSources = [
   "Website",
   "Referral", 
   "Social Media",
@@ -153,7 +154,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         lead_name: data.lead_name,
         company_name: data.company_name || null,
         position: data.position || null,
-        email: data.email,
+        email: data.email || null,
         phone_no: data.phone_no || null,
         linkedin: data.linkedin || null,
         website: data.website || null,
@@ -161,9 +162,10 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         industry: data.industry || null,
         country: data.country || null,
         description: data.description || null,
+        user_id: user.data.user.id,
         created_by: user.data.user.id,
         modified_by: user.data.user.id,
-        contact_owner: user.data.user.id,
+        lead_owner: user.data.user.email || user.data.user.id,
       };
 
       if (lead) {
@@ -172,7 +174,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
           .from('leads')
           .update({
             ...leadData,
-            modified_time: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
           .eq('id', lead.id);
 
@@ -268,7 +270,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email *</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="john@acme.com" {...field} />
                     </FormControl>
@@ -324,7 +326,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                 name="contact_source"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Lead Source</FormLabel>
+                    <FormLabel>Contact Source</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -332,7 +334,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {leadSources.map((source) => (
+                        {contactSources.map((source) => (
                           <SelectItem key={source} value={source}>
                             {source}
                           </SelectItem>
