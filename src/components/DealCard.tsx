@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,9 +128,9 @@ export const DealCard = ({ deal, onClick, isDragging, isSelected, selectionMode,
         )}
         
         <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground border-t border-border/30">
-          <span>Updated: {deal.modified_at ? (() => {
+          <span>Updated: {deal.updated_at ? (() => {
             try {
-              return format(new Date(deal.modified_at), 'MMM dd');
+              return format(new Date(deal.updated_at), 'MMM dd');
             } catch {
               return 'Unknown';
             }

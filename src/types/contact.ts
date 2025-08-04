@@ -11,7 +11,7 @@ export interface Contact {
   website: string | null;
   source: 'Cold Calling' | 'Email Campaign' | 'Social Media' | 'Referral' | 'Website' | 'Event' | 'Other';
   industry: 'Technology' | 'Healthcare' | 'Finance' | 'Manufacturing' | 'Retail' | 'Education' | 'Government' | 'Other';
-  region: 'North America' | 'Europe' | 'Asia Pacific' | 'Latin America' | 'Middle East & Africa' | 'Other';
+  region: 'North America' | 'Europe' | 'Asia Pacific' | 'Latin America' | 'Middle East' | 'Africa';
   description: string | null;
   contact_owner: string | null;
   created_at: string;

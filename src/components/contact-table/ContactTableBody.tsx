@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   ColumnDef,
@@ -37,7 +36,6 @@ import { useToast } from "@/hooks/use-toast";
 import { ContactForm } from '../ContactForm';
 
 interface ContactTableBodyProps {
-  loading: boolean;
   pageContacts: Contact[];
   visibleColumns: any[];
   selectedContacts: string[];
@@ -49,7 +47,6 @@ interface ContactTableBodyProps {
 }
 
 export const ContactTableBody = ({ 
-  loading,
   pageContacts, 
   visibleColumns,
   selectedContacts,
@@ -98,7 +95,7 @@ export const ContactTableBody = ({
         website: contact.website || '',
         source: contact.source || contact.contact_source || 'Other',
         industry: contact.industry || 'Other',
-        region: contact.region || 'North America',
+        region: contact.region === 'Other' ? 'North America' : contact.region || 'North America',
         description: contact.description || '',
         contact_owner: contact.contact_owner || contact.lead_owner || '',
         user_id: user.id,
@@ -140,9 +137,12 @@ export const ContactTableBody = ({
 
   const handleSaveContact = async (contactId: string, updates: Partial<Contact>) => {
     try {
+      // Remove non-database fields if they exist
+      const { user_id, ...dbUpdates } = updates;
+      
       await supabase
         .from('contacts')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', contactId);
       
       handleCloseForm();
