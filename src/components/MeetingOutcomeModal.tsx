@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,8 +24,7 @@ import { useNavigate } from "react-router-dom";
 
 interface Meeting {
   id: string;
-  meeting_title: string;
-  date: string;
+  title: string;
   start_time: string;
 }
 
@@ -190,7 +190,7 @@ export const MeetingOutcomeModal = ({ isOpen, onClose, meeting }: MeetingOutcome
             {existingOutcome ? "Edit Meeting Outcome" : "Log Meeting Outcome"}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Meeting: {meeting.meeting_title}
+            Meeting: {meeting.title}
           </p>
         </DialogHeader>
 

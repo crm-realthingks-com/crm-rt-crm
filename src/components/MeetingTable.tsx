@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,29 +39,20 @@ import {
 
 interface Meeting {
   id: string;
-  meeting_title: string;
-  date: string;
+  title: string;
+  description?: string;
   start_time: string;
-  duration: string;
-  location: string;
-  timezone: string;
-  description: string;
-  teams_link: string;
-  participants: string[];
-  created_by: string;
+  end_time?: string;
+  location?: string;
+  status?: string;
+  user_id: string;
   created_at: string;
   updated_at: string;
-}
-
-interface Lead {
-  id: string;
-  lead_name: string;
 }
 
 export const MeetingTable = () => {
   const { user } = useAuth();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMeetings, setSelectedMeetings] = useState<string[]>([]);
@@ -72,12 +64,11 @@ export const MeetingTable = () => {
   const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
 
   // Get unique user IDs for display names
-  const userIds = [...new Set(meetings.map(m => m.created_by))];
+  const userIds = [...new Set(meetings.map(m => m.user_id))];
   const { displayNames } = useUserDisplayNames(userIds);
 
   useEffect(() => {
     fetchMeetings();
-    fetchLeads();
   }, []);
 
   const fetchMeetings = async () => {
@@ -88,8 +79,7 @@ export const MeetingTable = () => {
       const { data, error } = await supabase
         .from("meetings")
         .select("*")
-        .gte("date", today.toISOString().split('T')[0])
-        .order("date", { ascending: true })
+        .gte("start_time", today.toISOString())
         .order("start_time", { ascending: true });
 
       if (error) throw error;
@@ -106,30 +96,10 @@ export const MeetingTable = () => {
     }
   };
 
-  const fetchLeads = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("leads")
-        .select("id, lead_name")
-        .order("lead_name");
-
-      if (error) throw error;
-      setLeads(data || []);
-    } catch (error) {
-      console.error("Error fetching leads:", error);
-    }
-  };
-
-  const getParticipantNames = (participantIds: string[]) => {
-    return participantIds
-      .map(id => leads.find(lead => lead.id === id)?.lead_name || "Unknown")
-      .join(", ");
-  };
-
   const filteredMeetings = meetings.filter(meeting =>
-    meeting.meeting_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    meeting.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getParticipantNames(meeting.participants).toLowerCase().includes(searchTerm.toLowerCase())
+    meeting.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (meeting.location && meeting.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (meeting.description && meeting.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleSelectAll = (checked: boolean) => {
@@ -206,17 +176,17 @@ export const MeetingTable = () => {
     setSelectedMeetingForOutcome(null);
   };
 
-  const formatDateTime = (date: string, time: string, timezone: string) => {
+  const formatDateTime = (dateTimeStr: string) => {
     try {
-      const dateTime = new Date(`${date}T${time}`);
+      const dateTime = new Date(dateTimeStr);
       return format(dateTime, "MMM dd, yyyy 'at' HH:mm");
     } catch {
-      return `${date} at ${time}`;
+      return dateTimeStr;
     }
   };
 
-  const getMeetingStatus = (date: string, time: string) => {
-    const meetingDateTime = new Date(`${date}T${time}`);
+  const getMeetingStatus = (startTime: string) => {
+    const meetingDateTime = new Date(startTime);
     const now = new Date();
     
     if (meetingDateTime < now) {
@@ -298,9 +268,8 @@ export const MeetingTable = () => {
               </TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Date & Time</TableHead>
-              <TableHead>Duration</TableHead>
+              <TableHead>Location</TableHead>
               <TableHead>Organizer</TableHead>
-              <TableHead>Participants</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -320,37 +289,22 @@ export const MeetingTable = () => {
                     className="p-0 h-auto font-semibold text-left"
                     onClick={() => handleEdit(meeting)}
                   >
-                    {meeting.meeting_title}
+                    {meeting.title}
                   </Button>
                 </TableCell>
                 <TableCell>
-                  {formatDateTime(meeting.date, meeting.start_time, meeting.timezone)}
+                  {formatDateTime(meeting.start_time)}
                 </TableCell>
-                <TableCell>{meeting.duration}</TableCell>
-                <TableCell>{displayNames[meeting.created_by] || "Unknown"}</TableCell>
-                <TableCell className="max-w-[200px] truncate">
-                  {getParticipantNames(meeting.participants)}
-                  {meeting.teams_link && (
-                    <div className="mt-1">
-                      <a 
-                        href={meeting.teams_link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-xs underline"
-                      >
-                        Join Teams Meeting
-                      </a>
-                    </div>
-                  )}
-                </TableCell>
+                <TableCell>{meeting.location || "-"}</TableCell>
+                <TableCell>{displayNames[meeting.user_id] || "Unknown"}</TableCell>
                 <TableCell>
-                  <Badge variant={getMeetingStatus(meeting.date, meeting.start_time) === "Completed" ? "secondary" : "default"}>
-                    {getMeetingStatus(meeting.date, meeting.start_time)}
+                  <Badge variant={getMeetingStatus(meeting.start_time) === "Completed" ? "secondary" : "default"}>
+                    {getMeetingStatus(meeting.start_time)}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {getMeetingStatus(meeting.date, meeting.start_time) === "Completed" && (
+                    {getMeetingStatus(meeting.start_time) === "Completed" && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -389,10 +343,10 @@ export const MeetingTable = () => {
 
       {/* Modals */}
       <MeetingModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
         meeting={editingMeeting}
-        leads={leads}
+        onSuccess={handleModalClose}
       />
 
       <MeetingOutcomeModal
@@ -407,7 +361,7 @@ export const MeetingTable = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Meeting</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{meetingToDelete?.meeting_title}"? This action cannot be undone.
+              Are you sure you want to delete "{meetingToDelete?.title}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -42,7 +42,7 @@ interface MeetingModalProps {
 
 const meetingStatuses = [
   "Scheduled",
-  "In Progress",
+  "In Progress", 
   "Completed",
   "Cancelled"
 ];

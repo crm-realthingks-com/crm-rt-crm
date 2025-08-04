@@ -218,6 +218,89 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_outcomes: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          interested_in_deal: boolean | null
+          meeting_id: string
+          next_steps: string | null
+          outcome_type: string
+          summary: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          interested_in_deal?: boolean | null
+          meeting_id: string
+          next_steps?: string | null
+          outcome_type: string
+          summary?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          interested_in_deal?: boolean | null
+          meeting_id?: string
+          next_steps?: string | null
+          outcome_type?: string
+          summary?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_meeting_outcomes_meeting_id"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          end_time: string | null
+          id: string
+          location: string | null
+          start_time: string
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          location?: string | null
+          start_time: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          location?: string | null
+          start_time?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
