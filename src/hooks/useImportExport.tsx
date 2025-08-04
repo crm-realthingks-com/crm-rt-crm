@@ -194,9 +194,15 @@ export const useImportExport = ({
     }
   }, [tableName, onExport, toast]);
 
+  // Provide backward compatibility aliases
+  const handleExportAll = handleExport;
+  const handleExportSelected = handleExport;
+
   return {
     handleImport,
     handleExport,
+    handleExportAll,
+    handleExportSelected,
     isImporting,
     isExporting,
   };

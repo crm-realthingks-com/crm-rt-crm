@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   ColumnDef,
@@ -132,10 +133,12 @@ export const ContactTableBody = ({
       'Cold Calling': 'Cold Call',
       'Cold Call': 'Cold Call',
       'Email Campaign': 'Email Campaign',
-      'Social Media': 'Social Media',
+      'Social Media': 'LinkedIn',
       'Referral': 'Referral',
       'Website': 'Website',
-      'Event': 'Event',
+      'Event': 'Trade Show',
+      'Trade Show': 'Trade Show',
+      'LinkedIn': 'LinkedIn',
       'Other': 'Other'
     };
     return sourceMapping[source] || 'Other';

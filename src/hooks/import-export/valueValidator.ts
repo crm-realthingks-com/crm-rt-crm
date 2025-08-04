@@ -17,7 +17,7 @@ export const validateValues = (record: any, tableName: string): { isValid: boole
   return { isValid: errors.length === 0, errors };
 };
 
-export const validateValue = (key: string, value: string, tableName: string): string | null => {
+export const validateValue = (key: string, value: string, tableName: string): string | number | boolean | string[] | null => {
   const config = getColumnConfig(tableName);
   
   if (!value || value.trim() === '') return null;
@@ -52,17 +52,17 @@ export const validateValue = (key: string, value: string, tableName: string): st
       case 'priority':
         if (value === '' || value === 'null' || value === 'undefined') return null;
         const priority = parseInt(value);
-        return isNaN(priority) ? null : Math.max(1, Math.min(5, priority));
+        return isNaN(priority) ? null : String(Math.max(1, Math.min(5, priority)));
       
       case 'probability':
         if (value === '' || value === 'null' || value === 'undefined') return null;
         const prob = parseInt(value);
-        return isNaN(prob) ? null : Math.max(0, Math.min(100, prob));
+        return isNaN(prob) ? null : String(Math.max(0, Math.min(100, prob)));
       
       case 'project_duration':
         if (value === '' || value === 'null' || value === 'undefined') return null;
         const duration = parseInt(value);
-        return isNaN(duration) ? null : Math.max(0, duration);
+        return isNaN(duration) ? null : String(Math.max(0, duration));
       
       case 'total_contract_value':
       case 'quarterly_revenue_q1':
@@ -72,7 +72,7 @@ export const validateValue = (key: string, value: string, tableName: string): st
       case 'total_revenue':
         if (value === '' || value === 'null' || value === 'undefined') return null;
         const revenue = parseFloat(value.replace(/[€$,]/g, ''));
-        return isNaN(revenue) ? null : Math.max(0, revenue);
+        return isNaN(revenue) ? null : String(Math.max(0, revenue));
       
       case 'start_date':
       case 'end_date':
@@ -116,13 +116,13 @@ export const validateValue = (key: string, value: string, tableName: string): st
   switch (key) {
     case 'no_of_employees':
       const employees = parseInt(value);
-      return isNaN(employees) ? null : employees;
+      return isNaN(employees) ? null : String(employees);
     
     case 'annual_revenue':
     case 'amount':
     case 'rfq_value':
       const revenue = parseFloat(value.replace(/[$,]/g, ''));
-      return isNaN(revenue) ? null : revenue;
+      return isNaN(revenue) ? null : String(revenue);
     
     case 'email':
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -140,20 +140,20 @@ export const validateValue = (key: string, value: string, tableName: string): st
     case 'participants':
       // Handle comma-separated email list
       if (tableName === 'meetings') {
-        return value.split(',').map(email => email.trim()).filter(email => email);
+        return value.split(',').map(email => email.trim()).filter(email => email).join(',');
       }
       return value.trim();
       
     case 'tags':
       // Handle comma-separated tags list
       if (tableName === 'meetings') {
-        return value.split(',').map(tag => tag.trim()).filter(tag => tag);
+        return value.split(',').map(tag => tag.trim()).filter(tag => tag).join(',');
       }
       return value.trim();
       
     case 'follow_up_required':
       if (tableName === 'meetings') {
-        return ['yes', 'true', '1', 'on'].includes(value.toLowerCase());
+        return ['yes', 'true', '1', 'on'].includes(value.toLowerCase()) ? 'true' : 'false';
       }
       return value.trim();
     
