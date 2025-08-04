@@ -3,7 +3,6 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Upload, Download } from "lucide-react";
 import { useImportExport } from "@/hooks/useImportExport";
-import { getExportFilename } from "@/utils/exportUtils";
 
 interface Deal {
   id: string;
@@ -26,9 +25,9 @@ interface DealsImportExportProps {
 
 const DealsImportExport = ({ deals, onImportComplete }: DealsImportExportProps) => {
   const { handleImport, handleExportAll } = useImportExport({
-    moduleName: 'deals',
-    onRefresh: () => console.log('Refreshing deals data'),
-    tableName: 'deals'
+    tableName: 'deals',
+    existingData: deals,
+    onImport: onImportComplete
   });
 
   const exportDeals = () => {

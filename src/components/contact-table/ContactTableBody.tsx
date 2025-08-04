@@ -127,18 +127,18 @@ export const ContactTableBody = ({
     }
   };
 
-  // Helper function to map source values
+  // Helper function to map source values to match database schema
   const mapSourceValue = (source: string): Contact['source'] => {
     const sourceMapping: Record<string, Contact['source']> = {
       'Cold Calling': 'Cold Call',
       'Cold Call': 'Cold Call',
       'Email Campaign': 'Email Campaign',
       'Social Media': 'LinkedIn',
+      'LinkedIn': 'LinkedIn',
       'Referral': 'Referral',
       'Website': 'Website',
       'Event': 'Trade Show',
       'Trade Show': 'Trade Show',
-      'LinkedIn': 'LinkedIn',
       'Other': 'Other'
     };
     return sourceMapping[source] || 'Other';
@@ -179,8 +179,6 @@ export const ContactTableBody = ({
       });
     }
   };
-
-  
 
   return (
     <>

@@ -8,25 +8,7 @@ import { ContactTablePagination } from "./contact-table/ContactTablePagination";
 import { ContactModal } from "./ContactModal";
 import { ContactColumnCustomizer, ContactColumnConfig } from "./ContactColumnCustomizer";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-
-interface Contact {
-  id: string;
-  user_id: string;
-  contact_name: string;
-  company?: string;
-  position?: string;
-  email?: string;
-  phone?: string;
-  linkedin?: string;
-  website?: string;
-  source: 'Cold Call' | 'Email Campaign' | 'Referral' | 'Website' | 'Other' | 'LinkedIn' | 'Trade Show';
-  industry: 'Technology' | 'Healthcare' | 'Finance' | 'Manufacturing' | 'Retail' | 'Education' | 'Government' | 'Other';
-  region: 'North America' | 'Europe' | 'Asia Pacific' | 'Latin America' | 'Middle East' | 'Africa';
-  description?: string;
-  contact_owner?: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Contact } from "@/types/contact";
 
 const defaultColumns: ContactColumnConfig[] = [
   { field: 'contact_name', label: 'Contact Name', visible: true, order: 0 },
@@ -188,7 +170,6 @@ export const ContactTable = ({
 
       <Card>
         <ContactTableBody
-          loading={loading}
           pageContacts={pageContacts}
           visibleColumns={visibleColumns}
           selectedContacts={selectedContacts}

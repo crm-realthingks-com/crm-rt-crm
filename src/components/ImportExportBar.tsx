@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +26,10 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
   
   // Use the centralized import/export logic
   const { handleImport, handleExportAll, handleExportSelected } = useImportExport({
-    moduleName: 'deals',
-    onRefresh,
-    tableName: 'deals'
+    tableName: 'deals',
+    existingData: deals,
+    onImport: onImport,
+    onExport: onExport
   });
 
   const generateFileName = (prefix: string) => {
