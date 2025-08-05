@@ -16,55 +16,85 @@ export type Database = {
     Tables: {
       contacts: {
         Row: {
+          annual_revenue: number | null
+          city: string | null
           company: string | null
+          company_name: string | null
           contact_name: string
           contact_owner: string | null
+          contact_source: Database["public"]["Enums"]["contact_source"] | null
+          country: string | null
           created_at: string | null
           description: string | null
           email: string | null
           id: string
           industry: Database["public"]["Enums"]["industry_type"] | null
+          lead_status: string | null
           linkedin: string | null
+          mobile_no: string | null
+          no_of_employees: number | null
           phone: string | null
+          phone_no: string | null
           position: string | null
           region: Database["public"]["Enums"]["region_type"] | null
           source: Database["public"]["Enums"]["contact_source"] | null
+          state: string | null
           updated_at: string | null
           user_id: string
           website: string | null
         }
         Insert: {
+          annual_revenue?: number | null
+          city?: string | null
           company?: string | null
+          company_name?: string | null
           contact_name: string
           contact_owner?: string | null
+          contact_source?: Database["public"]["Enums"]["contact_source"] | null
+          country?: string | null
           created_at?: string | null
           description?: string | null
           email?: string | null
           id?: string
           industry?: Database["public"]["Enums"]["industry_type"] | null
+          lead_status?: string | null
           linkedin?: string | null
+          mobile_no?: string | null
+          no_of_employees?: number | null
           phone?: string | null
+          phone_no?: string | null
           position?: string | null
           region?: Database["public"]["Enums"]["region_type"] | null
           source?: Database["public"]["Enums"]["contact_source"] | null
+          state?: string | null
           updated_at?: string | null
           user_id: string
           website?: string | null
         }
         Update: {
+          annual_revenue?: number | null
+          city?: string | null
           company?: string | null
+          company_name?: string | null
           contact_name?: string
           contact_owner?: string | null
+          contact_source?: Database["public"]["Enums"]["contact_source"] | null
+          country?: string | null
           created_at?: string | null
           description?: string | null
           email?: string | null
           id?: string
           industry?: Database["public"]["Enums"]["industry_type"] | null
+          lead_status?: string | null
           linkedin?: string | null
+          mobile_no?: string | null
+          no_of_employees?: number | null
           phone?: string | null
+          phone_no?: string | null
           position?: string | null
           region?: Database["public"]["Enums"]["region_type"] | null
           source?: Database["public"]["Enums"]["contact_source"] | null
+          state?: string | null
           updated_at?: string | null
           user_id?: string
           website?: string | null
@@ -73,23 +103,44 @@ export type Database = {
       }
       deals: {
         Row: {
+          action_items: string | null
           budget: number | null
+          business_value: string | null
           close_amount: number | null
           close_date: string | null
           close_reason: string | null
+          closing: string | null
           closing_date: string | null
           company_name: string | null
           created_at: string | null
+          created_by: string | null
+          currency_type: string | null
+          current_status: string | null
+          customer_challenges: string | null
+          customer_name: string | null
+          customer_need: string | null
           deal_name: string
           decision_maker: string | null
+          decision_maker_level: string | null
           discussion_date: string | null
           discussion_notes: string | null
+          drop_reason: string | null
+          end_date: string | null
           expected_closing_date: string | null
+          handoff_status: string | null
           id: string
+          implementation_start_date: string | null
+          internal_comment: string | null
+          is_recurring: string | null
           lead_description: string | null
           lead_name: string | null
           lead_owner: string | null
           lead_source: Database["public"]["Enums"]["contact_source"] | null
+          lost_reason: string | null
+          mobile_no: string | null
+          modified_at: string | null
+          modified_by: string | null
+          need_improvement: string | null
           negotiation_status: string | null
           next_follow_up: string | null
           offer_amount: number | null
@@ -97,40 +148,72 @@ export type Database = {
           offer_terms: string | null
           offer_valid_until: string | null
           phone_no: string | null
+          priority: number | null
+          probability: number | null
+          project_duration: number | null
+          project_name: string | null
+          proposal_due_date: string | null
           qualified_notes: string | null
           quarterly_revenue_q1: number | null
           quarterly_revenue_q2: number | null
           quarterly_revenue_q3: number | null
           quarterly_revenue_q4: number | null
+          region: string | null
+          relationship_strength: string | null
           rfq_deadline: string | null
+          rfq_received_date: string | null
           rfq_requirements: string | null
           rfq_sent_date: string | null
+          rfq_status: string | null
           signed_contract_date: string | null
           stage: Database["public"]["Enums"]["deal_stage"] | null
+          start_date: string | null
           timeline: string | null
           total_contract_value: number | null
           total_revenue: number | null
           updated_at: string | null
           user_id: string
+          won_reason: string | null
         }
         Insert: {
+          action_items?: string | null
           budget?: number | null
+          business_value?: string | null
           close_amount?: number | null
           close_date?: string | null
           close_reason?: string | null
+          closing?: string | null
           closing_date?: string | null
           company_name?: string | null
           created_at?: string | null
+          created_by?: string | null
+          currency_type?: string | null
+          current_status?: string | null
+          customer_challenges?: string | null
+          customer_name?: string | null
+          customer_need?: string | null
           deal_name: string
           decision_maker?: string | null
+          decision_maker_level?: string | null
           discussion_date?: string | null
           discussion_notes?: string | null
+          drop_reason?: string | null
+          end_date?: string | null
           expected_closing_date?: string | null
+          handoff_status?: string | null
           id?: string
+          implementation_start_date?: string | null
+          internal_comment?: string | null
+          is_recurring?: string | null
           lead_description?: string | null
           lead_name?: string | null
           lead_owner?: string | null
           lead_source?: Database["public"]["Enums"]["contact_source"] | null
+          lost_reason?: string | null
+          mobile_no?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          need_improvement?: string | null
           negotiation_status?: string | null
           next_follow_up?: string | null
           offer_amount?: number | null
@@ -138,40 +221,72 @@ export type Database = {
           offer_terms?: string | null
           offer_valid_until?: string | null
           phone_no?: string | null
+          priority?: number | null
+          probability?: number | null
+          project_duration?: number | null
+          project_name?: string | null
+          proposal_due_date?: string | null
           qualified_notes?: string | null
           quarterly_revenue_q1?: number | null
           quarterly_revenue_q2?: number | null
           quarterly_revenue_q3?: number | null
           quarterly_revenue_q4?: number | null
+          region?: string | null
+          relationship_strength?: string | null
           rfq_deadline?: string | null
+          rfq_received_date?: string | null
           rfq_requirements?: string | null
           rfq_sent_date?: string | null
+          rfq_status?: string | null
           signed_contract_date?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"] | null
+          start_date?: string | null
           timeline?: string | null
           total_contract_value?: number | null
           total_revenue?: number | null
           updated_at?: string | null
           user_id: string
+          won_reason?: string | null
         }
         Update: {
+          action_items?: string | null
           budget?: number | null
+          business_value?: string | null
           close_amount?: number | null
           close_date?: string | null
           close_reason?: string | null
+          closing?: string | null
           closing_date?: string | null
           company_name?: string | null
           created_at?: string | null
+          created_by?: string | null
+          currency_type?: string | null
+          current_status?: string | null
+          customer_challenges?: string | null
+          customer_name?: string | null
+          customer_need?: string | null
           deal_name?: string
           decision_maker?: string | null
+          decision_maker_level?: string | null
           discussion_date?: string | null
           discussion_notes?: string | null
+          drop_reason?: string | null
+          end_date?: string | null
           expected_closing_date?: string | null
+          handoff_status?: string | null
           id?: string
+          implementation_start_date?: string | null
+          internal_comment?: string | null
+          is_recurring?: string | null
           lead_description?: string | null
           lead_name?: string | null
           lead_owner?: string | null
           lead_source?: Database["public"]["Enums"]["contact_source"] | null
+          lost_reason?: string | null
+          mobile_no?: string | null
+          modified_at?: string | null
+          modified_by?: string | null
+          need_improvement?: string | null
           negotiation_status?: string | null
           next_follow_up?: string | null
           offer_amount?: number | null
@@ -179,27 +294,43 @@ export type Database = {
           offer_terms?: string | null
           offer_valid_until?: string | null
           phone_no?: string | null
+          priority?: number | null
+          probability?: number | null
+          project_duration?: number | null
+          project_name?: string | null
+          proposal_due_date?: string | null
           qualified_notes?: string | null
           quarterly_revenue_q1?: number | null
           quarterly_revenue_q2?: number | null
           quarterly_revenue_q3?: number | null
           quarterly_revenue_q4?: number | null
+          region?: string | null
+          relationship_strength?: string | null
           rfq_deadline?: string | null
+          rfq_received_date?: string | null
           rfq_requirements?: string | null
           rfq_sent_date?: string | null
+          rfq_status?: string | null
           signed_contract_date?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"] | null
+          start_date?: string | null
           timeline?: string | null
           total_contract_value?: number | null
           total_revenue?: number | null
           updated_at?: string | null
           user_id?: string
+          won_reason?: string | null
         }
         Relationships: []
       }
       leads: {
         Row: {
+          annual_revenue: number | null
+          city: string | null
           company_name: string | null
+          contact_name: string | null
+          contact_source: Database["public"]["Enums"]["contact_source"] | null
+          country: string | null
           created_at: string | null
           description: string | null
           email: string | null
@@ -207,14 +338,26 @@ export type Database = {
           industry: Database["public"]["Enums"]["industry_type"] | null
           lead_name: string
           lead_owner: string | null
+          lead_status: string | null
+          linkedin: string | null
+          mobile_no: string | null
+          no_of_employees: number | null
           phone_no: string | null
+          position: string | null
           region: Database["public"]["Enums"]["region_type"] | null
           source: Database["public"]["Enums"]["contact_source"] | null
+          state: string | null
           updated_at: string | null
           user_id: string
+          website: string | null
         }
         Insert: {
+          annual_revenue?: number | null
+          city?: string | null
           company_name?: string | null
+          contact_name?: string | null
+          contact_source?: Database["public"]["Enums"]["contact_source"] | null
+          country?: string | null
           created_at?: string | null
           description?: string | null
           email?: string | null
@@ -222,14 +365,26 @@ export type Database = {
           industry?: Database["public"]["Enums"]["industry_type"] | null
           lead_name: string
           lead_owner?: string | null
+          lead_status?: string | null
+          linkedin?: string | null
+          mobile_no?: string | null
+          no_of_employees?: number | null
           phone_no?: string | null
+          position?: string | null
           region?: Database["public"]["Enums"]["region_type"] | null
           source?: Database["public"]["Enums"]["contact_source"] | null
+          state?: string | null
           updated_at?: string | null
           user_id: string
+          website?: string | null
         }
         Update: {
+          annual_revenue?: number | null
+          city?: string | null
           company_name?: string | null
+          contact_name?: string | null
+          contact_source?: Database["public"]["Enums"]["contact_source"] | null
+          country?: string | null
           created_at?: string | null
           description?: string | null
           email?: string | null
@@ -237,11 +392,18 @@ export type Database = {
           industry?: Database["public"]["Enums"]["industry_type"] | null
           lead_name?: string
           lead_owner?: string | null
+          lead_status?: string | null
+          linkedin?: string | null
+          mobile_no?: string | null
+          no_of_employees?: number | null
           phone_no?: string | null
+          position?: string | null
           region?: Database["public"]["Enums"]["region_type"] | null
           source?: Database["public"]["Enums"]["contact_source"] | null
+          state?: string | null
           updated_at?: string | null
           user_id?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -291,37 +453,76 @@ export type Database = {
       }
       meetings: {
         Row: {
+          agenda: string | null
+          contact_id: string | null
           created_at: string | null
+          created_by: string | null
+          deal_id: string | null
           description: string | null
           end_time: string | null
+          follow_up_required: boolean | null
+          host: string | null
           id: string
+          lead_id: string | null
           location: string | null
+          next_action: string | null
+          outcome: string | null
+          participants: string[] | null
+          priority: string | null
           start_time: string
           status: string | null
+          tags: string[] | null
+          teams_link: string | null
           title: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          agenda?: string | null
+          contact_id?: string | null
           created_at?: string | null
+          created_by?: string | null
+          deal_id?: string | null
           description?: string | null
           end_time?: string | null
+          follow_up_required?: boolean | null
+          host?: string | null
           id?: string
+          lead_id?: string | null
           location?: string | null
+          next_action?: string | null
+          outcome?: string | null
+          participants?: string[] | null
+          priority?: string | null
           start_time: string
           status?: string | null
+          tags?: string[] | null
+          teams_link?: string | null
           title: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          agenda?: string | null
+          contact_id?: string | null
           created_at?: string | null
+          created_by?: string | null
+          deal_id?: string | null
           description?: string | null
           end_time?: string | null
+          follow_up_required?: boolean | null
+          host?: string | null
           id?: string
+          lead_id?: string | null
           location?: string | null
+          next_action?: string | null
+          outcome?: string | null
+          participants?: string[] | null
+          priority?: string | null
           start_time?: string
           status?: string | null
+          tags?: string[] | null
+          teams_link?: string | null
           title?: string
           updated_at?: string | null
           user_id?: string
