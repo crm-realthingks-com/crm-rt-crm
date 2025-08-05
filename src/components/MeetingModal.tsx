@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,10 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { X, Plus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Meeting {
   id?: string;
@@ -19,18 +19,18 @@ interface Meeting {
   end_time?: string;
   location?: string;
   agenda?: string;
-  outcome?: string;
-  next_action?: string;
-  status?: string;
-  priority?: string;
   participants?: string[];
-  teams_link?: string;
-  lead_id?: string;
-  contact_id?: string;
-  deal_id?: string;
   tags?: string[];
+  priority?: string;
+  status?: string;
   follow_up_required?: boolean;
   host?: string;
+  teams_link?: string;
+  contact_id?: string;
+  lead_id?: string;
+  deal_id?: string;
+  outcome?: string;
+  next_action?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -53,27 +53,26 @@ export const MeetingModal = ({ open, onOpenChange, meeting, onSuccess }: Meeting
     end_time: '',
     location: '',
     agenda: '',
-    outcome: '',
-    next_action: '',
-    status: 'scheduled',
-    priority: 'Medium',
     participants: [],
-    teams_link: '',
     tags: [],
+    priority: 'Medium',
+    status: 'Scheduled',
     follow_up_required: false,
     host: user?.email || '',
+    teams_link: '',
+    contact_id: '',
+    lead_id: '',
+    deal_id: '',
+    outcome: '',
+    next_action: '',
   });
 
   const [loading, setLoading] = useState(false);
-  const [newParticipant, setNewParticipant] = useState('');
-  const [newTag, setNewTag] = useState('');
 
   useEffect(() => {
     if (meeting) {
       setFormData({
         ...meeting,
-        participants: meeting.participants || [],
-        tags: meeting.tags || [],
         host: meeting.host || user?.email || '',
       });
     } else {
@@ -84,52 +83,21 @@ export const MeetingModal = ({ open, onOpenChange, meeting, onSuccess }: Meeting
         end_time: '',
         location: '',
         agenda: '',
-        outcome: '',
-        next_action: '',
-        status: 'scheduled',
-        priority: 'Medium',
         participants: [],
-        teams_link: '',
         tags: [],
+        priority: 'Medium',
+        status: 'Scheduled',
         follow_up_required: false,
         host: user?.email || '',
+        teams_link: '',
+        contact_id: '',
+        lead_id: '',
+        deal_id: '',
+        outcome: '',
+        next_action: '',
       });
     }
   }, [meeting, user]);
-
-  const addParticipant = () => {
-    if (newParticipant.trim() && !formData.participants?.includes(newParticipant.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        participants: [...(prev.participants || []), newParticipant.trim()]
-      }));
-      setNewParticipant('');
-    }
-  };
-
-  const removeParticipant = (participant: string) => {
-    setFormData(prev => ({
-      ...prev,
-      participants: (prev.participants || []).filter(p => p !== participant)
-    }));
-  };
-
-  const addTag = () => {
-    if (newTag.trim() && !formData.tags?.includes(newTag.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...(prev.tags || []), newTag.trim()]
-      }));
-      setNewTag('');
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: (prev.tags || []).filter(t => t !== tag)
-    }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +127,7 @@ export const MeetingModal = ({ open, onOpenChange, meeting, onSuccess }: Meeting
       } else {
         const { error } = await supabase
           .from('meetings')
-          .insert([meetingData]);
+          .insert(meetingData);
 
         if (error) throw error;
 
@@ -195,7 +163,7 @@ export const MeetingModal = ({ open, onOpenChange, meeting, onSuccess }: Meeting
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="title">Title *</Label>
+              <Label htmlFor="title">Meeting Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
@@ -235,24 +203,6 @@ export const MeetingModal = ({ open, onOpenChange, meeting, onSuccess }: Meeting
             </div>
             
             <div>
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status || 'scheduled'}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
               <Label htmlFor="priority">Priority</Label>
               <Select
                 value={formData.priority || 'Medium'}
@@ -265,18 +215,26 @@ export const MeetingModal = ({ open, onOpenChange, meeting, onSuccess }: Meeting
                   <SelectItem value="Low">Low</SelectItem>
                   <SelectItem value="Medium">Medium</SelectItem>
                   <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Critical">Critical</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label htmlFor="teams_link">Teams Link</Label>
-              <Input
-                id="teams_link"
-                value={formData.teams_link || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, teams_link: e.target.value }))}
-              />
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status || 'Scheduled'}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Scheduled">Scheduled</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div>
@@ -308,59 +266,14 @@ export const MeetingModal = ({ open, onOpenChange, meeting, onSuccess }: Meeting
               rows={3}
             />
           </div>
-
-          {/* Participants */}
-          <div>
-            <Label>Participants</Label>
-            <div className="flex gap-2 mb-2">
-              <Input
-                placeholder="Add participant email"
-                value={newParticipant}
-                onChange={(e) => setNewParticipant(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())}
-              />
-              <Button type="button" onClick={addParticipant} size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {formData.participants?.map((participant, index) => (
-                <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                  {participant}
-                  <X 
-                    className="w-3 h-3 cursor-pointer" 
-                    onClick={() => removeParticipant(participant)} 
-                  />
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <Label>Tags</Label>
-            <div className="flex gap-2 mb-2">
-              <Input
-                placeholder="Add tag"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-              />
-              <Button type="button" onClick={addTag} size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {formData.tags?.map((tag, index) => (
-                <Badge key={index} variant="outline" className="flex items-center gap-1">
-                  {tag}
-                  <X 
-                    className="w-3 h-3 cursor-pointer" 
-                    onClick={() => removeTag(tag)} 
-                  />
-                </Badge>
-              ))}
-            </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="follow_up_required"
+              checked={formData.follow_up_required}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, follow_up_required: !!checked }))}
+            />
+            <Label htmlFor="follow_up_required">Follow-up Required</Label>
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">

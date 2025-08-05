@@ -21,9 +21,9 @@ interface Lead {
   mobile_no?: string;
   linkedin?: string;
   website?: string;
-  contact_source?: string;
+  contact_source?: 'Website' | 'Referral' | 'Cold Call' | 'Email' | 'Social Media' | 'Trade Show' | 'Other';
   lead_status?: string;
-  industry?: string;
+  industry?: 'Automotive' | 'Technology' | 'Healthcare' | 'Finance' | 'Manufacturing' | 'Retail' | 'Other';
   no_of_employees?: number;
   annual_revenue?: number;
   city?: string;
@@ -128,7 +128,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
       } else {
         const { error } = await supabase
           .from('leads')
-          .insert([leadData]);
+          .insert(leadData);
 
         if (error) throw error;
 
@@ -250,7 +250,8 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
               <Label htmlFor="contact_source">Contact Source</Label>
               <Select
                 value={formData.contact_source || 'Other'}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, contact_source: value }))}
+                onValueChange={(value: 'Website' | 'Referral' | 'Cold Call' | 'Email' | 'Social Media' | 'Trade Show' | 'Other') => 
+                  setFormData(prev => ({ ...prev, contact_source: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -289,7 +290,8 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
               <Label htmlFor="industry">Industry</Label>
               <Select
                 value={formData.industry || 'Other'}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, industry: value }))}
+                onValueChange={(value: 'Automotive' | 'Technology' | 'Healthcare' | 'Finance' | 'Manufacturing' | 'Retail' | 'Other') => 
+                  setFormData(prev => ({ ...prev, industry: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
