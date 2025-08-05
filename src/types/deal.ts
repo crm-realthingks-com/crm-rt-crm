@@ -4,8 +4,9 @@ export type DealStage = 'Lead' | 'Discussions' | 'Qualified' | 'RFQ' | 'Offered'
 export interface Deal {
   id: string;
   created_at: string;
-  updated_at: string;
-  user_id: string;
+  modified_at: string;
+  created_by: string | null;
+  modified_by: string | null;
   
   // Basic deal info
   deal_name: string;
@@ -28,7 +29,7 @@ export interface Deal {
   relationship_strength?: 'Low' | 'Medium' | 'High';
   
   // Qualified stage fields
-  budget?: number;
+  budget?: string;
   business_value?: 'Open' | 'Ongoing' | 'Done';
   decision_maker_level?: 'Open' | 'Ongoing' | 'Done';
   is_recurring?: 'Yes' | 'No' | 'Unclear';

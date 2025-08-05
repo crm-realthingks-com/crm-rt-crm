@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +32,7 @@ const DealsPage = () => {
       const { data, error } = await supabase
         .from('deals')
         .select('*')
-        .order('updated_at', { ascending: false });
+        .order('modified_at', { ascending: false });
 
       if (error) {
         toast({
@@ -58,7 +59,7 @@ const DealsPage = () => {
     try {
       const { error } = await supabase
         .from('deals')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...updates, modified_at: new Date().toISOString() })
         .eq('id', dealId);
 
       if (error) throw error;
@@ -83,7 +84,8 @@ const DealsPage = () => {
           .insert([{ 
             ...dealData, 
             deal_name: dealData.project_name || 'Untitled Deal',
-            user_id: user?.id
+            created_by: user?.id,
+            modified_by: user?.id 
           }])
           .select()
           .single();
@@ -95,7 +97,8 @@ const DealsPage = () => {
         const updateData = {
           ...dealData,
           deal_name: dealData.project_name || selectedDeal.project_name || 'Untitled Deal',
-          updated_at: new Date().toISOString()
+          modified_at: new Date().toISOString(),
+          modified_by: user?.id
         };
         
         await handleUpdateDeal(selectedDeal.id, updateData);
@@ -149,6 +152,7 @@ const DealsPage = () => {
             .from('deals')
             .update({
               ...dealData,
+              modified_by: user?.id,
               deal_name: dealData.project_name || existingDeal.deal_name
             })
             .eq('id', existingDeal.id)
@@ -161,7 +165,8 @@ const DealsPage = () => {
           const newDealData = {
             ...dealData,
             stage: dealData.stage || 'Lead' as const,
-            user_id: user?.id,
+            created_by: user?.id,
+            modified_by: user?.id,
             deal_name: dealData.project_name || `Imported Deal ${Date.now()}`
           };
 

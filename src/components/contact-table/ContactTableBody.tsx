@@ -1,54 +1,43 @@
-
-import React, { useState } from 'react';
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  getPaginationRowModel,
-  getFilteredRowModel,
-  SortingState,
-  getSortedRowModel,
-} from "@tanstack/react-table";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, ArrowDown, ArrowUp } from "lucide-react";
-import { Contact } from "@/types/contact";
-import { useAuth } from "@/hooks/useAuth";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Edit, Trash2, ArrowUpDown, MoreHorizontal, UserPlus } from "lucide-react";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { ContactColumnConfig } from "../ContactColumnCustomizer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ContactForm } from '../ContactForm';
+
+interface Contact {
+  id: string;
+  contact_name: string;
+  company_name?: string;
+  position?: string;
+  email?: string;
+  phone_no?: string;
+  country?: string;
+  contact_owner?: string;
+  lead_status?: string;
+  created_by?: string;
+  [key: string]: any;
+}
 
 interface ContactTableBodyProps {
+  loading: boolean;
   pageContacts: Contact[];
-  visibleColumns: any[];
+  visibleColumns: ContactColumnConfig[];
   selectedContacts: string[];
   setSelectedContacts: React.Dispatch<React.SetStateAction<string[]>>;
   onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
   searchTerm: string;
-  onRefresh: () => Promise<void>;
+  onRefresh?: () => void;
 }
 
-export const ContactTableBody = ({ 
-  pageContacts, 
+export const ContactTableBody = ({
+  loading,
+  pageContacts,
   visibleColumns,
   selectedContacts,
   setSelectedContacts,
@@ -57,237 +46,200 @@ export const ContactTableBody = ({
   searchTerm,
   onRefresh
 }: ContactTableBodyProps) => {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState({});
-  const [globalFilter, setGlobalFilter] = useState(searchTerm);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const createdByIds = [...new Set(pageContacts.map(c => c.created_by).filter(Boolean))];
+  const { displayNames } = useUserDisplayNames(createdByIds);
 
-  const table = useReactTable({
-    data: pageContacts,
-    columns: visibleColumns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
-    state: {
-      sorting,
-      columnVisibility,
-      globalFilter,
-    },
-  });
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const pageContactIds = pageContacts.slice(0, 50).map(c => c.id);
+      setSelectedContacts(pageContactIds);
+    } else {
+      setSelectedContacts([]);
+    }
+  };
 
-  const handleImport = async (contactsToImport: any[]) => {
-    if (!user?.id) return;
+  const handleSelectContact = (contactId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedContacts(prev => [...prev, contactId]);
+    } else {
+      setSelectedContacts(prev => prev.filter(id => id !== contactId));
+    }
+  };
 
+  const handleConvertToLead = async (contact: Contact) => {
     try {
-      const formattedContacts = contactsToImport.map(contact => ({
-        id: crypto.randomUUID(),
-        contact_name: contact.contact_name || contact.lead_name || 'Unknown',
-        company: contact.company || contact.company_name || '',
-        position: contact.position || '',
-        email: contact.email || '',
-        phone: contact.phone || contact.phone_no || '',
-        linkedin: contact.linkedin || '',
-        website: contact.website || '',
-        // Map source values to match database enum
-        source: mapSourceValue(contact.source || contact.contact_source || 'Other'),
-        industry: contact.industry || 'Other',
-        region: contact.region === 'Other' ? 'North America' : contact.region || 'North America',
-        description: contact.description || '',
-        contact_owner: contact.contact_owner || contact.lead_owner || '',
-        user_id: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
+      // Create a new lead with contact information
+      const leadData = {
+        lead_name: contact.contact_name,
+        company_name: contact.company_name,
+        position: contact.position,
+        email: contact.email,
+        phone_no: contact.phone_no,
+        mobile_no: contact.mobile_no,
+        linkedin: contact.linkedin,
+        website: contact.website,
+        contact_source: contact.contact_source,
+        lead_status: contact.lead_status || 'New',
+        industry: contact.industry,
+        city: contact.city,
+        country: contact.country,
+        description: contact.description,
+        contact_owner: contact.contact_owner,
+        created_by: contact.created_by,
+        created_time: new Date().toISOString(),
+        modified_time: new Date().toISOString()
+      };
 
       const { error } = await supabase
-        .from('contacts')
-        .insert(formattedContacts);
+        .from('leads')
+        .insert([leadData]);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: `Imported ${contactsToImport.length} contacts successfully`,
+        description: `Contact "${contact.contact_name}" has been converted to a lead successfully.`,
       });
 
-      onRefresh();
-    } catch (error) {
-      console.error('Import error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to import contacts",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Helper function to map source values to match database schema
-  const mapSourceValue = (source: string): Contact['source'] => {
-    const sourceMapping: Record<string, Contact['source']> = {
-      'Cold Calling': 'Cold Call',
-      'Cold Call': 'Cold Call',
-      'Email Campaign': 'Email Campaign',
-      'Social Media': 'LinkedIn',
-      'LinkedIn': 'LinkedIn',
-      'Referral': 'Referral',
-      'Website': 'Website',
-      'Event': 'Trade Show',
-      'Trade Show': 'Trade Show',
-      'Other': 'Other'
-    };
-    return sourceMapping[source] || 'Other';
-  };
-
-  const handleContactClick = (contact: Contact) => {
-    setSelectedContact(contact);
-    setIsFormOpen(true);
-  };
-
-  const handleCloseForm = () => {
-    setIsFormOpen(false);
-    setSelectedContact(null);
-  };
-
-  const handleSaveContact = async (contactId: string, updates: Partial<Contact>) => {
-    try {
-      // Remove non-database fields if they exist and map source
-      const { user_id, ...dbUpdates } = updates;
-      
-      // Ensure source is mapped correctly
-      if (dbUpdates.source) {
-        dbUpdates.source = mapSourceValue(dbUpdates.source);
+      if (onRefresh) {
+        onRefresh();
       }
-      
-      await supabase
-        .from('contacts')
-        .update(dbUpdates)
-        .eq('id', contactId);
-      
-      handleCloseForm();
-      onRefresh();
     } catch (error) {
+      console.error('Error converting contact to lead:', error);
       toast({
         title: "Error",
-        description: "Failed to update contact",
+        description: "Failed to convert contact to lead. Please try again.",
         variant: "destructive",
       });
     }
   };
+
+  if (loading) {
+    return (
+      <Table>
+        <TableBody>
+          <TableRow>
+            <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                Loading contacts...
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    );
+  }
+
+  if (pageContacts.length === 0) {
+    return (
+      <Table>
+        <TableBody>
+          <TableRow>
+            <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-muted-foreground">No contacts found</p>
+                {searchTerm && (
+                  <p className="text-sm text-muted-foreground">
+                    Try adjusting your search terms
+                  </p>
+                )}
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    );
+  }
 
   return (
-    <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                <TableHead className="w-[50px]">
-                  <Checkbox
-                    checked={table.getIsAllPageRowsSelected()}
-                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                    aria-label="Select all"
-                  />
-                </TableHead>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : (
-                          <div
-                            {...{
-                              className: "flex cursor-pointer gap-1",
-                              onClick: header.column.getToggleSortingHandler(),
-                            }}
-                          >
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                            {{
-                              asc: <ArrowUp className="h-4 w-4" />,
-                              desc: <ArrowDown className="h-4 w-4" />,
-                            }[header.column.getIsSorted() as string] ?? null}
-                          </div>
-                        )}
-                    </TableHead>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-12">
+            <Checkbox
+              checked={selectedContacts.length > 0 && selectedContacts.length === Math.min(pageContacts.length, 50)}
+              onCheckedChange={handleSelectAll}
+            />
+          </TableHead>
+          {visibleColumns.map((column) => (
+            <TableHead key={column.field}>
+              <div className="flex items-center gap-2">
+                {column.label}
+                <ArrowUpDown className="w-4 h-4" />
+              </div>
+            </TableHead>
+          ))}
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {pageContacts.map((contact) => (
+          <TableRow key={contact.id}>
+            <TableCell>
+              <Checkbox
+                checked={selectedContacts.includes(contact.id)}
+                onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
+              />
+            </TableCell>
+            {visibleColumns.map((column) => (
+              <TableCell key={column.field}>
+                {column.field === 'contact_name' ? (
+                  <button
+                    onClick={() => onEdit(contact)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {contact[column.field as keyof Contact]}
+                  </button>
+                ) : column.field === 'contact_owner' ? (
+                  // Always show the display name or fallback without any loading state
+                  contact.created_by ? (
+                    displayNames[contact.created_by] || "Unknown"
+                  ) : (
+                    '-'
                   )
-                })}
-                <TableHead className="text-right"></TableHead>
-              </TableRow>
+                ) : column.field === 'lead_status' && contact.lead_status ? (
+                  <Badge variant={contact.lead_status === 'Converted' ? 'default' : 'secondary'}>
+                    {contact.lead_status}
+                  </Badge>
+                ) : (
+                  contact[column.field as keyof Contact] || '-'
+                )}
+              </TableCell>
             ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  <TableCell className="w-[50px]">
-                    <Checkbox
-                      checked={row.getIsSelected()}
-                      onCheckedChange={(value) => {
-                        const contactId = row.original.id;
-                        if (value) {
-                          setSelectedContacts(prev => [...prev, contactId]);
-                        } else {
-                          setSelectedContacts(prev => prev.filter(id => id !== contactId));
-                        }
-                      }}
-                      aria-label="Select row"
-                    />
-                  </TableCell>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} onClick={() => handleContactClick(row.original)}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right font-medium">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleContactClick(row.original)}>
-                          View Contact
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onDelete(row.original.id)}>
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={visibleColumns.length + 2} className="h-24 text-center">
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <ContactForm
-        isOpen={isFormOpen}
-        onClose={handleCloseForm}
-        contact={selectedContact}
-        onSave={handleSaveContact}
-      />
-    </>
-  )
-}
+            <TableCell>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onEdit(contact)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleConvertToLead(contact)}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Convert to Lead
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => onDelete(contact.id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};

@@ -8,15 +8,40 @@ import { ContactTablePagination } from "./contact-table/ContactTablePagination";
 import { ContactModal } from "./ContactModal";
 import { ContactColumnCustomizer, ContactColumnConfig } from "./ContactColumnCustomizer";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Contact } from "@/types/contact";
+
+interface Contact {
+  id: string;
+  contact_name: string;
+  company_name?: string;
+  position?: string;
+  email?: string;
+  phone_no?: string;
+  mobile_no?: string;
+  country?: string;
+  city?: string;
+  state?: string;
+  contact_owner?: string;
+  created_time?: string;
+  modified_time?: string;
+  lead_status?: string;
+  industry?: string;
+  contact_source?: string;
+  linkedin?: string;
+  website?: string;
+  description?: string;
+  annual_revenue?: number;
+  no_of_employees?: number;
+  created_by?: string;
+  modified_by?: string;
+}
 
 const defaultColumns: ContactColumnConfig[] = [
   { field: 'contact_name', label: 'Contact Name', visible: true, order: 0 },
-  { field: 'company', label: 'Company Name', visible: true, order: 1 },
+  { field: 'company_name', label: 'Company Name', visible: true, order: 1 },
   { field: 'position', label: 'Position', visible: true, order: 2 },
   { field: 'email', label: 'Email', visible: true, order: 3 },
-  { field: 'phone', label: 'Phone', visible: true, order: 4 },
-  { field: 'region', label: 'Region', visible: true, order: 5 },
+  { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
+  { field: 'country', label: 'Region', visible: true, order: 5 },
   { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 6 },
 ];
 
@@ -62,7 +87,7 @@ export const ContactTable = ({
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_time', { ascending: false });
 
       if (error) {
         console.error('ContactTable: Supabase error:', error);
@@ -85,11 +110,13 @@ export const ContactTable = ({
     }
   };
 
+  // Initial load
   useEffect(() => {
     console.log('ContactTable: Initial mount, fetching contacts');
     fetchContacts();
   }, []);
 
+  // Handle refresh trigger
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0) {
       console.log('ContactTable: Refresh triggered:', refreshTrigger);
@@ -97,11 +124,12 @@ export const ContactTable = ({
     }
   }, [refreshTrigger]);
 
+  // Filter contacts based on search
   useEffect(() => {
     console.log('ContactTable: Filtering contacts, search term:', searchTerm);
     const filtered = contacts.filter(contact =>
       contact.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredContacts(filtered);
@@ -170,6 +198,7 @@ export const ContactTable = ({
 
       <Card>
         <ContactTableBody
+          loading={loading}
           pageContacts={pageContacts}
           visibleColumns={visibleColumns}
           selectedContacts={selectedContacts}
@@ -194,6 +223,7 @@ export const ContactTable = ({
         />
       )}
 
+      {/* Modals */}
       <ContactModal
         open={showModal}
         onOpenChange={setShowModal}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +15,7 @@ const leadSchema = z.object({
   lead_name: z.string().min(1, "Lead name is required"),
   company_name: z.string().optional(),
   position: z.string().optional(),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  email: z.string().email("Invalid email address").min(1, "Email is required"),
   phone_no: z.string().optional(),
   linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
@@ -50,7 +49,7 @@ interface LeadModalProps {
   onSuccess: () => void;
 }
 
-const contactSources = [
+const leadSources = [
   "Website",
   "Referral", 
   "Social Media",
@@ -154,7 +153,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         lead_name: data.lead_name,
         company_name: data.company_name || null,
         position: data.position || null,
-        email: data.email || null,
+        email: data.email,
         phone_no: data.phone_no || null,
         linkedin: data.linkedin || null,
         website: data.website || null,
@@ -162,10 +161,9 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         industry: data.industry || null,
         country: data.country || null,
         description: data.description || null,
-        user_id: user.data.user.id,
         created_by: user.data.user.id,
         modified_by: user.data.user.id,
-        lead_owner: user.data.user.email || user.data.user.id,
+        contact_owner: user.data.user.id,
       };
 
       if (lead) {
@@ -173,20 +171,8 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         const { error } = await supabase
           .from('leads')
           .update({
-            lead_name: leadData.lead_name,
-            company_name: leadData.company_name,
-            position: leadData.position,
-            email: leadData.email,
-            phone_no: leadData.phone_no,
-            linkedin: leadData.linkedin,
-            website: leadData.website,
-            contact_source: leadData.contact_source,
-            industry: leadData.industry as any,
-            country: leadData.country as any,
-            description: leadData.description,
-            modified_by: leadData.modified_by,
-            lead_owner: leadData.lead_owner,
-            updated_at: new Date().toISOString(),
+            ...leadData,
+            modified_time: new Date().toISOString(),
           })
           .eq('id', lead.id);
 
@@ -200,23 +186,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         // Create new lead
         const { error } = await supabase
           .from('leads')
-          .insert({
-            lead_name: leadData.lead_name,
-            company_name: leadData.company_name,
-            position: leadData.position,
-            email: leadData.email,
-            phone_no: leadData.phone_no,
-            linkedin: leadData.linkedin,
-            website: leadData.website,
-            contact_source: leadData.contact_source,
-            industry: leadData.industry as any,
-            country: leadData.country as any,
-            description: leadData.description,
-            user_id: leadData.user_id,
-            created_by: leadData.created_by,
-            modified_by: leadData.modified_by,
-            lead_owner: leadData.lead_owner,
-          });
+          .insert(leadData);
 
         if (error) throw error;
 
@@ -229,7 +199,6 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error('Lead submission error:', error);
       toast({
         title: "Error",
         description: lead ? "Failed to update lead" : "Failed to create lead",
@@ -299,7 +268,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email *</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="john@acme.com" {...field} />
                     </FormControl>
@@ -355,7 +324,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                 name="contact_source"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contact Source</FormLabel>
+                    <FormLabel>Lead Source</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -363,7 +332,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {contactSources.map((source) => (
+                        {leadSources.map((source) => (
                           <SelectItem key={source} value={source}>
                             {source}
                           </SelectItem>

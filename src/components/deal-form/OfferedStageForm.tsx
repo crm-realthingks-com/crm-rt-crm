@@ -24,7 +24,7 @@ export const OfferedStageForm = ({ formData, onFieldChange, fieldErrors }: Offer
               key={field}
               field={field}
               value={formData[field as keyof Deal]}
-              onChange={(value) => onFieldChange(field, value)}
+              onChange={onFieldChange}
               error={fieldErrors[field]}
             />
           ))}

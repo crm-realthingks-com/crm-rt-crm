@@ -24,7 +24,7 @@ export const QualifiedStageForm = ({ formData, onFieldChange, fieldErrors }: Qua
               key={field}
               field={field}
               value={formData[field as keyof Deal]}
-              onChange={(value) => onFieldChange(field, value)}
+              onChange={onFieldChange}
               error={fieldErrors[field]}
             />
           ))}

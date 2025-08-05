@@ -54,7 +54,7 @@ export const RFQStageForm = ({ formData, onFieldChange, fieldErrors }: RFQStageF
               key={field}
               field={field}
               value={formData[field as keyof Deal]}
-              onChange={(value) => onFieldChange(field, value)}
+              onChange={onFieldChange}
               error={fieldErrors[field]}
             />
           ))}

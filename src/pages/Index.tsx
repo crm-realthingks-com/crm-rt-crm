@@ -97,7 +97,8 @@ const Index = () => {
           .insert([{ 
             ...dealData, 
             deal_name: dealData.project_name || 'Untitled Deal',
-            user_id: user?.id
+            created_by: user?.id,
+            modified_by: user?.id 
           }])
           .select()
           .single();
@@ -109,7 +110,8 @@ const Index = () => {
         const updateData = {
           ...dealData,
           deal_name: dealData.project_name || selectedDeal.project_name || 'Untitled Deal',
-          updated_at: new Date().toISOString()
+          modified_at: new Date().toISOString(),
+          modified_by: user?.id
         };
         
         console.log("Updating deal with data:", updateData);
@@ -152,6 +154,7 @@ const Index = () => {
     try {
       let createdCount = 0;
       let updatedCount = 0;
+      const processedDeals: Deal[] = [];
 
       for (const importDeal of importedDeals) {
         const { shouldUpdate, ...dealData } = importDeal;
@@ -166,6 +169,7 @@ const Index = () => {
             .from('deals')
             .update({
               ...dealData,
+              modified_by: user?.id,
               deal_name: dealData.project_name || existingDeal.deal_name
             })
             .eq('id', existingDeal.id)
@@ -173,12 +177,14 @@ const Index = () => {
             .single();
 
           if (error) throw error;
+          processedDeals.push(data as Deal);
           updatedCount++;
         } else {
           const newDealData = {
             ...dealData,
             stage: dealData.stage || 'Lead' as const,
-            user_id: user?.id,
+            created_by: user?.id,
+            modified_by: user?.id,
             deal_name: dealData.project_name || `Imported Deal ${Date.now()}`
           };
 
@@ -189,6 +195,7 @@ const Index = () => {
             .single();
 
           if (error) throw error;
+          processedDeals.push(data as Deal);
           createdCount++;
         }
       }

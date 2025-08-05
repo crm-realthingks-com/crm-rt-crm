@@ -24,7 +24,7 @@ export const DiscussionsStageForm = ({ formData, onFieldChange, fieldErrors }: D
               key={field}
               field={field}
               value={formData[field as keyof Deal]}
-              onChange={(value) => onFieldChange(field, value)}
+              onChange={onFieldChange}
               error={fieldErrors[field]}
             />
           ))}
