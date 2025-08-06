@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -67,17 +68,17 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => {
-  // Create QueryClient inside the component to ensure proper React context
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: 1,
-        refetchOnWindowFocus: false,
-      },
+// Create QueryClient outside component to prevent recreation
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
     },
-  }));
+  },
+});
 
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
