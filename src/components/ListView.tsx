@@ -35,8 +35,7 @@ export const ListView = ({
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [columns, setColumns] = useState<ColumnConfig[]>([
-    // Only include active fields from the deals pipeline (removed all specified fields)
-    // Basic fields
+    // Basic visible columns
     { field: 'project_name', label: 'Project', visible: true, order: 0 },
     { field: 'customer_name', label: 'Customer', visible: true, order: 1 },
     { field: 'lead_owner', label: 'Lead Owner', visible: true, order: 2 },
@@ -45,23 +44,17 @@ export const ListView = ({
     { field: 'total_contract_value', label: 'Value', visible: true, order: 5 },
     { field: 'expected_closing_date', label: 'Expected Close', visible: true, order: 6 },
     
-    // Lead stage fields
+    // Additional columns (hidden by default)
     { field: 'lead_name', label: 'Lead Name', visible: false, order: 7 },
     { field: 'region', label: 'Region', visible: false, order: 8 },
     { field: 'probability', label: 'Probability', visible: false, order: 9 },
     { field: 'internal_comment', label: 'Comment', visible: false, order: 10 },
-    
-    // Discussions stage fields
     { field: 'customer_need', label: 'Customer Need', visible: false, order: 11 },
     { field: 'customer_challenges', label: 'Customer Challenges', visible: false, order: 12 },
     { field: 'relationship_strength', label: 'Relationship Strength', visible: false, order: 13 },
-    
-    // Qualified stage fields
     { field: 'budget', label: 'Budget', visible: false, order: 14 },
     { field: 'business_value', label: 'Business Value', visible: false, order: 15 },
     { field: 'decision_maker_level', label: 'Decision Maker Level', visible: false, order: 16 },
-    
-    // RFQ stage fields
     { field: 'is_recurring', label: 'Is Recurring', visible: false, order: 17 },
     { field: 'project_duration', label: 'Duration', visible: false, order: 18 },
     { field: 'start_date', label: 'Start Date', visible: false, order: 19 },
@@ -69,32 +62,16 @@ export const ListView = ({
     { field: 'rfq_received_date', label: 'RFQ Received', visible: false, order: 21 },
     { field: 'proposal_due_date', label: 'Proposal Due', visible: false, order: 22 },
     { field: 'rfq_status', label: 'RFQ Status', visible: false, order: 23 },
-    
-    // Offered stage fields
     { field: 'currency_type', label: 'Currency', visible: false, order: 24 },
     { field: 'action_items', label: 'Action Items', visible: false, order: 25 },
     { field: 'current_status', label: 'Current Status', visible: false, order: 26 },
     { field: 'closing', label: 'Closing', visible: false, order: 27 },
-    
-    // Final stage fields
     { field: 'won_reason', label: 'Won Reason', visible: false, order: 28 },
     { field: 'lost_reason', label: 'Lost Reason', visible: false, order: 29 },
     { field: 'need_improvement', label: 'Need Improvement', visible: false, order: 30 },
     { field: 'drop_reason', label: 'Drop Reason', visible: false, order: 31 },
-    
-    // Won stage specific fields
-    { field: 'quarterly_revenue_q1', label: 'Q1 Revenue', visible: false, order: 32 },
-    { field: 'quarterly_revenue_q2', label: 'Q2 Revenue', visible: false, order: 33 },
-    { field: 'quarterly_revenue_q3', label: 'Q3 Revenue', visible: false, order: 34 },
-    { field: 'quarterly_revenue_q4', label: 'Q4 Revenue', visible: false, order: 35 },
-    { field: 'total_revenue', label: 'Total Revenue', visible: false, order: 36 },
-    { field: 'signed_contract_date', label: 'Signed Date', visible: false, order: 37 },
-    { field: 'implementation_start_date', label: 'Implementation Start', visible: false, order: 38 },
-    { field: 'handoff_status', label: 'Handoff Status', visible: false, order: 39 },
-    
-    // System fields
-    { field: 'created_at', label: 'Created', visible: false, order: 40 },
-    { field: 'modified_at', label: 'Updated', visible: false, order: 41 },
+    { field: 'created_at', label: 'Created', visible: false, order: 32 },
+    { field: 'modified_at', label: 'Updated', visible: false, order: 33 },
   ]);
   const { toast } = useToast();
 
@@ -202,26 +179,7 @@ export const ListView = ({
         deal.customer_name?.toLowerCase().includes(searchValue) ||
         deal.lead_name?.toLowerCase().includes(searchValue) ||
         deal.lead_owner?.toLowerCase().includes(searchValue) ||
-        deal.region?.toLowerCase().includes(searchValue) ||
-        deal.internal_comment?.toLowerCase().includes(searchValue) ||
-        deal.customer_need?.toLowerCase().includes(searchValue) ||
-        deal.customer_challenges?.toLowerCase().includes(searchValue) ||
-        deal.relationship_strength?.toLowerCase().includes(searchValue) ||
-        deal.budget?.toLowerCase().includes(searchValue) ||
-        deal.business_value?.toLowerCase().includes(searchValue) ||
-        deal.decision_maker_level?.toLowerCase().includes(searchValue) ||
-        deal.currency_type?.toLowerCase().includes(searchValue) ||
-        deal.action_items?.toLowerCase().includes(searchValue) ||
-        deal.current_status?.toLowerCase().includes(searchValue) ||
-        deal.won_reason?.toLowerCase().includes(searchValue) ||
-        deal.lost_reason?.toLowerCase().includes(searchValue) ||
-        deal.need_improvement?.toLowerCase().includes(searchValue) ||
-        deal.drop_reason?.toLowerCase().includes(searchValue) ||
-        deal.stage?.toLowerCase().includes(searchValue) ||
-        String(deal.priority || '').includes(searchValue) ||
-        String(deal.probability || '').includes(searchValue) ||
-        String(deal.project_duration || '').includes(searchValue) ||
-        String(deal.total_contract_value || '').includes(searchValue);
+        deal.stage?.toLowerCase().includes(searchValue);
       
       const matchesStage = stageFilter === "all" || deal.stage === stageFilter;
       
@@ -231,24 +189,18 @@ export const ListView = ({
       let aValue: any;
       let bValue: any;
 
-      // Get the values for the sort field
       if (['priority', 'probability', 'project_duration'].includes(sortBy)) {
         aValue = a[sortBy as keyof Deal] || 0;
         bValue = b[sortBy as keyof Deal] || 0;
-      } else if (['total_contract_value', 'total_revenue', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4'].includes(sortBy)) {
+      } else if (['total_contract_value'].includes(sortBy)) {
         aValue = a[sortBy as keyof Deal] || 0;
         bValue = b[sortBy as keyof Deal] || 0;
-      } else if (['expected_closing_date', 'start_date', 'end_date', 'created_at', 'modified_at', 'rfq_received_date', 'proposal_due_date', 'signed_contract_date', 'implementation_start_date'].includes(sortBy)) {
+      } else if (['expected_closing_date', 'created_at', 'modified_at'].includes(sortBy)) {
         const aDateValue = a[sortBy as keyof Deal];
         const bDateValue = b[sortBy as keyof Deal];
         aValue = new Date(typeof aDateValue === 'string' ? aDateValue : 0);
         bValue = new Date(typeof bDateValue === 'string' ? bDateValue : 0);
-      } else if (sortBy === 'is_recurring') {
-        // Handle boolean field
-        aValue = a.is_recurring ? 1 : 0;
-        bValue = b.is_recurring ? 1 : 0;
       } else {
-        // String fields
         aValue = String(a[sortBy as keyof Deal] || '').toLowerCase();
         bValue = String(b[sortBy as keyof Deal] || '').toLowerCase();
       }
@@ -265,13 +217,12 @@ export const ListView = ({
       {/* Full-width container with proper spacing */}
       <div className="w-full px-6 py-6 space-y-6">
         {/* Header with filters and controls */}
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-card rounded-lg p-4 border shadow-sm card-hover"
-             style={{ background: 'var(--gradient-subtle)' }}>
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-card rounded-lg p-4 border shadow-sm card-hover">
           <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search all deal details..."
+                placeholder="Search deals..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 transition-all hover:border-primary/50 focus:border-primary"
@@ -279,7 +230,7 @@ export const ListView = ({
             </div>
             
             <Select value={stageFilter} onValueChange={(value) => setStageFilter(value as DealStage | "all")}>
-              <SelectTrigger className="w-[180px] hover:border-primary/50 transition-all hover:shadow-sm input-focus">
+              <SelectTrigger className="w-[180px] hover:border-primary/50 transition-all hover:shadow-sm">
                 <SelectValue placeholder="Filter by stage" />
               </SelectTrigger>
               <SelectContent>
@@ -293,7 +244,7 @@ export const ListView = ({
             </Select>
 
             <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
-              <SelectTrigger className="w-[150px] hover:border-primary/50 transition-all hover:shadow-sm input-focus">
+              <SelectTrigger className="w-[150px] hover:border-primary/50 transition-all hover:shadow-sm">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -310,7 +261,7 @@ export const ListView = ({
             </Select>
 
             <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "asc" | "desc")}>
-              <SelectTrigger className="w-[100px] hover:border-primary/50 transition-all hover:shadow-sm input-focus">
+              <SelectTrigger className="w-[100px] hover:border-primary/50 transition-all hover:shadow-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -329,13 +280,11 @@ export const ListView = ({
         </div>
 
         {/* Table */}
-        <div className="w-full border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-card"
-             style={{ boxShadow: 'var(--shadow-md)' }}>
+        <div className="w-full border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-card">
           <div className="overflow-x-auto">
             <Table className="w-full">
               <TableHeader>
-                <TableRow className="hover:bg-primary/5 transition-colors"
-                          style={{ background: 'var(--gradient-subtle)' }}>
+                <TableRow className="hover:bg-primary/5 transition-colors">
                   <TableHead className="w-12 min-w-12">
                     <Checkbox
                       checked={selectedDeals.size === filteredAndSortedDeals.length && filteredAndSortedDeals.length > 0}
@@ -344,16 +293,7 @@ export const ListView = ({
                     />
                   </TableHead>
                   {visibleColumns.map(column => (
-                    <TableHead key={column.field} className={`font-semibold cursor-pointer hover:bg-primary/10 transition-colors ${
-                      column.field === 'project_name' ? 'min-w-[200px]' :
-                      column.field === 'customer_name' ? 'min-w-[150px]' :
-                      column.field === 'lead_owner' ? 'min-w-[140px]' :
-                      column.field === 'stage' ? 'min-w-[120px]' :
-                      column.field === 'priority' ? 'min-w-[100px]' :
-                      column.field === 'total_contract_value' ? 'min-w-[120px]' :
-                      column.field === 'expected_closing_date' ? 'min-w-[140px]' :
-                      'min-w-[120px]'
-                    }`}
+                    <TableHead key={column.field} className="font-semibold cursor-pointer hover:bg-primary/10 transition-colors"
                     onClick={() => {
                       if (sortBy === column.field) {
                         setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -387,10 +327,6 @@ export const ListView = ({
                       className={`hover:bg-primary/5 transition-all duration-200 hover:shadow-sm ${
                         selectedDeals.has(deal.id) ? 'bg-primary/10 shadow-sm' : ''
                       }`}
-                      style={{ 
-                        background: selectedDeals.has(deal.id) ? 'var(--primary-50)' : undefined,
-                        borderLeft: selectedDeals.has(deal.id) ? '3px solid hsl(var(--primary))' : undefined 
-                      }}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -417,7 +353,7 @@ export const ListView = ({
                             size="sm"
                             variant="ghost"
                             onClick={() => onDealClick(deal)}
-                            className="hover-scale p-1 h-7 w-7"
+                            className="p-1 h-7 w-7"
                             title="Open deal form"
                           >
                             <Edit className="w-3 h-3" />
@@ -432,7 +368,7 @@ export const ListView = ({
                                 description: `Successfully deleted ${deal.project_name || 'deal'}`,
                               });
                             }}
-                            className="hover-scale p-1 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="p-1 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                             title="Delete deal"
                           >
                             <Trash2 className="w-3 h-3" />

@@ -267,44 +267,47 @@ const DealsPage = () => {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">Deals Pipeline</h1>
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Deals</p>
-                        <p className="text-2xl font-bold">{stats.totalDeals}</p>
+              
+              {/* Only show stats cards in Kanban view */}
+              {activeView === 'kanban' && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                  <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-blue-600" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Deals</p>
+                          <p className="text-2xl font-bold">{stats.totalDeals}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Euro className="w-5 h-5 text-green-600" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Value</p>
-                        <p className="text-2xl font-bold">€{stats.totalValue.toLocaleString()}</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Euro className="w-5 h-5 text-green-600" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Value</p>
+                          <p className="text-2xl font-bold">€{stats.totalValue.toLocaleString()}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Won Deals</p>
-                        <p className="text-2xl font-bold">{stats.wonDeals}</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-5 h-5 text-purple-600" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Won Deals</p>
+                          <p className="text-2xl font-bold">{stats.wonDeals}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
               <div className="hidden sm:block">
@@ -344,17 +347,19 @@ const DealsPage = () => {
             </div>
           </div>
 
-          {/* Filters Panel */}
-          <DealsFilterPanel
-            filters={filters}
-            onFiltersChange={setFilters}
-            uniqueValues={uniqueValues}
-          />
+          {/* Only show filters panel in List view */}
+          {activeView === 'list' && (
+            <DealsFilterPanel
+              filters={filters}
+              onFiltersChange={setFilters}
+              uniqueValues={uniqueValues}
+            />
+          )}
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="w-full" style={{ height: 'calc(100vh - 350px)' }}>
+      <div className="w-full" style={{ height: activeView === 'list' ? 'calc(100vh - 250px)' : 'calc(100vh - 350px)' }}>
         {activeView === 'kanban' ? (
           <KanbanBoard
             deals={filteredDeals}

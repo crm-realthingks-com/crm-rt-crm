@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FilterInput } from "./FilterInput";
+import { FilterFieldSelector } from "./FilterFieldSelector";
 import { SavedFiltersManager } from "./SavedFiltersManager";
 import { DealFilters } from "@/types/filters";
 import { DEAL_STAGES } from "@/types/deal";
-import { ChevronDown, ChevronUp, Filter, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Filter, X, Check } from "lucide-react";
 
 interface DealsFilterPanelProps {
   filters: DealFilters;
@@ -31,13 +32,21 @@ interface DealsFilterPanelProps {
 
 export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: DealsFilterPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedFilterFields, setSelectedFilterFields] = useState<string[]>([]);
+  const [tempFilters, setTempFilters] = useState<DealFilters>({});
 
-  const updateFilter = (key: keyof DealFilters, value: any) => {
-    onFiltersChange({ ...filters, [key]: value });
+  const updateTempFilter = (key: keyof DealFilters, value: any) => {
+    setTempFilters({ ...tempFilters, [key]: value });
+  };
+
+  const applyFilters = () => {
+    onFiltersChange(tempFilters);
   };
 
   const clearAllFilters = () => {
+    setTempFilters({});
     onFiltersChange({});
+    setSelectedFilterFields([]);
   };
 
   const hasActiveFilters = Object.values(filters).some(value => {
@@ -50,6 +59,165 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
       if (Array.isArray(value)) return value.length > 0;
       return value !== undefined && value !== '';
     }).length;
+  };
+
+  const getFilterInputProps = (fieldKey: string) => {
+    switch (fieldKey) {
+      case 'stages':
+        return {
+          label: 'Stage',
+          type: 'multiselect' as const,
+          options: DEAL_STAGES,
+          placeholder: 'Select stages'
+        };
+      case 'leadOwners':
+        return {
+          label: 'Lead Owner',
+          type: 'multiselect' as const,
+          options: uniqueValues.leadOwners,
+          placeholder: 'Select lead owners'
+        };
+      case 'customers':
+        return {
+          label: 'Customer',
+          type: 'multiselect' as const,
+          options: uniqueValues.customers,
+          placeholder: 'Select customers'
+        };
+      case 'priorities':
+        return {
+          label: 'Priority',
+          type: 'multiselect' as const,
+          options: ['1', '2', '3', '4', '5'],
+          placeholder: 'Select priorities'
+        };
+      case 'expectedCloseDateFrom':
+        return {
+          label: 'Expected Close From',
+          type: 'date' as const
+        };
+      case 'expectedCloseDateTo':
+        return {
+          label: 'Expected Close To',
+          type: 'date' as const
+        };
+      case 'totalContractValueMin':
+        return {
+          label: 'Min Contract Value',
+          type: 'number' as const,
+          placeholder: 'Min value',
+          min: 0
+        };
+      case 'totalContractValueMax':
+        return {
+          label: 'Max Contract Value',
+          type: 'number' as const,
+          placeholder: 'Max value',
+          min: 0
+        };
+      case 'regions':
+        return {
+          label: 'Region',
+          type: 'multiselect' as const,
+          options: uniqueValues.regions,
+          placeholder: 'Select regions'
+        };
+      case 'currencies':
+        return {
+          label: 'Currency',
+          type: 'multiselect' as const,
+          options: uniqueValues.currencies,
+          placeholder: 'Select currencies'
+        };
+      case 'projectNames':
+        return {
+          label: 'Project Name',
+          type: 'multiselect' as const,
+          options: uniqueValues.projectNames,
+          placeholder: 'Select projects'
+        };
+      case 'leadNames':
+        return {
+          label: 'Lead Name',
+          type: 'multiselect' as const,
+          options: uniqueValues.leadNames,
+          placeholder: 'Select leads'
+        };
+      case 'businessValues':
+        return {
+          label: 'Business Value',
+          type: 'multiselect' as const,
+          options: uniqueValues.businessValues,
+          placeholder: 'Select business values'
+        };
+      case 'decisionMakerLevels':
+        return {
+          label: 'Decision Maker Level',
+          type: 'multiselect' as const,
+          options: uniqueValues.decisionMakerLevels,
+          placeholder: 'Select decision maker levels'
+        };
+      case 'rfqStatuses':
+        return {
+          label: 'RFQ Status',
+          type: 'multiselect' as const,
+          options: uniqueValues.rfqStatuses,
+          placeholder: 'Select RFQ statuses'
+        };
+      case 'handoffStatuses':
+        return {
+          label: 'Handoff Status',
+          type: 'multiselect' as const,
+          options: uniqueValues.handoffStatuses,
+          placeholder: 'Select handoff statuses'
+        };
+      case 'isRecurring':
+        return {
+          label: 'Is Recurring',
+          type: 'multiselect' as const,
+          options: ['Yes', 'No', 'Unclear'],
+          placeholder: 'Select recurring status'
+        };
+      case 'relationshipStrengths':
+        return {
+          label: 'Relationship Strength',
+          type: 'multiselect' as const,
+          options: uniqueValues.relationshipStrengths,
+          placeholder: 'Select relationship strengths'
+        };
+      case 'customerChallenges':
+        return {
+          label: 'Customer Challenges',
+          type: 'multiselect' as const,
+          options: uniqueValues.customerChallenges,
+          placeholder: 'Select customer challenges'
+        };
+      case 'createdDateFrom':
+        return {
+          label: 'Created From',
+          type: 'date' as const
+        };
+      case 'createdDateTo':
+        return {
+          label: 'Created To',
+          type: 'date' as const
+        };
+      case 'modifiedDateFrom':
+        return {
+          label: 'Modified From',
+          type: 'date' as const
+        };
+      case 'modifiedDateTo':
+        return {
+          label: 'Modified To',
+          type: 'date' as const
+        };
+      default:
+        return {
+          label: fieldKey,
+          type: 'text' as const
+        };
+    }
   };
 
   return (
@@ -74,231 +242,60 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
         
         <CollapsibleContent>
           <CardContent className="space-y-6">
+            {/* Filter Field Selection */}
+            <div className="border-b pb-4">
+              <h3 className="text-sm font-medium mb-3">Select Fields to Filter</h3>
+              <FilterFieldSelector
+                selectedFields={selectedFilterFields}
+                onFieldsChange={setSelectedFilterFields}
+              />
+            </div>
+
+            {/* Selected Filter Inputs */}
+            {selectedFilterFields.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Filter Values</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {selectedFilterFields.map(fieldKey => {
+                    const inputProps = getFilterInputProps(fieldKey);
+                    return (
+                      <FilterInput
+                        key={fieldKey}
+                        {...inputProps}
+                        value={tempFilters[fieldKey as keyof DealFilters] || (inputProps.type === 'multiselect' ? [] : '')}
+                        onChange={(value) => updateTempFilter(fieldKey as keyof DealFilters, value)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Filter Actions */}
-            <div className="flex flex-wrap items-center gap-2 pb-4 border-b">
+            <div className="flex flex-wrap items-center gap-2 pt-4 border-t">
+              <Button onClick={applyFilters} className="bg-primary hover:bg-primary/90">
+                <Check className="w-4 h-4 mr-1" />
+                Apply Filters
+              </Button>
+              
               <SavedFiltersManager
-                currentFilters={filters}
-                onLoadFilters={onFiltersChange}
-              />
-              {hasActiveFilters && (
-                <Button variant="outline" size="sm" onClick={clearAllFilters}>
-                  <X className="w-4 h-4 mr-1" />
-                  Clear All
-                </Button>
-              )}
-            </div>
-
-            {/* Core Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              <FilterInput
-                label="Stage"
-                type="multiselect"
-                value={filters.stages || []}
-                onChange={(value) => updateFilter('stages', value)}
-                options={DEAL_STAGES}
-                placeholder="Select stages"
+                currentFilters={tempFilters}
+                onLoadFilters={(loadedFilters) => {
+                  setTempFilters(loadedFilters);
+                  // Auto-select the fields from the loaded filter
+                  const fieldsWithValues = Object.keys(loadedFilters).filter(key => {
+                    const value = loadedFilters[key as keyof DealFilters];
+                    if (Array.isArray(value)) return value.length > 0;
+                    return value !== undefined && value !== '';
+                  });
+                  setSelectedFilterFields(fieldsWithValues);
+                }}
               />
               
-              <FilterInput
-                label="Lead Owner"
-                type="multiselect"
-                value={filters.leadOwners || []}
-                onChange={(value) => updateFilter('leadOwners', value)}
-                options={uniqueValues.leadOwners}
-                placeholder="Select lead owners"
-              />
-              
-              <FilterInput
-                label="Customer"
-                type="multiselect"
-                value={filters.customers || []}
-                onChange={(value) => updateFilter('customers', value)}
-                options={uniqueValues.customers}
-                placeholder="Select customers"
-              />
-              
-              <FilterInput
-                label="Priority"
-                type="multiselect"
-                value={filters.priorities || []}
-                onChange={(value) => updateFilter('priorities', value)}
-                options={['1', '2', '3', '4', '5']}
-                placeholder="Select priorities"
-              />
-            </div>
-
-            {/* Date Range Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <FilterInput
-                label="Expected Close From"
-                type="date"
-                value={filters.expectedCloseDateFrom || ''}
-                onChange={(value) => updateFilter('expectedCloseDateFrom', value)}
-              />
-              
-              <FilterInput
-                label="Expected Close To"
-                type="date"
-                value={filters.expectedCloseDateTo || ''}
-                onChange={(value) => updateFilter('expectedCloseDateTo', value)}
-              />
-              
-              <FilterInput
-                label="Min Contract Value"
-                type="number"
-                value={filters.totalContractValueMin || ''}
-                onChange={(value) => updateFilter('totalContractValueMin', value)}
-                placeholder="Min value"
-                min={0}
-              />
-              
-              <FilterInput
-                label="Max Contract Value"
-                type="number"
-                value={filters.totalContractValueMax || ''}
-                onChange={(value) => updateFilter('totalContractValueMax', value)}
-                placeholder="Max value"
-                min={0}
-              />
-            </div>
-
-            {/* Additional Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              <FilterInput
-                label="Region"
-                type="multiselect"
-                value={filters.regions || []}
-                onChange={(value) => updateFilter('regions', value)}
-                options={uniqueValues.regions}
-                placeholder="Select regions"
-              />
-              
-              <FilterInput
-                label="Currency"
-                type="multiselect"
-                value={filters.currencies || []}
-                onChange={(value) => updateFilter('currencies', value)}
-                options={uniqueValues.currencies}
-                placeholder="Select currencies"
-              />
-              
-              <FilterInput
-                label="Project Name"
-                type="multiselect"
-                value={filters.projectNames || []}
-                onChange={(value) => updateFilter('projectNames', value)}
-                options={uniqueValues.projectNames}
-                placeholder="Select projects"
-              />
-              
-              <FilterInput
-                label="Lead Name"
-                type="multiselect"
-                value={filters.leadNames || []}
-                onChange={(value) => updateFilter('leadNames', value)}
-                options={uniqueValues.leadNames}
-                placeholder="Select leads"
-              />
-            </div>
-
-            {/* Business Process Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              <FilterInput
-                label="Business Value"
-                type="multiselect"
-                value={filters.businessValues || []}
-                onChange={(value) => updateFilter('businessValues', value)}
-                options={uniqueValues.businessValues}
-                placeholder="Select business values"
-              />
-              
-              <FilterInput
-                label="Decision Maker Level"
-                type="multiselect"
-                value={filters.decisionMakerLevels || []}
-                onChange={(value) => updateFilter('decisionMakerLevels', value)}
-                options={uniqueValues.decisionMakerLevels}
-                placeholder="Select decision maker levels"
-              />
-              
-              <FilterInput
-                label="RFQ Status"
-                type="multiselect"
-                value={filters.rfqStatuses || []}
-                onChange={(value) => updateFilter('rfqStatuses', value)}
-                options={uniqueValues.rfqStatuses}
-                placeholder="Select RFQ statuses"
-              />
-              
-              <FilterInput
-                label="Handoff Status"
-                type="multiselect"
-                value={filters.handoffStatuses || []}
-                onChange={(value) => updateFilter('handoffStatuses', value)}
-                options={uniqueValues.handoffStatuses}
-                placeholder="Select handoff statuses"
-              />
-            </div>
-
-            {/* Relationship Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <FilterInput
-                label="Is Recurring"
-                type="multiselect"
-                value={filters.isRecurring || []}
-                onChange={(value) => updateFilter('isRecurring', value)}
-                options={['Yes', 'No', 'Unclear']}
-                placeholder="Select recurring status"
-              />
-              
-              <FilterInput
-                label="Relationship Strength"
-                type="multiselect"
-                value={filters.relationshipStrengths || []}
-                onChange={(value) => updateFilter('relationshipStrengths', value)}
-                options={uniqueValues.relationshipStrengths}
-                placeholder="Select relationship strengths"
-              />
-              
-              <FilterInput
-                label="Customer Challenges"
-                type="multiselect"
-                value={filters.customerChallenges || []}
-                onChange={(value) => updateFilter('customerChallenges', value)}
-                options={uniqueValues.customerChallenges}
-                placeholder="Select customer challenges"
-              />
-            </div>
-
-            {/* Date Created/Modified Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <FilterInput
-                label="Created From"
-                type="date"
-                value={filters.createdDateFrom || ''}
-                onChange={(value) => updateFilter('createdDateFrom', value)}
-              />
-              
-              <FilterInput
-                label="Created To"
-                type="date"
-                value={filters.createdDateTo || ''}
-                onChange={(value) => updateFilter('createdDateTo', value)}
-              />
-              
-              <FilterInput
-                label="Modified From"
-                type="date"
-                value={filters.modifiedDateFrom || ''}
-                onChange={(value) => updateFilter('modifiedDateFrom', value)}
-              />
-              
-              <FilterInput
-                label="Modified To"
-                type="date"
-                value={filters.modifiedDateTo || ''}
-                onChange={(value) => updateFilter('modifiedDateTo', value)}
-              />
+              <Button variant="outline" onClick={clearAllFilters}>
+                <X className="w-4 h-4 mr-1" />
+                Clear Filters
+              </Button>
             </div>
           </CardContent>
         </CollapsibleContent>
