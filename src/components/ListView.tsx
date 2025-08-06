@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Deal, DealStage, DEAL_STAGES, STAGE_COLORS } from "@/types/deal";
-import { Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Columns } from "lucide-react";
 import { format } from "date-fns";
 import { InlineEditCell } from "./InlineEditCell";
 import { ColumnCustomizer, ColumnConfig } from "./ColumnCustomizer";
@@ -35,7 +35,6 @@ export const ListView = ({
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [columns, setColumns] = useState<ColumnConfig[]>([
-    // Basic visible columns
     { field: 'project_name', label: 'Project', visible: true, order: 0 },
     { field: 'customer_name', label: 'Customer', visible: true, order: 1 },
     { field: 'lead_owner', label: 'Lead Owner', visible: true, order: 2 },
@@ -44,7 +43,6 @@ export const ListView = ({
     { field: 'total_contract_value', label: 'Value', visible: true, order: 5 },
     { field: 'expected_closing_date', label: 'Expected Close', visible: true, order: 6 },
     
-    // Additional columns (hidden by default)
     { field: 'lead_name', label: 'Lead Name', visible: false, order: 7 },
     { field: 'region', label: 'Region', visible: false, order: 8 },
     { field: 'probability', label: 'Probability', visible: false, order: 9 },
@@ -213,27 +211,26 @@ export const ListView = ({
     });
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Full-width container with proper spacing */}
-      <div className="w-full px-6 py-6 space-y-6">
-        {/* Header with filters and controls */}
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-card rounded-lg p-4 border shadow-sm card-hover">
-          <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search deals..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 transition-all hover:border-primary/50 focus:border-primary"
-              />
-            </div>
-            
+    <div className="w-full p-4 space-y-3">
+      {/* Compact Search and Controls Bar */}
+      <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between bg-card rounded-lg p-3 border border-border/50 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-2 flex-1 w-full max-w-4xl">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search deals..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
             <Select value={stageFilter} onValueChange={(value) => setStageFilter(value as DealStage | "all")}>
-              <SelectTrigger className="w-[180px] hover:border-primary/50 transition-all hover:shadow-sm">
-                <SelectValue placeholder="Filter by stage" />
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="All Stages" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50">
                 <SelectItem value="all">All Stages</SelectItem>
                 {DEAL_STAGES.map(stage => (
                   <SelectItem key={stage} value={stage}>
@@ -244,10 +241,10 @@ export const ListView = ({
             </Select>
 
             <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
-              <SelectTrigger className="w-[150px] hover:border-primary/50 transition-all hover:shadow-sm">
-                <SelectValue placeholder="Sort by" />
+              <SelectTrigger className="w-[120px] h-8 text-xs">
+                <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50">
                 <SelectItem value="modified_at">Updated</SelectItem>
                 <SelectItem value="created_at">Created</SelectItem>
                 <SelectItem value="priority">Priority</SelectItem>
@@ -261,39 +258,42 @@ export const ListView = ({
             </Select>
 
             <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "asc" | "desc")}>
-              <SelectTrigger className="w-[100px] hover:border-primary/50 transition-all hover:shadow-sm">
+              <SelectTrigger className="w-[80px] h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50">
                 <SelectItem value="desc">Desc</SelectItem>
                 <SelectItem value="asc">Asc</SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <ColumnCustomizer
-              columns={columns}
-              onUpdate={setColumns}
-            />
-          </div>
         </div>
 
-        {/* Table */}
-        <div className="w-full border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 bg-card">
-          <div className="overflow-x-auto">
-            <Table className="w-full">
-              <TableHeader>
-                <TableRow className="hover:bg-primary/5 transition-colors">
-                  <TableHead className="w-12 min-w-12">
-                    <Checkbox
-                      checked={selectedDeals.size === filteredAndSortedDeals.length && filteredAndSortedDeals.length > 0}
-                      onCheckedChange={handleSelectAll}
-                      className="transition-all hover:scale-110"
-                    />
-                  </TableHead>
-                  {visibleColumns.map(column => (
-                    <TableHead key={column.field} className="font-semibold cursor-pointer hover:bg-primary/10 transition-colors"
+        <div className="flex items-center gap-2 shrink-0">
+          <ColumnCustomizer
+            columns={columns}
+            onUpdate={setColumns}
+          />
+        </div>
+      </div>
+
+      {/* Optimized Table */}
+      <div className="border rounded-lg overflow-hidden shadow-sm bg-card">
+        <div className="overflow-x-auto">
+          <Table className="w-full">
+            <TableHeader>
+              <TableRow className="border-b border-border/50 bg-muted/30">
+                <TableHead className="w-10 p-2">
+                  <Checkbox
+                    checked={selectedDeals.size === filteredAndSortedDeals.length && filteredAndSortedDeals.length > 0}
+                    onCheckedChange={handleSelectAll}
+                    className="transition-all hover:scale-105"
+                  />
+                </TableHead>
+                {visibleColumns.map(column => (
+                  <TableHead 
+                    key={column.field} 
+                    className="font-semibold cursor-pointer hover:bg-muted/50 transition-colors p-2"
                     onClick={() => {
                       if (sortBy === column.field) {
                         setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -301,95 +301,95 @@ export const ListView = ({
                         setSortBy(column.field);
                         setSortOrder("desc");
                       }
-                    }}>
-                      <div className="flex items-center gap-2">
-                        {column.label}
-                        {sortBy === column.field && (
-                          sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </TableHead>
-                  ))}
-                  <TableHead className="w-20 min-w-20">Actions</TableHead>
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs">
+                      {column.label}
+                      {sortBy === column.field && (
+                        sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                    </div>
+                  </TableHead>
+                ))}
+                <TableHead className="w-16 p-2 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAndSortedDeals.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={visibleColumns.length + 2} className="text-center py-6 text-muted-foreground text-sm">
+                    No deals found
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAndSortedDeals.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8 text-muted-foreground">
-                      No deals found
+              ) : (
+                filteredAndSortedDeals.map((deal) => (
+                  <TableRow 
+                    key={deal.id} 
+                    className={`border-b border-border/30 hover:bg-muted/20 transition-colors duration-150 ${
+                      selectedDeals.has(deal.id) ? 'bg-muted/40' : ''
+                    }`}
+                  >
+                    <TableCell className="p-2" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedDeals.has(deal.id)}
+                        onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
+                        className="transition-all hover:scale-105"
+                      />
                     </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredAndSortedDeals.map((deal) => (
-                    <TableRow 
-                      key={deal.id} 
-                      className={`hover:bg-primary/5 transition-all duration-200 hover:shadow-sm ${
-                        selectedDeals.has(deal.id) ? 'bg-primary/10 shadow-sm' : ''
-                      }`}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedDeals.has(deal.id)}
-                          onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
-                          className="transition-all hover:scale-110"
+                    {visibleColumns.map(column => (
+                      <TableCell key={column.field} className="p-2 text-sm">
+                        <InlineEditCell
+                          value={deal[column.field as keyof Deal]}
+                          field={column.field}
+                          dealId={deal.id}
+                          onSave={handleInlineEdit}
+                          type={getFieldType(column.field)}
+                          options={getFieldOptions(column.field)}
                         />
                       </TableCell>
-                      {visibleColumns.map(column => (
-                        <TableCell key={column.field} className="font-medium">
-                          <InlineEditCell
-                            value={deal[column.field as keyof Deal]}
-                            field={column.field}
-                            dealId={deal.id}
-                            onSave={handleInlineEdit}
-                            type={getFieldType(column.field)}
-                            options={getFieldOptions(column.field)}
-                          />
-                        </TableCell>
-                      ))}
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => onDealClick(deal)}
-                            className="p-1 h-7 w-7"
-                            title="Open deal form"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              onDeleteDeals([deal.id]);
-                              toast({
-                                title: "Deal deleted",
-                                description: `Successfully deleted ${deal.project_name || 'deal'}`,
-                              });
-                            }}
-                            className="p-1 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            title="Delete deal"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                    ))}
+                    <TableCell className="p-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onDealClick(deal)}
+                          className="p-1 h-6 w-6 hover:bg-muted/60"
+                          title="Edit deal"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            onDeleteDeals([deal.id]);
+                            toast({
+                              title: "Deal deleted",
+                              description: `Successfully deleted ${deal.project_name || 'deal'}`,
+                            });
+                          }}
+                          className="p-1 h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Delete deal"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
-
-        <BulkActionsBar
-          selectedCount={selectedDeals.size}
-          onDelete={handleBulkDelete}
-          onExport={handleBulkExport}
-          onClearSelection={() => setSelectedDeals(new Set())}
-        />
       </div>
+
+      <BulkActionsBar
+        selectedCount={selectedDeals.size}
+        onDelete={handleBulkDelete}
+        onExport={handleBulkExport}
+        onClearSelection={() => setSelectedDeals(new Set())}
+      />
     </div>
   );
 };

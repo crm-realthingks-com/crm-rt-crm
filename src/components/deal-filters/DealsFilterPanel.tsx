@@ -7,7 +7,7 @@ import { FilterFieldSelector } from "./FilterFieldSelector";
 import { SavedFiltersManager } from "./SavedFiltersManager";
 import { DealFilters } from "@/types/filters";
 import { DEAL_STAGES } from "@/types/deal";
-import { ChevronDown, ChevronUp, Filter, X, Check } from "lucide-react";
+import { ChevronDown, ChevronUp, Filter, X, Check, RefreshCw } from "lucide-react";
 
 interface DealsFilterPanelProps {
   filters: DealFilters;
@@ -27,9 +27,10 @@ interface DealsFilterPanelProps {
     relationshipStrengths: string[];
     customerChallenges: string[];
   };
+  onRefresh?: () => void;
 }
 
-export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: DealsFilterPanelProps) => {
+export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues, onRefresh }: DealsFilterPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFilterFields, setSelectedFilterFields] = useState<string[]>([]);
   const [tempFilters, setTempFilters] = useState<DealFilters>({});
@@ -220,13 +221,13 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
   };
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-3 border-border/50">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-2 px-3">
             <CardTitle className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4" />
+                <Filter className="w-3.5 h-3.5" />
                 <span>Search Filters</span>
                 {hasActiveFilters && (
                   <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
@@ -234,67 +235,70 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
                   </span>
                 )}
               </div>
-              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
         
         <CollapsibleContent>
-          <CardContent className="space-y-3 py-3">
-            {/* Filter Field Selection */}
-            <div className="border-b pb-3">
-              <h3 className="text-xs font-medium mb-2 text-muted-foreground">Select Fields to Filter</h3>
-              <FilterFieldSelector
-                selectedFields={selectedFilterFields}
-                onFieldsChange={setSelectedFilterFields}
-              />
+          <CardContent className="px-3 pb-2 pt-0 space-y-2">
+            {/* Single row with field selector and action buttons */}
+            <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-border/30">
+              <div className="flex-1 min-w-[200px]">
+                <FilterFieldSelector
+                  selectedFields={selectedFilterFields}
+                  onFieldsChange={setSelectedFilterFields}
+                />
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Button onClick={applyFilters} size="sm" className="h-7 text-xs px-2">
+                  <Check className="w-3 h-3 mr-1" />
+                  Apply
+                </Button>
+                
+                <SavedFiltersManager
+                  currentFilters={tempFilters}
+                  onLoadFilters={(loadedFilters) => {
+                    setTempFilters(loadedFilters);
+                    const fieldsWithValues = Object.keys(loadedFilters).filter(key => {
+                      const value = loadedFilters[key as keyof DealFilters];
+                      if (Array.isArray(value)) return value.length > 0;
+                      return value !== undefined && value !== '';
+                    });
+                    setSelectedFilterFields(fieldsWithValues);
+                  }}
+                />
+                
+                <Button variant="outline" onClick={clearAllFilters} size="sm" className="h-7 text-xs px-2">
+                  <X className="w-3 h-3 mr-1" />
+                  Clear
+                </Button>
+                
+                {onRefresh && (
+                  <Button variant="outline" onClick={onRefresh} size="sm" className="h-7 text-xs px-2">
+                    <RefreshCw className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Selected Filter Inputs */}
             {selectedFilterFields.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-xs font-medium text-muted-foreground">Filter Values</h3>
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {selectedFilterFields.map(fieldKey => {
-                    const inputProps = getFilterInputProps(fieldKey);
-                    return (
-                      <FilterInput
-                        key={fieldKey}
-                        {...inputProps}
-                        value={tempFilters[fieldKey as keyof DealFilters] || (inputProps.type === 'multiselect' ? [] : '')}
-                        onChange={(value) => updateTempFilter(fieldKey as keyof DealFilters, value)}
-                      />
-                    );
-                  })}
-                </div>
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                {selectedFilterFields.map(fieldKey => {
+                  const inputProps = getFilterInputProps(fieldKey);
+                  return (
+                    <FilterInput
+                      key={fieldKey}
+                      {...inputProps}
+                      value={tempFilters[fieldKey as keyof DealFilters] || (inputProps.type === 'multiselect' ? [] : '')}
+                      onChange={(value) => updateTempFilter(fieldKey as keyof DealFilters, value)}
+                    />
+                  );
+                })}
               </div>
             )}
-
-            {/* Filter Actions */}
-            <div className="flex flex-wrap items-center gap-2 pt-3 border-t">
-              <Button onClick={applyFilters} size="sm" className="h-8 text-xs">
-                <Check className="w-3 h-3 mr-1" />
-                Apply Filters
-              </Button>
-              
-              <SavedFiltersManager
-                currentFilters={tempFilters}
-                onLoadFilters={(loadedFilters) => {
-                  setTempFilters(loadedFilters);
-                  const fieldsWithValues = Object.keys(loadedFilters).filter(key => {
-                    const value = loadedFilters[key as keyof DealFilters];
-                    if (Array.isArray(value)) return value.length > 0;
-                    return value !== undefined && value !== '';
-                  });
-                  setSelectedFilterFields(fieldsWithValues);
-                }}
-              />
-              
-              <Button variant="outline" onClick={clearAllFilters} size="sm" className="h-8 text-xs">
-                <X className="w-3 h-3 mr-1" />
-                Clear Filters
-              </Button>
-            </div>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>

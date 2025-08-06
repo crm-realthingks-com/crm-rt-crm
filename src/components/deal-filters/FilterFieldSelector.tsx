@@ -64,13 +64,14 @@ export const FilterFieldSelector = ({ selectedFields, onFieldsChange }: FilterFi
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">Select Fields:</span>
         <Select value={selectedValue} onValueChange={addField}>
-          <SelectTrigger className="w-[180px] h-8 text-xs">
-            <SelectValue placeholder="Add filter field" />
+          <SelectTrigger className="w-[160px] h-7 text-xs">
+            <SelectValue placeholder="Add filter" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-50">
             {availableFields.map(field => (
               <SelectItem key={field.key} value={field.key} className="text-xs">
                 {field.label}
@@ -83,7 +84,7 @@ export const FilterFieldSelector = ({ selectedFields, onFieldsChange }: FilterFi
           size="sm" 
           onClick={() => selectedValue && addField(selectedValue)}
           disabled={!selectedValue}
-          className="h-8 w-8 p-0"
+          className="h-7 w-7 p-0"
         >
           <Plus className="w-3 h-3" />
         </Button>
@@ -92,10 +93,10 @@ export const FilterFieldSelector = ({ selectedFields, onFieldsChange }: FilterFi
       {selectedFields.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {selectedFields.map(fieldKey => (
-            <Badge key={fieldKey} variant="secondary" className="text-xs px-2 py-0.5 h-6">
+            <Badge key={fieldKey} variant="secondary" className="text-xs px-1.5 py-0.5 h-5">
               {getFieldLabel(fieldKey)}
               <X 
-                className="w-2.5 h-2.5 ml-1 cursor-pointer" 
+                className="w-2.5 h-2.5 ml-1 cursor-pointer hover:text-destructive" 
                 onClick={() => removeField(fieldKey)}
               />
             </Badge>
