@@ -1,88 +1,95 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Lead {
   id: string;
   lead_name: string;
   company_name?: string;
-  contact_name?: string;
+  country?: string;
+  created_by?: string;
 }
 
 interface LeadSearchableDropdownProps {
   value?: string;
+  onValueChange: (value: string) => void;
   onLeadSelect: (lead: Lead) => void;
-  onCreateNew: () => void;
   placeholder?: string;
+  className?: string;
 }
 
-export const LeadSearchableDropdown = ({ 
-  value, 
-  onLeadSelect, 
-  onCreateNew, 
-  placeholder = "Search leads..." 
+export const LeadSearchableDropdown = ({
+  value,
+  onValueChange,
+  onLeadSelect,
+  placeholder = "Select lead...",
+  className
 }: LeadSearchableDropdownProps) => {
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const { toast } = useToast();
 
-  const fetchLeads = async (search?: string) => {
-    if (!user) return;
-    
-    setLoading(true);
+  // Get unique created_by IDs for fetching display names
+  const createdByIds = useMemo(() => {
+    return [...new Set(leads.map(l => l.created_by).filter(Boolean))];
+  }, [leads]);
+  
+  const { displayNames } = useUserDisplayNames(createdByIds);
+
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const fetchLeads = async () => {
     try {
-      let query = supabase
+      setLoading(true);
+      const { data, error } = await supabase
         .from('leads')
-        .select('id, lead_name, company_name, contact_name')
-        .eq('user_id', user.id)
-        .order('lead_name');
+        .select('id, lead_name, company_name, country, created_by')
+        .order('lead_name', { ascending: true });
 
-      if (search) {
-        query = query.or(`lead_name.ilike.%${search}%,company_name.ilike.%${search}%,contact_name.ilike.%${search}%`);
-      }
-
-      const { data, error } = await query.limit(50);
-
-      if (error) {
-        console.error('Error fetching leads:', error);
-        return;
-      }
-
+      if (error) throw error;
       setLeads(data || []);
     } catch (error) {
-      console.error('Error fetching leads:', error);
+      console.error("Error fetching leads:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch leads",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (open) {
-      fetchLeads();
-    }
-  }, [open, user]);
+  // Filter leads based on search value with debouncing effect
+  const filteredLeads = useMemo(() => {
+    if (!searchValue) return leads;
+    
+    const searchLower = searchValue.toLowerCase();
+    return leads.filter(lead => 
+      lead.lead_name?.toLowerCase().includes(searchLower) ||
+      lead.company_name?.toLowerCase().includes(searchLower) ||
+      lead.country?.toLowerCase().includes(searchLower)
+    );
+  }, [leads, searchValue]);
 
-  useEffect(() => {
-    if (searchValue) {
-      const timer = setTimeout(() => {
-        fetchLeads(searchValue);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else if (open) {
-      fetchLeads();
-    }
-  }, [searchValue]);
+  const selectedLead = leads.find(lead => lead.lead_name === value);
 
-  const selectedLead = leads.find(lead => lead.id === value);
+  const handleSelect = (lead: Lead) => {
+    onValueChange(lead.lead_name);
+    onLeadSelect(lead);
+    setOpen(false);
+    setSearchValue("");
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -91,19 +98,19 @@ export const LeadSearchableDropdown = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className={cn("w-full justify-between", className)}
         >
-          {selectedLead ? (
+          {value ? (
             <span className="truncate">
-              {selectedLead.lead_name} {selectedLead.company_name && `(${selectedLead.company_name})`}
+              {selectedLead?.lead_name || value}
             </span>
           ) : (
-            placeholder
+            <span className="text-muted-foreground">{placeholder}</span>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput 
             placeholder="Search leads..." 
@@ -111,48 +118,51 @@ export const LeadSearchableDropdown = ({
             onValueChange={setSearchValue}
           />
           <CommandList>
-            <CommandEmpty>
-              {loading ? "Loading..." : "No leads found."}
-            </CommandEmpty>
-            <CommandGroup>
-              <CommandItem
-                onSelect={() => {
-                  onCreateNew();
-                  setOpen(false);
-                }}
-                className="cursor-pointer"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create new lead
-              </CommandItem>
-              {leads.map((lead) => (
-                <CommandItem
-                  key={lead.id}
-                  value={lead.id}
-                  onSelect={() => {
-                    onLeadSelect(lead);
-                    setOpen(false);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === lead.id ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <div className="flex flex-col">
-                    <span className="font-medium">{lead.lead_name}</span>
-                    {lead.company_name && (
-                      <span className="text-sm text-muted-foreground">{lead.company_name}</span>
-                    )}
-                    {lead.contact_name && (
-                      <span className="text-sm text-muted-foreground">{lead.contact_name}</span>
-                    )}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {loading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading leads...</span>
+              </div>
+            ) : (
+              <>
+                <CommandEmpty>No leads found.</CommandEmpty>
+                <CommandGroup>
+                  {filteredLeads.map((lead) => (
+                    <CommandItem
+                      key={lead.id}
+                      value={lead.lead_name}
+                      onSelect={() => handleSelect(lead)}
+                      className="cursor-pointer"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === lead.lead_name ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{lead.lead_name}</div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {lead.company_name && (
+                            <span>{lead.company_name}</span>
+                          )}
+                          {lead.company_name && lead.country && <span> • </span>}
+                          {lead.country && (
+                            <span>{lead.country}</span>
+                          )}
+                          {lead.created_by && (
+                            <>
+                              <span> • Owner: </span>
+                              <span>{displayNames[lead.created_by] || "Unknown"}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

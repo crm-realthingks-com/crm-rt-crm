@@ -1,37 +1,45 @@
-
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+
+const contactSchema = z.object({
+  contact_name: z.string().min(1, "Contact name is required"),
+  company_name: z.string().optional(),
+  position: z.string().optional(),
+  email: z.string().email("Invalid email address").min(1, "Email is required"),
+  phone_no: z.string().optional(),
+  linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
+  website: z.string().url("Invalid website URL").optional().or(z.literal("")),
+  contact_source: z.string().optional(),
+  industry: z.string().optional(),
+  country: z.string().optional(),
+  description: z.string().optional(),
+});
+
+type ContactFormData = z.infer<typeof contactSchema>;
 
 interface Contact {
-  id?: string;
+  id: string;
   contact_name: string;
   company_name?: string;
   position?: string;
   email?: string;
   phone_no?: string;
-  mobile_no?: string;
   linkedin?: string;
   website?: string;
-  contact_source?: 'Website' | 'Referral' | 'Cold Call' | 'Email' | 'Social Media' | 'Trade Show' | 'Other';
-  lead_status?: string;
-  industry?: 'Automotive' | 'Technology' | 'Healthcare' | 'Finance' | 'Manufacturing' | 'Retail' | 'Other';
-  no_of_employees?: number;
-  annual_revenue?: number;
-  city?: string;
-  state?: string;
+  contact_source?: string;
+  industry?: string;
   country?: string;
   description?: string;
-  contact_owner?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 interface ContactModalProps {
@@ -41,79 +49,131 @@ interface ContactModalProps {
   onSuccess: () => void;
 }
 
-export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: ContactModalProps) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  
-  const [formData, setFormData] = useState<Contact>({
-    contact_name: '',
-    company_name: '',
-    position: '',
-    email: '',
-    phone_no: '',
-    mobile_no: '',
-    linkedin: '',
-    website: '',
-    contact_source: 'Other',
-    lead_status: 'New',
-    industry: 'Other',
-    no_of_employees: undefined,
-    annual_revenue: undefined,
-    city: '',
-    state: '',
-    country: '',
-    description: '',
-    contact_owner: user?.email || '',
-  });
+const contactSources = [
+  "Website",
+  "Referral", 
+  "Social Media",
+  "Email Campaign",
+  "Trade Show",
+  "Cold Call",
+  "LinkedIn",
+  "Other"
+];
 
+const industries = [
+  "Automotive",
+  "Technology",
+  "Healthcare",
+  "Finance",
+  "Manufacturing",
+  "Retail",
+  "Education",
+  "Real Estate",
+  "Other"
+];
+
+const regions = [
+  "EU",
+  "US", 
+  "ASIA",
+  "APAC",
+  "LATAM",
+  "MEA",
+  "Other"
+];
+
+export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: ContactModalProps) => {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+
+  const form = useForm<ContactFormData>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: {
+      contact_name: "",
+      company_name: "",
+      position: "",
+      email: "",
+      phone_no: "",
+      linkedin: "",
+      website: "",
+      contact_source: "",
+      industry: "Automotive",
+      country: "EU",
+      description: "",
+    },
+  });
 
   useEffect(() => {
     if (contact) {
-      setFormData({
-        ...contact,
-        contact_owner: contact.contact_owner || user?.email || '',
+      form.reset({
+        contact_name: contact.contact_name || "",
+        company_name: contact.company_name || "",
+        position: contact.position || "",
+        email: contact.email || "",
+        phone_no: contact.phone_no || "",
+        linkedin: contact.linkedin || "",
+        website: contact.website || "",
+        contact_source: contact.contact_source || "",
+        industry: contact.industry || "Automotive",
+        country: contact.country || "EU",
+        description: contact.description || "",
       });
     } else {
-      setFormData({
-        contact_name: '',
-        company_name: '',
-        position: '',
-        email: '',
-        phone_no: '',
-        mobile_no: '',
-        linkedin: '',
-        website: '',
-        contact_source: 'Other',
-        lead_status: 'New',
-        industry: 'Other',
-        no_of_employees: undefined,
-        annual_revenue: undefined,
-        city: '',
-        state: '',
-        country: '',
-        description: '',
-        contact_owner: user?.email || '',
+      form.reset({
+        contact_name: "",
+        company_name: "",
+        position: "",
+        email: "",
+        phone_no: "",
+        linkedin: "",
+        website: "",
+        contact_source: "",
+        industry: "Automotive",
+        country: "EU",
+        description: "",
       });
     }
-  }, [contact, user]);
+  }, [contact, form]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    setLoading(true);
+  const onSubmit = async (data: ContactFormData) => {
     try {
+      setLoading(true);
+      const user = await supabase.auth.getUser();
+      
+      if (!user.data.user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to perform this action",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const contactData = {
-        ...formData,
-        user_id: user.id,
-        updated_at: new Date().toISOString(),
+        contact_name: data.contact_name,
+        company_name: data.company_name || null,
+        position: data.position || null,
+        email: data.email,
+        phone_no: data.phone_no || null,
+        linkedin: data.linkedin || null,
+        website: data.website || null,
+        contact_source: data.contact_source || null,
+        industry: data.industry || null,
+        country: data.country || null,
+        description: data.description || null,
+        created_by: user.data.user.id,
+        modified_by: user.data.user.id,
+        contact_owner: user.data.user.id,
       };
 
-      if (contact?.id) {
+      if (contact) {
+        // Update existing contact
         const { error } = await supabase
           .from('contacts')
-          .update(contactData)
+          .update({
+            ...contactData,
+            modified_time: new Date().toISOString(),
+          })
           .eq('id', contact.id);
 
         if (error) throw error;
@@ -123,6 +183,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
           description: "Contact updated successfully",
         });
       } else {
+        // Create new contact
         const { error } = await supabase
           .from('contacts')
           .insert(contactData);
@@ -138,10 +199,9 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error saving contact:', error);
       toast({
         title: "Error",
-        description: "Failed to save contact",
+        description: contact ? "Failed to update contact" : "Failed to create contact",
         variant: "destructive",
       });
     } finally {
@@ -154,200 +214,219 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {contact ? 'Edit Contact' : 'Create New Contact'}
+            {contact ? "Edit Contact" : "Add New Contact"}
           </DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="contact_name">Contact Name *</Label>
-              <Input
-                id="contact_name"
-                value={formData.contact_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, contact_name: e.target.value }))}
-                required
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="contact_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="company_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Acme Corp" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="position"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Position</FormLabel>
+                    <FormControl>
+                      <Input placeholder="CEO" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email *</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="john@acme.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone_no"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1 234 567 8900" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="linkedin"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>LinkedIn Profile</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://linkedin.com/in/johndoe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Website</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://acme.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="contact_source"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Source</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select source" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {contactSources.map((source) => (
+                          <SelectItem key={source} value={source}>
+                            {source}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="industry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Industry</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select industry" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {industries.map((industry) => (
+                          <SelectItem key={industry} value={industry}>
+                            {industry}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="country"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Region</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select region" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {regions.map((region) => (
+                          <SelectItem key={region} value={region}>
+                            {region}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-            
-            <div>
-              <Label htmlFor="company_name">Company Name</Label>
-              <Input
-                id="company_name"
-                value={formData.company_name || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, company_name: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="position">Position</Label>
-              <Input
-                id="position"
-                value={formData.position || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="phone_no">Phone</Label>
-              <Input
-                id="phone_no"
-                value={formData.phone_no || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone_no: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="mobile_no">Mobile</Label>
-              <Input
-                id="mobile_no"
-                value={formData.mobile_no || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, mobile_no: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="linkedin">LinkedIn</Label>
-              <Input
-                id="linkedin"
-                value={formData.linkedin || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, linkedin: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                value={formData.website || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="contact_source">Contact Source</Label>
-              <Select
-                value={formData.contact_source || 'Other'}
-                onValueChange={(value: 'Website' | 'Referral' | 'Cold Call' | 'Email' | 'Social Media' | 'Trade Show' | 'Other') => 
-                  setFormData(prev => ({ ...prev, contact_source: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Website">Website</SelectItem>
-                  <SelectItem value="Referral">Referral</SelectItem>
-                  <SelectItem value="Cold Call">Cold Call</SelectItem>
-                  <SelectItem value="Email">Email</SelectItem>
-                  <SelectItem value="Social Media">Social Media</SelectItem>
-                  <SelectItem value="Trade Show">Trade Show</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="lead_status">Lead Status</Label>
-              <Select
-                value={formData.lead_status || 'New'}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, lead_status: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="New">New</SelectItem>
-                  <SelectItem value="Contacted">Contacted</SelectItem>
-                  <SelectItem value="Qualified">Qualified</SelectItem>
-                  <SelectItem value="Lost">Lost</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="industry">Industry</Label>
-              <Select
-                value={formData.industry || 'Other'}
-                onValueChange={(value: 'Automotive' | 'Technology' | 'Healthcare' | 'Finance' | 'Manufacturing' | 'Retail' | 'Other') => 
-                  setFormData(prev => ({ ...prev, industry: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Automotive">Automotive</SelectItem>
-                  <SelectItem value="Technology">Technology</SelectItem>
-                  <SelectItem value="Healthcare">Healthcare</SelectItem>
-                  <SelectItem value="Finance">Finance</SelectItem>
-                  <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                  <SelectItem value="Retail">Retail</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={formData.city || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="state">State</Label>
-              <Input
-                id="state"
-                value={formData.state || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={formData.country || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-              />
-            </div>
-          </div>
-          
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              rows={3}
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Additional notes about the contact..."
+                      className="min-h-20"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : contact ? 'Update Contact' : 'Create Contact'}
-            </Button>
-          </div>
-        </form>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : contact ? "Save Changes" : "Add Contact"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
