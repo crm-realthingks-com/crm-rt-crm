@@ -36,7 +36,14 @@ export const SavedFiltersManager = ({ currentFilters, onLoadFilters }: SavedFilt
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSavedFilters(data || []);
+      
+      // Type cast the data properly to handle the JSON type from Supabase
+      const typedData = (data || []).map(item => ({
+        ...item,
+        filters: item.filters as DealFilters
+      })) as SavedFilter[];
+      
+      setSavedFilters(typedData);
     } catch (error) {
       toast({
         title: "Error",
@@ -55,7 +62,7 @@ export const SavedFiltersManager = ({ currentFilters, onLoadFilters }: SavedFilt
         .insert({
           user_id: user.id,
           name: filterName.trim(),
-          filters: currentFilters
+          filters: currentFilters as any // Type cast to handle JSON storage
         });
 
       if (error) throw error;
