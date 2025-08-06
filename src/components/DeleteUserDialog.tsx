@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +9,7 @@ interface User {
   email: string;
   user_metadata: {
     full_name?: string;
+    display_name?: string;
     role?: string;
   };
 }
@@ -29,13 +31,31 @@ const DeleteUserDialog = ({ open, onClose, user, onSuccess }: DeleteUserDialogPr
     setLoading(true);
 
     try {
-      const { error } = await supabase.functions.invoke('admin-delete-user', {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No valid session found. Please refresh and try again.');
+      }
+
+      console.log('Deleting user:', user.id);
+
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
         body: {
           userId: user.id
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to delete user');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
 
       toast({
         title: "Success",
@@ -44,11 +64,11 @@ const DeleteUserDialog = ({ open, onClose, user, onSuccess }: DeleteUserDialogPr
       
       onSuccess();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting user:', error);
       toast({
         title: "Error",
-        description: "Failed to delete user",
+        description: error.message || "Failed to delete user",
         variant: "destructive",
       });
     } finally {
@@ -58,18 +78,20 @@ const DeleteUserDialog = ({ open, onClose, user, onSuccess }: DeleteUserDialogPr
 
   if (!user) return null;
 
+  const displayName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email;
+
   return (
     <AlertDialog open={open} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete User</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete the user "{user.user_metadata?.full_name || user.email}"? 
+            Are you sure you want to delete the user "{displayName}"? 
             This action cannot be undone and will permanently remove the user from your system.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={loading}

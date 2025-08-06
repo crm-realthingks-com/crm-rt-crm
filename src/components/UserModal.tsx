@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,25 +17,63 @@ interface UserModalProps {
 const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Validation Error",
+        description: "Email and password are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Validation Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const { error } = await supabase.functions.invoke('admin-create-user', {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No valid session found. Please refresh and try again.');
+      }
+
+      console.log('Creating user with data:', { email, displayName, role });
+
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
           email,
           displayName,
           role,
-          password: generateRandomPassword()
+          password
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to create user');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create user');
+      }
 
       toast({
         title: "Success",
@@ -43,11 +82,11 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
       
       onSuccess();
       handleClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating user:', error);
       toast({
         title: "Error",
-        description: "Failed to create user",
+        description: error.message || "Failed to create user",
         variant: "destructive",
       });
     } finally {
@@ -55,13 +94,10 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
     }
   };
 
-  const generateRandomPassword = () => {
-    return Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-  };
-
   const handleClose = () => {
     setEmail('');
     setDisplayName('');
+    setPassword('');
     setRole('user');
     onClose();
   };
@@ -74,7 +110,7 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email *</Label>
             <Input
               id="email"
               type="email"
@@ -92,8 +128,23 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Full Name"
-              required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">Password *</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password (min 6 characters)"
+              required
+              minLength={6}
+            />
+            <p className="text-sm text-muted-foreground">
+              Password must be at least 6 characters long
+            </p>
           </div>
           
           <div className="space-y-2">
@@ -111,7 +162,7 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={handleClose}>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
