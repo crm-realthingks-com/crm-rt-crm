@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -65,15 +64,15 @@ export const FilterFieldSelector = ({ selectedFields, onFieldsChange }: FilterFi
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Select value={selectedValue} onValueChange={addField}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[180px] h-8 text-xs">
             <SelectValue placeholder="Add filter field" />
           </SelectTrigger>
           <SelectContent>
             {availableFields.map(field => (
-              <SelectItem key={field.key} value={field.key}>
+              <SelectItem key={field.key} value={field.key} className="text-xs">
                 {field.label}
               </SelectItem>
             ))}
@@ -84,18 +83,19 @@ export const FilterFieldSelector = ({ selectedFields, onFieldsChange }: FilterFi
           size="sm" 
           onClick={() => selectedValue && addField(selectedValue)}
           disabled={!selectedValue}
+          className="h-8 w-8 p-0"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3 h-3" />
         </Button>
       </div>
 
       {selectedFields.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1">
           {selectedFields.map(fieldKey => (
-            <Badge key={fieldKey} variant="secondary" className="text-xs">
+            <Badge key={fieldKey} variant="secondary" className="text-xs px-2 py-0.5 h-6">
               {getFieldLabel(fieldKey)}
               <X 
-                className="w-3 h-3 ml-1 cursor-pointer" 
+                className="w-2.5 h-2.5 ml-1 cursor-pointer" 
                 onClick={() => removeField(fieldKey)}
               />
             </Badge>

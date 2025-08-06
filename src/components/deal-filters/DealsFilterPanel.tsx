@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -221,30 +220,30 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
   };
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-4">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardTitle className="flex items-center justify-between">
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+            <CardTitle className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <Filter className="w-5 h-5" />
+                <Filter className="w-4 h-4" />
                 <span>Search Filters</span>
                 {hasActiveFilters && (
-                  <span className="text-sm bg-primary text-primary-foreground px-2 py-1 rounded-full">
+                  <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
                     {getActiveFilterCount()}
                   </span>
                 )}
               </div>
-              {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
         
         <CollapsibleContent>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-3 py-3">
             {/* Filter Field Selection */}
-            <div className="border-b pb-4">
-              <h3 className="text-sm font-medium mb-3">Select Fields to Filter</h3>
+            <div className="border-b pb-3">
+              <h3 className="text-xs font-medium mb-2 text-muted-foreground">Select Fields to Filter</h3>
               <FilterFieldSelector
                 selectedFields={selectedFilterFields}
                 onFieldsChange={setSelectedFilterFields}
@@ -253,9 +252,9 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
 
             {/* Selected Filter Inputs */}
             {selectedFilterFields.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">Filter Values</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="space-y-3">
+                <h3 className="text-xs font-medium text-muted-foreground">Filter Values</h3>
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {selectedFilterFields.map(fieldKey => {
                     const inputProps = getFilterInputProps(fieldKey);
                     return (
@@ -272,9 +271,9 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
             )}
 
             {/* Filter Actions */}
-            <div className="flex flex-wrap items-center gap-2 pt-4 border-t">
-              <Button onClick={applyFilters} className="bg-primary hover:bg-primary/90">
-                <Check className="w-4 h-4 mr-1" />
+            <div className="flex flex-wrap items-center gap-2 pt-3 border-t">
+              <Button onClick={applyFilters} size="sm" className="h-8 text-xs">
+                <Check className="w-3 h-3 mr-1" />
                 Apply Filters
               </Button>
               
@@ -282,7 +281,6 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
                 currentFilters={tempFilters}
                 onLoadFilters={(loadedFilters) => {
                   setTempFilters(loadedFilters);
-                  // Auto-select the fields from the loaded filter
                   const fieldsWithValues = Object.keys(loadedFilters).filter(key => {
                     const value = loadedFilters[key as keyof DealFilters];
                     if (Array.isArray(value)) return value.length > 0;
@@ -292,8 +290,8 @@ export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues }: Dea
                 }}
               />
               
-              <Button variant="outline" onClick={clearAllFilters}>
-                <X className="w-4 h-4 mr-1" />
+              <Button variant="outline" onClick={clearAllFilters} size="sm" className="h-8 text-xs">
+                <X className="w-3 h-3 mr-1" />
                 Clear Filters
               </Button>
             </div>

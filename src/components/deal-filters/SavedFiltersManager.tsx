@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +36,6 @@ export const SavedFiltersManager = ({ currentFilters, onLoadFilters }: SavedFilt
 
       if (error) throw error;
       
-      // Type cast the data properly to handle the JSON type from Supabase
       const typedData = (data || []).map(item => ({
         ...item,
         filters: item.filters as DealFilters
@@ -62,7 +60,7 @@ export const SavedFiltersManager = ({ currentFilters, onLoadFilters }: SavedFilt
         .insert({
           user_id: user.id,
           name: filterName.trim(),
-          filters: currentFilters as any // Type cast to handle JSON storage
+          filters: currentFilters as any
         });
 
       if (error) throw error;
@@ -128,8 +126,8 @@ export const SavedFiltersManager = ({ currentFilters, onLoadFilters }: SavedFilt
     <div className="flex gap-2">
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Save className="w-4 h-4 mr-1" />
+          <Button variant="outline" size="sm" className="h-8 text-xs">
+            <Save className="w-3 h-3 mr-1" />
             Save Filter
           </Button>
         </DialogTrigger>
@@ -160,8 +158,8 @@ export const SavedFiltersManager = ({ currentFilters, onLoadFilters }: SavedFilt
 
       <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-1" />
+          <Button variant="outline" size="sm" className="h-8 text-xs">
+            <Download className="w-3 h-3 mr-1" />
             Load Filter
           </Button>
         </DialogTrigger>
