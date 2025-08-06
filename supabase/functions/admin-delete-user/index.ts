@@ -66,46 +66,101 @@ serve(async (req) => {
 
     console.log('Attempting to delete user:', userId);
 
-    // First, try to delete related data from our database tables
+    // Delete all related data first to avoid foreign key constraints
     try {
-      // Delete from profiles table if exists
-      const { error: profileDeleteError } = await supabaseAdmin
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-      
-      if (profileDeleteError) {
-        console.warn('Error deleting user profile (may not exist):', profileDeleteError);
-      } else {
-        console.log('Successfully deleted user profile');
+      // Delete from all tables that might reference this user
+      const tablesToClean = [
+        'profiles',
+        'deals', 
+        'contacts',
+        'leads',
+        'meetings',
+        'meeting_outcomes',
+        'dashboard_preferences',
+        'yearly_revenue_targets'
+      ];
+
+      for (const table of tablesToClean) {
+        try {
+          // Try different possible foreign key column names
+          const possibleColumns = ['id', 'user_id', 'created_by', 'modified_by', 'contact_owner'];
+          
+          for (const column of possibleColumns) {
+            const { error } = await supabaseAdmin
+              .from(table)
+              .delete()
+              .eq(column, userId);
+            
+            if (!error) {
+              console.log(`Successfully cleaned ${table}.${column} for user ${userId}`);
+            }
+          }
+        } catch (tableError) {
+          console.warn(`Error cleaning table ${table}:`, tableError);
+          // Continue with other tables even if one fails
+        }
       }
-    } catch (error) {
-      console.warn('Error deleting related data:', error);
+    } catch (cleanupError) {
+      console.warn('Error during data cleanup:', cleanupError);
+      // Don't fail the whole operation, continue with user deletion
     }
 
-    // Delete user from auth using admin API
-    const { data: deletedUser, error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    // Now attempt to delete the user from auth
+    let retryCount = 0;
+    const maxRetries = 3;
+    let deleteError = null;
 
-    if (deleteError) {
-      console.error('Error deleting user from auth:', deleteError);
-      return new Response(
-        JSON.stringify({ 
-          error: deleteError.message || 'Failed to delete user',
-          details: deleteError 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    while (retryCount < maxRetries) {
+      try {
+        console.log(`Delete attempt ${retryCount + 1} for user ${userId}`);
+        
+        const { data: deletedUser, error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+        if (error) {
+          deleteError = error;
+          console.error(`Delete attempt ${retryCount + 1} failed:`, error);
+          
+          // If it's a database constraint error, wait a bit and retry
+          if (error.message?.includes('Database error') && retryCount < maxRetries - 1) {
+            console.log(`Waiting 1 second before retry ${retryCount + 2}`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            retryCount++;
+            continue;
+          }
+          
+          throw error;
+        }
+
+        console.log('User deleted successfully from auth');
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            message: 'User deleted successfully',
+            user: deletedUser 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+
+      } catch (error) {
+        deleteError = error;
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          console.log(`Retry ${retryCount} after error:`, error);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     }
 
-    console.log('User deleted successfully from auth');
-
+    // If we get here, all retries failed
+    console.error('All delete attempts failed:', deleteError);
     return new Response(
       JSON.stringify({ 
-        success: true,
-        message: 'User deleted successfully',
-        user: deletedUser 
+        error: deleteError?.message || 'Failed to delete user after multiple attempts',
+        details: deleteError,
+        retries: maxRetries
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {

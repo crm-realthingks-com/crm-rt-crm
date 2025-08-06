@@ -142,9 +142,6 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
               required
               minLength={6}
             />
-            <p className="text-sm text-muted-foreground">
-              Password must be at least 6 characters long
-            </p>
           </div>
           
           <div className="space-y-2">
