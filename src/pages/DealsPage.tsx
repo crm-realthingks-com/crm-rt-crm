@@ -1,16 +1,18 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Deal, DealStage } from "@/types/deal";
+import { DealFilters } from "@/types/filters";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { ListView } from "@/components/ListView";
 import { DealForm } from "@/components/DealForm";
+import { DealsFilterPanel } from "@/components/deal-filters/DealsFilterPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImportExportBar } from "@/components/ImportExportBar";
 import { useToast } from "@/hooks/use-toast";
+import { useFilteredDeals } from "@/hooks/useFilteredDeals";
 import { Plus, BarChart3, Users, Euro } from "lucide-react";
 
 const DealsPage = () => {
@@ -25,6 +27,10 @@ const DealsPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [initialStage, setInitialStage] = useState<DealStage>('Lead');
   const [activeView, setActiveView] = useState<'kanban' | 'list'>('kanban');
+  const [filters, setFilters] = useState<DealFilters>({});
+
+  // Use the filtered deals hook
+  const { filteredDeals, uniqueValues } = useFilteredDeals(deals, filters);
 
   const fetchDeals = async () => {
     try {
@@ -217,9 +223,9 @@ const DealsPage = () => {
   };
 
   const getStats = () => {
-    const totalDeals = deals.length;
-    const totalValue = deals.reduce((sum, deal) => sum + (deal.total_contract_value || 0), 0);
-    const wonDeals = deals.filter(deal => deal.stage === 'Won').length;
+    const totalDeals = filteredDeals.length;
+    const totalValue = filteredDeals.reduce((sum, deal) => sum + (deal.total_contract_value || 0), 0);
+    const wonDeals = filteredDeals.filter(deal => deal.stage === 'Won').length;
     
     return { totalDeals, totalValue, wonDeals };
   };
@@ -261,11 +267,49 @@ const DealsPage = () => {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">Deals Pipeline</h1>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Deals</p>
+                        <p className="text-2xl font-bold">{stats.totalDeals}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Euro className="w-5 h-5 text-green-600" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Value</p>
+                        <p className="text-2xl font-bold">€{stats.totalValue.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-purple-600" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Won Deals</p>
+                        <p className="text-2xl font-bold">{stats.wonDeals}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
               <div className="hidden sm:block">
                 <ImportExportBar
-                  deals={deals}
+                  deals={filteredDeals}
                   onImport={handleImportDeals}
                   onExport={() => {}}
                   selectedDeals={[]}
@@ -300,14 +344,20 @@ const DealsPage = () => {
             </div>
           </div>
 
+          {/* Filters Panel */}
+          <DealsFilterPanel
+            filters={filters}
+            onFiltersChange={setFilters}
+            uniqueValues={uniqueValues}
+          />
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="w-full" style={{ height: 'calc(100vh - 250px)' }}>
+      <div className="w-full" style={{ height: 'calc(100vh - 350px)' }}>
         {activeView === 'kanban' ? (
           <KanbanBoard
-            deals={deals}
+            deals={filteredDeals}
             onUpdateDeal={handleUpdateDeal}
             onDealClick={handleDealClick}
             onCreateDeal={handleCreateDeal}
@@ -318,7 +368,7 @@ const DealsPage = () => {
         ) : (
           <div className="h-full overflow-y-auto p-4">
             <ListView
-              deals={deals}
+              deals={filteredDeals}
               onDealClick={handleDealClick}
               onUpdateDeal={handleUpdateDeal}
               onDeleteDeals={handleDeleteDeals}
