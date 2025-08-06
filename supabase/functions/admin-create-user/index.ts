@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
 
@@ -7,15 +8,13 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, displayName, role, password } = await req.json();
-
-    // Create admin client
+    console.log('Starting admin-create-user function');
+    
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -27,7 +26,7 @@ serve(async (req) => {
       }
     );
 
-    // Verify the user making the request is authenticated
+    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -36,47 +35,55 @@ serve(async (req) => {
       );
     }
 
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
     const token = authHeader.replace('Bearer ', '');
-    const { data: user, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const { data: user, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user.user) {
       return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
+        JSON.stringify({ error: 'Invalid token or unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create new user
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    const body = await req.json();
+    const { email, displayName, role, password } = body;
+
+    // Create user using admin API
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       user_metadata: {
         full_name: displayName,
-        role: role
+        display_name: displayName,
+        role: role || 'user'
       },
       email_confirm: true
     });
 
-    if (error) {
-      console.error('Error creating user:', error);
+    if (createError) {
+      console.error('Error creating user:', createError);
       return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: createError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('User created successfully:', newUser.user?.email);
+
     return new Response(
-      JSON.stringify({ user: data.user }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ user: newUser.user }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('Unexpected error in admin-create-user:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

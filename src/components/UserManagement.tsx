@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { MoreHorizontal, Plus, RefreshCw, RotateCcw } from "lucide-react";
+import { MoreHorizontal, Plus, RefreshCw, RotateCcw, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import UserModal from "./UserModal";
 import EditUserModal from "./EditUserModal";
@@ -19,6 +18,7 @@ interface User {
   email: string;
   user_metadata: {
     full_name?: string;
+    display_name?: string;
     role?: string;
   };
   created_at: string;
@@ -29,6 +29,7 @@ interface User {
 const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -40,39 +41,53 @@ const UserManagement = () => {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Get current session from memory instead of calling getSession()
+      console.log('Fetching users...');
+      
+      // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error("No valid session found. Please log in again.");
       }
       
-      const { data, error } = await supabase.functions.invoke('admin-list-users');
+      console.log('Session found, calling edge function...');
+      
+      const { data, error } = await supabase.functions.invoke('admin-list-users', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
+      });
       
       if (error) {
+        console.error('Edge function error:', error);
         // Handle specific authentication errors
         if (error.message?.includes('Invalid token') || error.message?.includes('Session not found')) {
           throw new Error("Your session has expired. Please refresh the page and log in again.");
         }
-        throw error;
+        throw new Error(error.message || 'Failed to fetch users from edge function');
       }
       
+      console.log('Edge function response:', data);
       setUsers(data.users || []);
     } catch (error: any) {
       console.error('Error fetching users:', error);
+      const errorMessage = error.message || "Failed to fetch users";
+      setError(errorMessage);
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch users",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]); // Only depend on toast to prevent unnecessary recreation
+  }, [toast]);
 
   // Debounced sync function to prevent excessive calls
   const syncWithAuth = useCallback(async () => {
     try {
+      setError(null);
       toast({
         title: "Syncing",
         description: "Refreshing session and syncing with Supabase Auth...",
@@ -90,9 +105,11 @@ const UserManagement = () => {
         description: "Successfully synced with Supabase Auth",
       });
     } catch (error: any) {
+      const errorMessage = error.message || "Failed to sync with auth";
+      setError(errorMessage);
       toast({
         title: "Error", 
-        description: error.message || "Failed to sync with auth",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -167,6 +184,36 @@ const UserManagement = () => {
         <CardContent>
           <div className="flex items-center justify-center h-32">
             <RefreshCw className="h-6 w-6 animate-spin" />
+            <span className="ml-2">Loading users...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>User Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center h-32 space-y-4">
+            <div className="flex items-center space-x-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              <span className="font-medium">Error Loading Users</span>
+            </div>
+            <p className="text-sm text-muted-foreground text-center">{error}</p>
+            <div className="flex space-x-2">
+              <Button variant="outline" size="sm" onClick={fetchUsers}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+              <Button variant="outline" size="sm" onClick={syncWithAuth}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Sync with Auth
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -216,7 +263,7 @@ const UserManagement = () => {
               {users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
-                    {user.user_metadata?.full_name || user.email.split('@')[0]}
+                    {user.user_metadata?.display_name || user.user_metadata?.full_name || user.email.split('@')[0]}
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
@@ -267,6 +314,9 @@ const UserManagement = () => {
           {users.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No users found</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Try refreshing or syncing with auth to load users
+              </p>
             </div>
           )}
         </CardContent>
