@@ -90,6 +90,13 @@ export const mapHeaders = (headers: string[]): string[] => {
   });
 };
 
+export const createHeaderMapper = (tableName: string) => {
+  return (header: string): string | null => {
+    const normalizedHeader = header.toLowerCase().trim();
+    return commonMappings[normalizedHeader] || null;
+  };
+};
+
 export const createFieldMapping = (csvHeaders: string[], tableName: string): HeaderMapping => {
   const mapping: HeaderMapping = {};
   

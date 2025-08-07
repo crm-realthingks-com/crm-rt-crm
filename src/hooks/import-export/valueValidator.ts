@@ -67,6 +67,12 @@ export const validateValue = (value: any, fieldName: string, tableName: string):
   return stringValue;
 };
 
+export const createValueValidator = (tableName: string) => {
+  return (fieldName: string, value: any): any => {
+    return validateValue(value, fieldName, tableName);
+  };
+};
+
 export const formatValueForImport = (value: any, fieldName: string, tableName: string): any => {
   const validatedValue = validateValue(value, fieldName, tableName);
   
