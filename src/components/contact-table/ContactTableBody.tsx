@@ -16,9 +16,17 @@ interface Contact {
   position?: string;
   email?: string;
   phone_no?: string;
-  country?: string;
-  contact_owner?: string;
+  mobile_no?: string;
+  linkedin?: string;
+  website?: string;
+  contact_source?: string;
   lead_status?: string;
+  industry?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  description?: string;
+  contact_owner?: string;
   created_by?: string;
   [key: string]: any;
 }
@@ -69,33 +77,64 @@ export const ContactTableBody = ({
 
   const handleConvertToLead = async (contact: Contact) => {
     try {
-      // Create a new lead with contact information
+      // Validate required fields for lead conversion
+      if (!contact.contact_name || !contact.contact_name.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Contact name is required to convert to lead.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get current user for ownership
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to convert contacts to leads.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create a new lead with contact information, ensuring all fields exist
       const leadData = {
         lead_name: contact.contact_name,
-        company_name: contact.company_name,
-        position: contact.position,
-        email: contact.email,
-        phone_no: contact.phone_no,
-        mobile_no: contact.mobile_no,
-        linkedin: contact.linkedin,
-        website: contact.website,
-        contact_source: contact.contact_source,
+        company_name: contact.company_name || null,
+        position: contact.position || null,
+        email: contact.email || null,
+        phone_no: contact.phone_no || null,
+        mobile_no: contact.mobile_no || null,
+        linkedin: contact.linkedin || null,
+        website: contact.website || null,
+        contact_source: contact.contact_source || null,
         lead_status: contact.lead_status || 'New',
-        industry: contact.industry,
-        city: contact.city,
-        country: contact.country,
-        description: contact.description,
-        contact_owner: contact.contact_owner,
-        created_by: contact.created_by,
+        industry: contact.industry || null,
+        city: contact.city || null,
+        country: contact.country || null,
+        description: contact.description || null,
+        contact_owner: contact.contact_owner || user.id,
+        created_by: user.id,
         created_time: new Date().toISOString(),
         modified_time: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from('leads')
-        .insert([leadData]);
+      console.log('Converting contact to lead with data:', leadData);
 
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from('leads')
+        .insert([leadData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error converting contact to lead:', error);
+        throw error;
+      }
+
+      console.log('Successfully converted contact to lead:', data);
 
       toast({
         title: "Success",
@@ -108,7 +147,7 @@ export const ContactTableBody = ({
     } catch (error) {
       console.error('Error converting contact to lead:', error);
       toast({
-        title: "Error",
+        title: "Conversion Error",
         description: "Failed to convert contact to lead. Please try again.",
         variant: "destructive",
       });

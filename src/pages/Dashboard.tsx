@@ -30,8 +30,10 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="container mx-auto px-6 py-8">
-      <YearlyRevenueSummary />
+    <div className="h-full w-full overflow-hidden">
+      <div className="h-full p-6">
+        <YearlyRevenueSummary />
+      </div>
     </div>
   );
 };
