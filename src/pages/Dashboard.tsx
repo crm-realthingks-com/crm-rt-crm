@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Deal } from "@/types/deal";
 import { CalendarDays, Users, TrendingUp, DollarSign, BarChart3, RefreshCw, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { YearlyRevenueSummary } from "@/components/YearlyRevenueSummary";
+import YearlyRevenueSummary from "@/components/YearlyRevenueSummary";
 
 interface DashboardStats {
   totalDeals: number;
