@@ -13,8 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting admin-update-user function');
-    
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -72,7 +70,7 @@ serve(async (req) => {
     if (action === 'activate') {
       updateData.banned_until = null;
     } else if (action === 'deactivate') {
-      updateData.banned_until = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // Ban for 1 year
+      updateData.banned_until = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
     }
 
     // Update user using admin API
@@ -82,14 +80,11 @@ serve(async (req) => {
     );
 
     if (updateError) {
-      console.error('Error updating user:', updateError);
       return new Response(
         JSON.stringify({ error: updateError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log('User updated successfully:', updatedUser.user?.email);
 
     return new Response(
       JSON.stringify({ user: updatedUser.user }),
@@ -97,7 +92,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Unexpected error in admin-update-user:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

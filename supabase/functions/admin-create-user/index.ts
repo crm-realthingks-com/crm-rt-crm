@@ -13,8 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting admin-create-user function');
-    
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -29,7 +27,6 @@ serve(async (req) => {
     // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header');
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -45,27 +42,21 @@ serve(async (req) => {
     const { data: user, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user.user) {
-      console.error('Authentication failed:', authError);
       return new Response(
         JSON.stringify({ error: 'Invalid token or unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('User authenticated:', user.user.email);
-
     const body = await req.json();
     const { email, displayName, role, password } = body;
 
-    // Validate required fields
     if (!email || !password) {
       return new Response(
         JSON.stringify({ error: 'Email and password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log('Creating user with email:', email);
 
     // Create user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -76,39 +67,29 @@ serve(async (req) => {
         display_name: displayName || email.split('@')[0],
         role: role || 'user'
       },
-      email_confirm: true // Auto-confirm email
+      email_confirm: true
     });
 
     if (createError) {
-      console.error('Error creating user:', createError);
       return new Response(
         JSON.stringify({ 
-          error: createError.message || 'Failed to create user',
-          details: createError 
+          error: createError.message || 'Failed to create user'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('User created successfully in auth:', newUser.user?.email);
-
     // Create profile entry
-    try {
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .insert({
-          id: newUser.user.id,
-          full_name: displayName || email.split('@')[0],
-          'Email ID': email
-        });
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: newUser.user.id,
+        full_name: displayName || email.split('@')[0],
+        'Email ID': email
+      });
 
-      if (profileError) {
-        console.warn('Error creating profile (user still created):', profileError);
-      } else {
-        console.log('Profile created successfully');
-      }
-    } catch (error) {
-      console.warn('Error creating profile:', error);
+    if (profileError) {
+      console.warn('Error creating profile:', profileError);
     }
 
     return new Response(
@@ -121,12 +102,10 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Unexpected error in admin-create-user:', error);
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        details: error.message,
-        stack: error.stack 
+        details: error.message
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
