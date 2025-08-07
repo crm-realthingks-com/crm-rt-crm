@@ -1,132 +1,67 @@
 
-import { supabase } from '@/integrations/supabase/client';
-
 export const createDuplicateChecker = (tableName: string) => {
-  return async (record: any): Promise<boolean> => {
-    try {
-      if (tableName === 'deals') {
-        console.log('Checking for duplicate deal:', {
-          id: record.id,
-          deal_name: record.deal_name,
-          stage: record.stage,
-          customer_name: record.customer_name,
-          project_name: record.project_name
-        });
-
-        // If the record has an ID, check if it exists in the database
-        if (record.id && record.id.trim() !== '') {
-          console.log('Checking by ID:', record.id);
-          const { data: existingById, error: idError } = await supabase
-            .from('deals')
-            .select('id, deal_name, stage')
-            .eq('id', record.id.trim())
-            .maybeSingle();
-
-          if (idError) {
-            console.error('Error checking deal by ID:', idError);
-            // Don't treat database errors as duplicates
-            return false;
-          }
-
-          if (existingById) {
-            console.log('Duplicate found by ID:', record.id, 'existing deal:', existingById.deal_name);
-            return true;
-          } else {
-            console.log('No existing deal found with ID:', record.id);
-          }
-        }
-
-        // Check for duplicates based on deal_name (only if no ID or ID doesn't exist)
-        if (record.deal_name && record.deal_name.trim() !== '') {
-          console.log('Checking by deal_name:', record.deal_name);
-          const { data: existingDeals, error } = await supabase
-            .from('deals')
-            .select('id, deal_name, stage, customer_name, project_name')
-            .eq('deal_name', record.deal_name.trim());
-
-          if (error) {
-            console.error('Error checking deal duplicates by name:', error);
-            return false;
-          }
-
-          if (existingDeals && existingDeals.length > 0) {
-            console.log(`Found ${existingDeals.length} existing deals with same deal_name`);
-            
-            // Check for exact match
-            const exactMatch = existingDeals.find(existing => 
-              existing.deal_name?.toLowerCase().trim() === record.deal_name?.toLowerCase().trim()
-            );
-
-            if (exactMatch) {
-              console.log('Duplicate found - exact deal_name match:', exactMatch.deal_name);
-              return true;
-            }
-          }
-        }
-
-        // Fallback: check by project_name + customer_name combination (only if both exist)
-        if (record.project_name && record.customer_name && 
-            record.project_name.trim() !== '' && record.customer_name.trim() !== '') {
-          console.log('Checking by project_name + customer_name:', record.project_name, record.customer_name);
-          const { data: projectCustomerMatch, error: projectError } = await supabase
-            .from('deals')
-            .select('id, project_name, customer_name, deal_name')
-            .eq('project_name', record.project_name.trim())
-            .eq('customer_name', record.customer_name.trim());
-
-          if (!projectError && projectCustomerMatch && projectCustomerMatch.length > 0) {
-            console.log('Duplicate found by project_name + customer_name combination:', projectCustomerMatch[0]);
-            return true;
-          }
-        }
-
-        console.log('No duplicates found for deal');
-        return false;
-      }
-      
-      // For other tables, use original logic with improved error handling
-      const keyFields = tableName === 'contacts_module' || tableName === 'contacts' 
-        ? ['email', 'contact_name'] 
-        : tableName === 'leads'
-        ? ['email', 'lead_name']
-        : tableName === 'meetings'
-        ? ['title', 'start_time']
-        : ['deal_name'];
-
-      // Build query dynamically
-      let query = supabase.from(tableName as any).select('id');
-      
-      let hasValidFields = false;
-      keyFields.forEach(field => {
-        if (record[field] && String(record[field]).trim() !== '') {
-          query = query.eq(field, String(record[field]).trim());
-          hasValidFields = true;
-        }
-      });
-
-      // If no valid fields to check against, not a duplicate
-      if (!hasValidFields) {
-        console.log('No valid key fields to check for duplicates');
-        return false;
-      }
-
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error checking duplicate for', tableName, ':', error);
-        return false;
-      }
-      
-      const isDuplicate = data && data.length > 0;
-      
-      if (isDuplicate) {
-        console.log(`Duplicate found for record with ${keyFields.join(', ')}:`, keyFields.map(f => record[f]).join(', '));
-      }
-      
-      return isDuplicate;
-    } catch (error) {
-      console.error('Error checking duplicate:', error);
+  return (record: any, existingRecords: any[]): boolean => {
+    if (!existingRecords || existingRecords.length === 0) {
       return false;
     }
+
+    if (tableName === 'deals') {
+      // Check for duplicates based on deal_name or project_name
+      return existingRecords.some(existing => {
+        const recordName = record.deal_name || record.project_name;
+        const existingName = existing.deal_name || existing.project_name;
+        
+        if (recordName && existingName) {
+          return recordName.toLowerCase().trim() === existingName.toLowerCase().trim();
+        }
+        return false;
+      });
+    }
+
+    if (tableName === 'contacts') {
+      // Check for duplicates based on contact_name and company_name combination
+      return existingRecords.some(existing => {
+        const nameMatch = record.contact_name && existing.contact_name &&
+          record.contact_name.toLowerCase().trim() === existing.contact_name.toLowerCase().trim();
+        
+        const companyMatch = record.company_name && existing.company_name &&
+          record.company_name.toLowerCase().trim() === existing.company_name.toLowerCase().trim();
+        
+        // Consider it a duplicate if both name and company match, or if name matches and no company info
+        return nameMatch && (companyMatch || (!record.company_name && !existing.company_name));
+      });
+    }
+
+    if (tableName === 'leads') {
+      // Check for duplicates based on lead_name and company_name combination
+      return existingRecords.some(existing => {
+        const nameMatch = record.lead_name && existing.lead_name &&
+          record.lead_name.toLowerCase().trim() === existing.lead_name.toLowerCase().trim();
+        
+        const companyMatch = record.company_name && existing.company_name &&
+          record.company_name.toLowerCase().trim() === existing.company_name.toLowerCase().trim();
+        
+        return nameMatch && (companyMatch || (!record.company_name && !existing.company_name));
+      });
+    }
+
+    // Default: no duplicate detection for unknown tables
+    return false;
   };
+};
+
+export const getUniqueIdentifier = (record: any, tableName: string): string => {
+  if (tableName === 'deals') {
+    return record.deal_name || record.project_name || 'unknown';
+  }
+  
+  if (tableName === 'contacts') {
+    return `${record.contact_name || 'unknown'}-${record.company_name || 'no-company'}`;
+  }
+  
+  if (tableName === 'leads') {
+    return `${record.lead_name || 'unknown'}-${record.company_name || 'no-company'}`;
+  }
+  
+  return record.id || 'unknown';
 };

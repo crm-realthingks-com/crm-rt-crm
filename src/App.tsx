@@ -1,131 +1,50 @@
 
-import React, { useMemo } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import DealsPage from "./pages/DealsPage";
 import Contacts from "./pages/Contacts";
 import Leads from "./pages/Leads";
-import DealsPage from "./pages/DealsPage";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+const queryClient = new QueryClient();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  return (
-    <div className="min-h-screen flex w-full">
-      <AppSidebar />
-      <main className="flex-1 bg-background">
-        {children}
-      </main>
-    </div>
-  );
-};
-
-// Auth Route Component (redirects if already authenticated)
-const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-// Create QueryClient outside component to prevent recreation and avoid React hooks issues
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
-const App = () => {
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={
-                <AuthRoute>
-                  <Auth />
-                </AuthRoute>
-              } />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/contacts" element={
-                <ProtectedRoute>
-                  <Contacts />
-                </ProtectedRoute>
-              } />
-              <Route path="/leads" element={
-                <ProtectedRoute>
-                  <Leads />
-                </ProtectedRoute>
-              } />
-              <Route path="/deals" element={
-                <ProtectedRoute>
-                  <DealsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              } />
-              <Route path="*" element={
-                <ProtectedRoute>
-                  <NotFound />
-                </ProtectedRoute>
-              } />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SidebarProvider>
+            <div className="min-h-screen flex w-full bg-background">
+              <AppSidebar />
+              <main className="flex-1 overflow-hidden">
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/deals" element={<DealsPage />} />
+                  <Route path="/contacts" element={<Contacts />} />
+                  <Route path="/leads" element={<Leads />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+            </div>
+          </SidebarProvider>
+        </BrowserRouter>
+      </TooltipProvider>
     </QueryClientProvider>
   );
-};
+}
 
 export default App;

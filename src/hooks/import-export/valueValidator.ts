@@ -1,149 +1,83 @@
 
-import { getColumnConfig } from './columnConfig';
+export const validateValue = (value: any, fieldName: string, tableName: string): any => {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
 
-export const createValueValidator = (tableName: string) => {
-  const config = getColumnConfig(tableName);
+  const stringValue = String(value).trim();
+  if (stringValue === '') {
+    return null;
+  }
 
-  return (key: string, value: string) => {
-    if (!value || value.trim() === '') return null;
-
-    console.log(`Validating field ${key} with value: ${value}`);
-
-    // Handle enum validations with exact matching
-    if (key in config.enums) {
-      const enumValues = config.enums[key];
-      if (enumValues && enumValues.includes(value)) {
-        return value;
-      }
-      // Try case-insensitive match
-      const normalizedValue = value.trim();
-      const matchedValue = enumValues.find(enumVal => enumVal.toLowerCase() === normalizedValue.toLowerCase());
-      if (matchedValue) {
-        return matchedValue;
-      }
-      // For critical fields like stage, return null if invalid
-      if (key === 'stage') {
-        console.warn(`Invalid stage value: ${value}, available values: ${enumValues.join(', ')}`);
-        return null;
-      }
-      // For other enums, return null to avoid setting invalid values
-      console.warn(`Invalid enum value for ${key}: ${value}, available values: ${enumValues.join(', ')}`);
-      return null;
-    }
-
-    // Handle specific field types for deals
-    if (tableName === 'deals') {
-      switch (key) {
-        case 'priority':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          const priority = parseInt(value);
-          return isNaN(priority) ? null : Math.max(1, Math.min(5, priority));
-        
-        case 'probability':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          const prob = parseInt(value);
-          return isNaN(prob) ? null : Math.max(0, Math.min(100, prob));
-        
-        case 'project_duration':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          const duration = parseInt(value);
-          return isNaN(duration) ? null : Math.max(0, duration);
-        
-        case 'total_contract_value':
-        case 'quarterly_revenue_q1':
-        case 'quarterly_revenue_q2':
-        case 'quarterly_revenue_q3':
-        case 'quarterly_revenue_q4':
-        case 'total_revenue':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          const revenue = parseFloat(value.replace(/[€$,]/g, ''));
-          return isNaN(revenue) ? null : Math.max(0, revenue);
-        
-        case 'start_date':
-        case 'end_date':
-        case 'expected_closing_date':
-        case 'rfq_received_date':
-        case 'proposal_due_date':
-        case 'signed_contract_date':
-        case 'implementation_start_date':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          // Handle exported date format (YYYY-MM-DD)
-          const date = new Date(value);
-          return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
-        
-        // Text fields
-        case 'deal_name':
-        case 'project_name':
-        case 'lead_name':
-        case 'customer_name':
-        case 'region':
-        case 'lead_owner':
-        case 'budget':
-        case 'internal_comment':
-        case 'customer_need':
-        case 'action_items':
-        case 'current_status':
-        case 'closing':
-        case 'won_reason':
-        case 'lost_reason':
-        case 'need_improvement':
-        case 'drop_reason':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          return value.trim();
-        
-        default:
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          return value.trim();
-      }
-    }
-
-    // Handle specific field types for other tables
-    switch (key) {
-      case 'no_of_employees':
-        const employees = parseInt(value);
-        return isNaN(employees) ? null : employees;
+  // Handle specific field validations based on table and field
+  if (tableName === 'deals') {
+    switch (fieldName) {
+      case 'stage':
+        const validStages = ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'];
+        return validStages.includes(stringValue) ? stringValue : 'Lead';
       
-      case 'annual_revenue':
-      case 'amount':
-      case 'rfq_value':
-        const revenue = parseFloat(value.replace(/[$,]/g, ''));
-        return isNaN(revenue) ? null : revenue;
+      case 'priority':
+        const priority = parseInt(stringValue);
+        return isNaN(priority) ? null : Math.max(1, Math.min(5, priority));
       
-      case 'email':
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(value) ? value : null;
+      case 'probability':
+        const probability = parseInt(stringValue);
+        return isNaN(probability) ? null : Math.max(0, Math.min(100, probability));
       
-      // Time fields for meetings
-      case 'start_time':
-      case 'end_time':
-        if (tableName === 'meetings') {
-          const date = new Date(value);
-          return isNaN(date.getTime()) ? null : date.toISOString();
-        }
-        return value.trim();
+      case 'total_contract_value':
+      case 'project_duration':
+        const numValue = parseFloat(stringValue);
+        return isNaN(numValue) ? null : numValue;
       
-      case 'participants':
-        // Handle comma-separated email list
-        if (tableName === 'meetings') {
-          return value.split(',').map(email => email.trim()).filter(email => email);
-        }
-        return value.trim();
-        
-      case 'tags':
-        // Handle comma-separated tags list
-        if (tableName === 'meetings') {
-          return value.split(',').map(tag => tag.trim()).filter(tag => tag);
-        }
-        return value.trim();
-        
-      case 'follow_up_required':
-        if (tableName === 'meetings') {
-          return ['yes', 'true', '1', 'on'].includes(value.toLowerCase());
-        }
-        return value.trim();
+      case 'expected_closing_date':
+      case 'start_date':
+      case 'end_date':
+      case 'rfq_received_date':
+      case 'proposal_due_date':
+        // Handle date fields - try to parse the date
+        const date = new Date(stringValue);
+        return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+      
+      case 'is_recurring':
+        return stringValue.toLowerCase() === 'true' || stringValue === '1';
       
       default:
-        return value.trim();
+        return stringValue;
     }
-  };
+  }
+
+  if (tableName === 'contacts') {
+    switch (fieldName) {
+      case 'annual_revenue':
+      case 'no_of_employees':
+        const numValue = parseFloat(stringValue);
+        return isNaN(numValue) ? null : numValue;
+      
+      default:
+        return stringValue;
+    }
+  }
+
+  if (tableName === 'leads') {
+    // For leads, most fields are text
+    return stringValue;
+  }
+
+  // Default: return the string value
+  return stringValue;
+};
+
+export const formatValueForImport = (value: any, fieldName: string, tableName: string): any => {
+  const validatedValue = validateValue(value, fieldName, tableName);
+  
+  if (validatedValue === null || validatedValue === undefined) {
+    return null;
+  }
+
+  // Ensure boolean fields are properly formatted
+  if (typeof validatedValue === 'boolean') {
+    return validatedValue;
+  }
+
+  return validatedValue;
 };
