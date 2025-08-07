@@ -3,14 +3,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Deal, DealStage, DEAL_STAGES, STAGE_COLORS } from "@/types/deal";
-import { Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Columns } from "lucide-react";
+import { Search, Edit, Trash2, Filter, Columns } from "lucide-react";
 import { format } from "date-fns";
 import { InlineEditCell } from "./InlineEditCell";
 import { ColumnCustomizer, ColumnConfig } from "./ColumnCustomizer";
-import { ImportExportBar } from "./ImportExportBar";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,6 +18,8 @@ interface ListViewProps {
   onUpdateDeal: (dealId: string, updates: Partial<Deal>) => void;
   onDeleteDeals: (dealIds: string[]) => void;
   onImportDeals: (deals: Partial<Deal>[]) => void;
+  columns: ColumnConfig[];
+  onColumnsChange: (columns: ColumnConfig[]) => void;
 }
 
 export const ListView = ({ 
@@ -27,50 +27,13 @@ export const ListView = ({
   onDealClick, 
   onUpdateDeal, 
   onDeleteDeals, 
-  onImportDeals 
+  onImportDeals,
+  columns,
+  onColumnsChange
 }: ListViewProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [stageFilter, setStageFilter] = useState<DealStage | "all">("all");
-  const [sortBy, setSortBy] = useState<string>("modified_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
-  const [columns, setColumns] = useState<ColumnConfig[]>([
-    { field: 'project_name', label: 'Project', visible: true, order: 0 },
-    { field: 'customer_name', label: 'Customer', visible: true, order: 1 },
-    { field: 'lead_owner', label: 'Lead Owner', visible: true, order: 2 },
-    { field: 'stage', label: 'Stage', visible: true, order: 3 },
-    { field: 'priority', label: 'Priority', visible: true, order: 4 },
-    { field: 'total_contract_value', label: 'Value', visible: true, order: 5 },
-    { field: 'expected_closing_date', label: 'Expected Close', visible: true, order: 6 },
-    
-    { field: 'lead_name', label: 'Lead Name', visible: false, order: 7 },
-    { field: 'region', label: 'Region', visible: false, order: 8 },
-    { field: 'probability', label: 'Probability', visible: false, order: 9 },
-    { field: 'internal_comment', label: 'Comment', visible: false, order: 10 },
-    { field: 'customer_need', label: 'Customer Need', visible: false, order: 11 },
-    { field: 'customer_challenges', label: 'Customer Challenges', visible: false, order: 12 },
-    { field: 'relationship_strength', label: 'Relationship Strength', visible: false, order: 13 },
-    { field: 'budget', label: 'Budget', visible: false, order: 14 },
-    { field: 'business_value', label: 'Business Value', visible: false, order: 15 },
-    { field: 'decision_maker_level', label: 'Decision Maker Level', visible: false, order: 16 },
-    { field: 'is_recurring', label: 'Is Recurring', visible: false, order: 17 },
-    { field: 'project_duration', label: 'Duration', visible: false, order: 18 },
-    { field: 'start_date', label: 'Start Date', visible: false, order: 19 },
-    { field: 'end_date', label: 'End Date', visible: false, order: 20 },
-    { field: 'rfq_received_date', label: 'RFQ Received', visible: false, order: 21 },
-    { field: 'proposal_due_date', label: 'Proposal Due', visible: false, order: 22 },
-    { field: 'rfq_status', label: 'RFQ Status', visible: false, order: 23 },
-    { field: 'currency_type', label: 'Currency', visible: false, order: 24 },
-    { field: 'action_items', label: 'Action Items', visible: false, order: 25 },
-    { field: 'current_status', label: 'Current Status', visible: false, order: 26 },
-    { field: 'closing', label: 'Closing', visible: false, order: 27 },
-    { field: 'won_reason', label: 'Won Reason', visible: false, order: 28 },
-    { field: 'lost_reason', label: 'Lost Reason', visible: false, order: 29 },
-    { field: 'need_improvement', label: 'Need Improvement', visible: false, order: 30 },
-    { field: 'drop_reason', label: 'Drop Reason', visible: false, order: 31 },
-    { field: 'created_at', label: 'Created', visible: false, order: 32 },
-    { field: 'modified_at', label: 'Updated', visible: false, order: 33 },
-  ]);
+  const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
 
   const formatCurrency = (amount: number | undefined, currency: string = 'EUR') => {
@@ -90,7 +53,7 @@ export const ListView = ({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedDeals(new Set(filteredAndSortedDeals.map(deal => deal.id)));
+      setSelectedDeals(new Set(filteredDeals.map(deal => deal.id)));
     } else {
       setSelectedDeals(new Set());
     }
@@ -169,115 +132,44 @@ export const ListView = ({
     .filter(col => col.visible)
     .sort((a, b) => a.order - b.order);
 
-  const filteredAndSortedDeals = deals
-    .filter(deal => {
-      const searchValue = searchTerm.toLowerCase();
-      const matchesSearch = !searchTerm || 
-        deal.project_name?.toLowerCase().includes(searchValue) ||
-        deal.customer_name?.toLowerCase().includes(searchValue) ||
-        deal.lead_name?.toLowerCase().includes(searchValue) ||
-        deal.lead_owner?.toLowerCase().includes(searchValue) ||
-        deal.stage?.toLowerCase().includes(searchValue);
-      
-      const matchesStage = stageFilter === "all" || deal.stage === stageFilter;
-      
-      return matchesSearch && matchesStage;
-    })
-    .sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      if (['priority', 'probability', 'project_duration'].includes(sortBy)) {
-        aValue = a[sortBy as keyof Deal] || 0;
-        bValue = b[sortBy as keyof Deal] || 0;
-      } else if (['total_contract_value'].includes(sortBy)) {
-        aValue = a[sortBy as keyof Deal] || 0;
-        bValue = b[sortBy as keyof Deal] || 0;
-      } else if (['expected_closing_date', 'created_at', 'modified_at'].includes(sortBy)) {
-        const aDateValue = a[sortBy as keyof Deal];
-        const bDateValue = b[sortBy as keyof Deal];
-        aValue = new Date(typeof aDateValue === 'string' ? aDateValue : 0);
-        bValue = new Date(typeof bDateValue === 'string' ? bDateValue : 0);
-      } else {
-        aValue = String(a[sortBy as keyof Deal] || '').toLowerCase();
-        bValue = String(b[sortBy as keyof Deal] || '').toLowerCase();
-      }
-
-      if (sortOrder === "asc") {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
-    });
+  const filteredDeals = deals.filter(deal => {
+    const searchValue = searchTerm.toLowerCase();
+    const matchesSearch = !searchTerm || 
+      deal.project_name?.toLowerCase().includes(searchValue) ||
+      deal.customer_name?.toLowerCase().includes(searchValue) ||
+      deal.lead_name?.toLowerCase().includes(searchValue) ||
+      deal.lead_owner?.toLowerCase().includes(searchValue) ||
+      deal.stage?.toLowerCase().includes(searchValue);
+    
+    return matchesSearch;
+  });
 
   return (
     <div className="w-full p-4 space-y-3">
-      {/* Compact Search and Controls Bar */}
-      <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between bg-card rounded-lg p-3 border border-border/50 shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-2 flex-1 w-full max-w-4xl">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search deals..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 h-8 text-sm"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Select value={stageFilter} onValueChange={(value) => setStageFilter(value as DealStage | "all")}>
-              <SelectTrigger className="w-[140px] h-8 text-xs">
-                <SelectValue placeholder="All Stages" />
-              </SelectTrigger>
-              <SelectContent className="z-50">
-                <SelectItem value="all">All Stages</SelectItem>
-                {DEAL_STAGES.map(stage => (
-                  <SelectItem key={stage} value={stage}>
-                    {stage}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
-              <SelectTrigger className="w-[120px] h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-50">
-                <SelectItem value="modified_at">Updated</SelectItem>
-                <SelectItem value="created_at">Created</SelectItem>
-                <SelectItem value="priority">Priority</SelectItem>
-                <SelectItem value="total_contract_value">Value</SelectItem>
-                <SelectItem value="expected_closing_date">Expected Close</SelectItem>
-                <SelectItem value="project_name">Project</SelectItem>
-                <SelectItem value="customer_name">Customer</SelectItem>
-                <SelectItem value="lead_owner">Lead Owner</SelectItem>
-                <SelectItem value="stage">Stage</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "asc" | "desc")}>
-              <SelectTrigger className="w-[80px] h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-50">
-                <SelectItem value="desc">Desc</SelectItem>
-                <SelectItem value="asc">Asc</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <ColumnCustomizer
-            columns={columns}
-            onUpdate={setColumns}
+      {/* Compact Single-Row Search Bar */}
+      <div className="flex items-center gap-3 bg-card rounded-lg px-4 py-2 border border-border/50 shadow-sm">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            placeholder="Search deals..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-8 text-sm border-input"
           />
         </div>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          className="h-8 px-3 text-sm"
+        >
+          <Filter className="w-4 h-4 mr-2" />
+          Search Filters
+        </Button>
       </div>
 
-      {/* Optimized Table */}
+      {/* Table */}
       <div className="border rounded-lg overflow-hidden shadow-sm bg-card">
         <div className="overflow-x-auto">
           <Table className="w-full">
@@ -285,7 +177,7 @@ export const ListView = ({
               <TableRow className="border-b border-border/50 bg-muted/30">
                 <TableHead className="w-10 p-2">
                   <Checkbox
-                    checked={selectedDeals.size === filteredAndSortedDeals.length && filteredAndSortedDeals.length > 0}
+                    checked={selectedDeals.size === filteredDeals.length && filteredDeals.length > 0}
                     onCheckedChange={handleSelectAll}
                     className="transition-all hover:scale-105"
                   />
@@ -293,21 +185,10 @@ export const ListView = ({
                 {visibleColumns.map(column => (
                   <TableHead 
                     key={column.field} 
-                    className="font-semibold cursor-pointer hover:bg-muted/50 transition-colors p-2"
-                    onClick={() => {
-                      if (sortBy === column.field) {
-                        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                      } else {
-                        setSortBy(column.field);
-                        setSortOrder("desc");
-                      }
-                    }}
+                    className="font-semibold p-2"
                   >
                     <div className="flex items-center gap-1.5 text-xs">
                       {column.label}
-                      {sortBy === column.field && (
-                        sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                      )}
                     </div>
                   </TableHead>
                 ))}
@@ -315,14 +196,14 @@ export const ListView = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSortedDeals.length === 0 ? (
+              {filteredDeals.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={visibleColumns.length + 2} className="text-center py-6 text-muted-foreground text-sm">
                     No deals found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAndSortedDeals.map((deal) => (
+                filteredDeals.map((deal) => (
                   <TableRow 
                     key={deal.id} 
                     className={`border-b border-border/30 hover:bg-muted/20 transition-colors duration-150 ${

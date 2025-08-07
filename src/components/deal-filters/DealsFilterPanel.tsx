@@ -1,13 +1,12 @@
+
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FilterInput } from "./FilterInput";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { FilterFieldSelector } from "./FilterFieldSelector";
 import { SavedFiltersManager } from "./SavedFiltersManager";
 import { DealFilters } from "@/types/filters";
-import { DEAL_STAGES } from "@/types/deal";
-import { ChevronDown, ChevronUp, Filter, X, Check, RefreshCw } from "lucide-react";
+import { Filter, Search, X } from "lucide-react";
 
 interface DealsFilterPanelProps {
   filters: DealFilters;
@@ -27,281 +26,132 @@ interface DealsFilterPanelProps {
     relationshipStrengths: string[];
     customerChallenges: string[];
   };
-  onRefresh?: () => void;
+  onRefresh: () => void;
 }
 
-export const DealsFilterPanel = ({ filters, onFiltersChange, uniqueValues, onRefresh }: DealsFilterPanelProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedFilterFields, setSelectedFilterFields] = useState<string[]>([]);
-  const [tempFilters, setTempFilters] = useState<DealFilters>({});
+export const DealsFilterPanel = ({
+  filters,
+  onFiltersChange,
+  uniqueValues,
+  onRefresh,
+}: DealsFilterPanelProps) => {
+  const [searchTerm, setSearchTerm] = useState(filters.searchTerm || "");
+  const [showFilters, setShowFilters] = useState(false);
 
-  const updateTempFilter = (key: keyof DealFilters, value: any) => {
-    setTempFilters({ ...tempFilters, [key]: value });
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    onFiltersChange({ ...filters, searchTerm: value });
   };
 
-  const applyFilters = () => {
-    onFiltersChange(tempFilters);
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    onFiltersChange({ ...filters, searchTerm: "" });
+  };
+
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (filters.stages?.length) count++;
+    if (filters.leadOwners?.length) count++;
+    if (filters.customers?.length) count++;
+    if (filters.priorities?.length) count++;
+    if (filters.regions?.length) count++;
+    if (filters.currencies?.length) count++;
+    if (filters.projectNames?.length) count++;
+    if (filters.leadNames?.length) count++;
+    if (filters.businessValues?.length) count++;
+    if (filters.decisionMakerLevels?.length) count++;
+    if (filters.rfqStatuses?.length) count++;
+    if (filters.handoffStatuses?.length) count++;
+    if (filters.relationshipStrengths?.length) count++;
+    if (filters.customerChallenges?.length) count++;
+    if (filters.expectedCloseDateFrom || filters.expectedCloseDateTo) count++;
+    if (filters.totalContractValueMin !== undefined || filters.totalContractValueMax !== undefined) count++;
+    if (filters.createdDateFrom || filters.createdDateTo) count++;
+    if (filters.modifiedDateFrom || filters.modifiedDateTo) count++;
+    return count;
   };
 
   const clearAllFilters = () => {
-    setTempFilters({});
+    setSearchTerm("");
     onFiltersChange({});
-    setSelectedFilterFields([]);
   };
 
-  const hasActiveFilters = Object.values(filters).some(value => {
-    if (Array.isArray(value)) return value.length > 0;
-    return value !== undefined && value !== '';
-  });
-
-  const getActiveFilterCount = () => {
-    return Object.values(filters).filter(value => {
-      if (Array.isArray(value)) return value.length > 0;
-      return value !== undefined && value !== '';
-    }).length;
-  };
-
-  const getFilterInputProps = (fieldKey: string) => {
-    switch (fieldKey) {
-      case 'stages':
-        return {
-          label: 'Stage',
-          type: 'multiselect' as const,
-          options: DEAL_STAGES,
-          placeholder: 'Select stages'
-        };
-      case 'leadOwners':
-        return {
-          label: 'Lead Owner',
-          type: 'multiselect' as const,
-          options: uniqueValues.leadOwners,
-          placeholder: 'Select lead owners'
-        };
-      case 'customers':
-        return {
-          label: 'Customer',
-          type: 'multiselect' as const,
-          options: uniqueValues.customers,
-          placeholder: 'Select customers'
-        };
-      case 'priorities':
-        return {
-          label: 'Priority',
-          type: 'multiselect' as const,
-          options: ['1', '2', '3', '4', '5'],
-          placeholder: 'Select priorities'
-        };
-      case 'expectedCloseDateFrom':
-        return {
-          label: 'Expected Close From',
-          type: 'date' as const
-        };
-      case 'expectedCloseDateTo':
-        return {
-          label: 'Expected Close To',
-          type: 'date' as const
-        };
-      case 'totalContractValueMin':
-        return {
-          label: 'Min Contract Value',
-          type: 'number' as const,
-          placeholder: 'Min value',
-          min: 0
-        };
-      case 'totalContractValueMax':
-        return {
-          label: 'Max Contract Value',
-          type: 'number' as const,
-          placeholder: 'Max value',
-          min: 0
-        };
-      case 'regions':
-        return {
-          label: 'Region',
-          type: 'multiselect' as const,
-          options: uniqueValues.regions,
-          placeholder: 'Select regions'
-        };
-      case 'currencies':
-        return {
-          label: 'Currency',
-          type: 'multiselect' as const,
-          options: uniqueValues.currencies,
-          placeholder: 'Select currencies'
-        };
-      case 'projectNames':
-        return {
-          label: 'Project Name',
-          type: 'multiselect' as const,
-          options: uniqueValues.projectNames,
-          placeholder: 'Select projects'
-        };
-      case 'leadNames':
-        return {
-          label: 'Lead Name',
-          type: 'multiselect' as const,
-          options: uniqueValues.leadNames,
-          placeholder: 'Select leads'
-        };
-      case 'businessValues':
-        return {
-          label: 'Business Value',
-          type: 'multiselect' as const,
-          options: uniqueValues.businessValues,
-          placeholder: 'Select business values'
-        };
-      case 'decisionMakerLevels':
-        return {
-          label: 'Decision Maker Level',
-          type: 'multiselect' as const,
-          options: uniqueValues.decisionMakerLevels,
-          placeholder: 'Select decision maker levels'
-        };
-      case 'rfqStatuses':
-        return {
-          label: 'RFQ Status',
-          type: 'multiselect' as const,
-          options: uniqueValues.rfqStatuses,
-          placeholder: 'Select RFQ statuses'
-        };
-      case 'handoffStatuses':
-        return {
-          label: 'Handoff Status',
-          type: 'multiselect' as const,
-          options: uniqueValues.handoffStatuses,
-          placeholder: 'Select handoff statuses'
-        };
-      case 'isRecurring':
-        return {
-          label: 'Is Recurring',
-          type: 'multiselect' as const,
-          options: ['Yes', 'No', 'Unclear'],
-          placeholder: 'Select recurring status'
-        };
-      case 'relationshipStrengths':
-        return {
-          label: 'Relationship Strength',
-          type: 'multiselect' as const,
-          options: uniqueValues.relationshipStrengths,
-          placeholder: 'Select relationship strengths'
-        };
-      case 'customerChallenges':
-        return {
-          label: 'Customer Challenges',
-          type: 'multiselect' as const,
-          options: uniqueValues.customerChallenges,
-          placeholder: 'Select customer challenges'
-        };
-      case 'createdDateFrom':
-        return {
-          label: 'Created From',
-          type: 'date' as const
-        };
-      case 'createdDateTo':
-        return {
-          label: 'Created To',
-          type: 'date' as const
-        };
-      case 'modifiedDateFrom':
-        return {
-          label: 'Modified From',
-          type: 'date' as const
-        };
-      case 'modifiedDateTo':
-        return {
-          label: 'Modified To',
-          type: 'date' as const
-        };
-      default:
-        return {
-          label: fieldKey,
-          type: 'text' as const
-        };
-    }
-  };
+  const activeFilterCount = getActiveFilterCount();
 
   return (
-    <Card className="mb-3 border-border/50">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-2 px-3">
-            <CardTitle className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <Filter className="w-3.5 h-3.5" />
-                <span>Search Filters</span>
-                {hasActiveFilters && (
-                  <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
-                    {getActiveFilterCount()}
-                  </span>
-                )}
-              </div>
-              {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </CardTitle>
-          </CardHeader>
-        </CollapsibleTrigger>
-        
-        <CollapsibleContent>
-          <CardContent className="px-3 pb-2 pt-0 space-y-2">
-            {/* Single row with field selector and action buttons */}
-            <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-border/30">
-              <div className="flex-1 min-w-[200px]">
-                <FilterFieldSelector
-                  selectedFields={selectedFilterFields}
-                  onFieldsChange={setSelectedFilterFields}
-                />
-              </div>
-              
-              <div className="flex items-center gap-1">
-                <Button onClick={applyFilters} size="sm" className="h-7 text-xs px-2">
-                  <Check className="w-3 h-3 mr-1" />
-                  Apply
-                </Button>
-                
-                <SavedFiltersManager
-                  currentFilters={tempFilters}
-                  onLoadFilters={(loadedFilters) => {
-                    setTempFilters(loadedFilters);
-                    const fieldsWithValues = Object.keys(loadedFilters).filter(key => {
-                      const value = loadedFilters[key as keyof DealFilters];
-                      if (Array.isArray(value)) return value.length > 0;
-                      return value !== undefined && value !== '';
-                    });
-                    setSelectedFilterFields(fieldsWithValues);
-                  }}
-                />
-                
-                <Button variant="outline" onClick={clearAllFilters} size="sm" className="h-7 text-xs px-2">
-                  <X className="w-3 h-3 mr-1" />
-                  Clear
-                </Button>
-                
-                {onRefresh && (
-                  <Button variant="outline" onClick={onRefresh} size="sm" className="h-7 text-xs px-2">
-                    <RefreshCw className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-            </div>
+    <div className="space-y-3">
+      {/* Top bar with search input on left and filters button on right */}
+      <div className="flex items-center justify-between gap-4">
+        {/* Search input on the left */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search deals..."
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-10 pr-10 h-9"
+          />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+              onClick={handleClearSearch}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
 
-            {/* Selected Filter Inputs */}
-            {selectedFilterFields.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                {selectedFilterFields.map(fieldKey => {
-                  const inputProps = getFilterInputProps(fieldKey);
-                  return (
-                    <FilterInput
-                      key={fieldKey}
-                      {...inputProps}
-                      value={tempFilters[fieldKey as keyof DealFilters] || (inputProps.type === 'multiselect' ? [] : '')}
-                      onChange={(value) => updateTempFilter(fieldKey as keyof DealFilters, value)}
-                    />
-                  );
-                })}
-              </div>
+        {/* Filters button on the right */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="h-9 px-3"
+          >
+            <Filter className="w-4 h-4 mr-2" />
+            Search Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-2 h-5 min-w-[20px] text-xs">
+                {activeFilterCount}
+              </Badge>
             )}
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+          </Button>
+        </div>
+      </div>
+
+      {/* Expandable filters section */}
+      {showFilters && (
+        <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-sm">Advanced Filters</h3>
+            <div className="flex items-center gap-2">
+              <SavedFiltersManager
+                currentFilters={filters}
+                onLoadFilters={onFiltersChange}
+              />
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Clear all
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          <FilterFieldSelector
+            filters={filters}
+            onFiltersChange={onFiltersChange}
+            uniqueValues={uniqueValues}
+          />
+        </div>
+      )}
+    </div>
   );
 };

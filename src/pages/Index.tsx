@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ImportExportBar } from "@/components/ImportExportBar";
+import { ColumnConfig } from "@/components/ColumnCustomizer";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Plus, BarChart3, Users, Euro } from "lucide-react";
 
@@ -26,6 +27,17 @@ const Index = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [initialStage, setInitialStage] = useState<DealStage>('Lead');
   const [activeView, setActiveView] = useState<'kanban' | 'list'>('kanban');
+
+  // Add column configuration state
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { field: 'project_name', label: 'Project', visible: true, order: 0 },
+    { field: 'customer_name', label: 'Customer', visible: true, order: 1 },
+    { field: 'lead_owner', label: 'Lead Owner', visible: true, order: 2 },
+    { field: 'stage', label: 'Stage', visible: true, order: 3 },
+    { field: 'priority', label: 'Priority', visible: true, order: 4 },
+    { field: 'total_contract_value', label: 'Value', visible: true, order: 5 },
+    { field: 'expected_closing_date', label: 'Expected Close', visible: true, order: 6 },
+  ]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -240,6 +252,10 @@ const Index = () => {
     navigate("/auth");
   };
 
+  const handleColumnsChange = (newColumns: ColumnConfig[]) => {
+    setColumns(newColumns);
+  };
+
   const getStats = () => {
     const totalDeals = deals.length;
     const totalValue = deals.reduce((sum, deal) => sum + (deal.total_contract_value || 0), 0);
@@ -385,6 +401,8 @@ const Index = () => {
               onUpdateDeal={handleUpdateDeal}
               onDeleteDeals={handleDeleteDeals}
               onImportDeals={handleImportDeals}
+              columns={columns}
+              onColumnsChange={handleColumnsChange}
             />
           </div>
         )}

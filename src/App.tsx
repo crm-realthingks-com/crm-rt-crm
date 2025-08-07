@@ -10,9 +10,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import Dashboard from "./pages/Dashboard";
 import Contacts from "./pages/Contacts";
 import Leads from "./pages/Leads";
-import Meetings from "./pages/Meetings";
 import DealsPage from "./pages/DealsPage";
-import Feeds from "./pages/Feeds";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -107,19 +105,9 @@ const App = () => {
                   <Leads />
                 </ProtectedRoute>
               } />
-              <Route path="/meetings" element={
-                <ProtectedRoute>
-                  <Meetings />
-                </ProtectedRoute>
-              } />
               <Route path="/deals" element={
                 <ProtectedRoute>
                   <DealsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/feeds" element={
-                <ProtectedRoute>
-                  <Feeds />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={

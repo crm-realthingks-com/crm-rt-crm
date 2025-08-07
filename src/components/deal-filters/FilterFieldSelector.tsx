@@ -1,14 +1,10 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { X, Plus } from "lucide-react";
-
-interface FilterField {
-  key: string;
-  label: string;
-  type: 'text' | 'number' | 'date' | 'multiselect';
-}
+import { DealFilters, FilterField } from "@/types/filters";
 
 const AVAILABLE_FILTER_FIELDS: FilterField[] = [
   { key: 'stages', label: 'Stage', type: 'multiselect' },
@@ -37,22 +33,61 @@ const AVAILABLE_FILTER_FIELDS: FilterField[] = [
 ];
 
 interface FilterFieldSelectorProps {
-  selectedFields: string[];
-  onFieldsChange: (fields: string[]) => void;
+  filters: DealFilters;
+  onFiltersChange: (filters: DealFilters) => void;
+  uniqueValues: {
+    leadOwners: string[];
+    customers: string[];
+    regions: string[];
+    currencies: string[];
+    projectNames: string[];
+    leadNames: string[];
+    budgets: string[];
+    businessValues: string[];
+    decisionMakerLevels: string[];
+    rfqStatuses: string[];
+    handoffStatuses: string[];
+    relationshipStrengths: string[];
+    customerChallenges: string[];
+  };
 }
 
-export const FilterFieldSelector = ({ selectedFields, onFieldsChange }: FilterFieldSelectorProps) => {
+export const FilterFieldSelector = ({ filters, onFiltersChange, uniqueValues }: FilterFieldSelectorProps) => {
   const [selectedValue, setSelectedValue] = useState<string>('');
+
+  // Get currently selected fields from the filters object
+  const selectedFields = Object.keys(filters).filter(key => {
+    const value = filters[key as keyof DealFilters];
+    // Check if the value is meaningful (not empty array, not empty string, not undefined)
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+    return value !== undefined && value !== '' && value !== null;
+  });
 
   const addField = (fieldKey: string) => {
     if (!selectedFields.includes(fieldKey)) {
-      onFieldsChange([...selectedFields, fieldKey]);
+      // Initialize the field with appropriate default value based on type
+      const field = AVAILABLE_FILTER_FIELDS.find(f => f.key === fieldKey);
+      if (field) {
+        const newFilters = { ...filters } as any;
+        if (field.type === 'multiselect') {
+          newFilters[fieldKey] = [];
+        } else if (field.type === 'number') {
+          // For number fields, we'll let the user set the value
+        } else if (field.type === 'date') {
+          // For date fields, we'll let the user set the value
+        }
+        onFiltersChange(newFilters as DealFilters);
+      }
     }
     setSelectedValue('');
   };
 
   const removeField = (fieldKey: string) => {
-    onFieldsChange(selectedFields.filter(key => key !== fieldKey));
+    const newFilters = { ...filters };
+    delete (newFilters as any)[fieldKey];
+    onFiltersChange(newFilters);
   };
 
   const availableFields = AVAILABLE_FILTER_FIELDS.filter(

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -236,11 +237,6 @@ export const useDashboardStats = () => {
 
       console.log('All deals for dashboard stats:', deals);
 
-      const { data: meetings } = await supabase
-        .from('meetings')
-        .select('*')
-        .eq('date', new Date().toISOString().split('T')[0]);
-
       const totalDeals = deals?.length || 0;
       
       // Calculate total revenue from Won deals using total_revenue field
@@ -258,13 +254,12 @@ export const useDashboardStats = () => {
       console.log('Final dashboard total revenue:', totalRevenue);
       
       const wonDeals = deals?.filter(deal => deal.stage === 'Won').length || 0;
-      const todayMeetings = meetings?.length || 0;
 
       return {
         totalDeals,
         totalRevenue,
         wonDeals,
-        todayMeetings
+        todayMeetings: 0 // Set to 0 since meetings module was removed
       };
     },
   });

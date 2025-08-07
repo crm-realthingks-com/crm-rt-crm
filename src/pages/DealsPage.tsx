@@ -9,11 +9,11 @@ import { ListView } from "@/components/ListView";
 import { DealForm } from "@/components/DealForm";
 import { DealsFilterPanel } from "@/components/deal-filters/DealsFilterPanel";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImportExportBar } from "@/components/ImportExportBar";
+import { ColumnCustomizer, ColumnConfig } from "@/components/ColumnCustomizer";
 import { useToast } from "@/hooks/use-toast";
 import { useFilteredDeals } from "@/hooks/useFilteredDeals";
-import { Plus, BarChart3, Users, Euro } from "lucide-react";
+import { Plus, Columns } from "lucide-react";
 
 const DealsPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -28,6 +28,43 @@ const DealsPage = () => {
   const [initialStage, setInitialStage] = useState<DealStage>('Lead');
   const [activeView, setActiveView] = useState<'kanban' | 'list'>('kanban');
   const [filters, setFilters] = useState<DealFilters>({});
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { field: 'project_name', label: 'Project', visible: true, order: 0 },
+    { field: 'customer_name', label: 'Customer', visible: true, order: 1 },
+    { field: 'lead_owner', label: 'Lead Owner', visible: true, order: 2 },
+    { field: 'stage', label: 'Stage', visible: true, order: 3 },
+    { field: 'priority', label: 'Priority', visible: true, order: 4 },
+    { field: 'total_contract_value', label: 'Value', visible: true, order: 5 },
+    { field: 'expected_closing_date', label: 'Expected Close', visible: true, order: 6 },
+    
+    { field: 'lead_name', label: 'Lead Name', visible: false, order: 7 },
+    { field: 'region', label: 'Region', visible: false, order: 8 },
+    { field: 'probability', label: 'Probability', visible: false, order: 9 },
+    { field: 'internal_comment', label: 'Comment', visible: false, order: 10 },
+    { field: 'customer_need', label: 'Customer Need', visible: false, order: 11 },
+    { field: 'customer_challenges', label: 'Customer Challenges', visible: false, order: 12 },
+    { field: 'relationship_strength', label: 'Relationship Strength', visible: false, order: 13 },
+    { field: 'budget', label: 'Budget', visible: false, order: 14 },
+    { field: 'business_value', label: 'Business Value', visible: false, order: 15 },
+    { field: 'decision_maker_level', label: 'Decision Maker Level', visible: false, order: 16 },
+    { field: 'is_recurring', label: 'Is Recurring', visible: false, order: 17 },
+    { field: 'project_duration', label: 'Duration', visible: false, order: 18 },
+    { field: 'start_date', label: 'Start Date', visible: false, order: 19 },
+    { field: 'end_date', label: 'End Date', visible: false, order: 20 },
+    { field: 'rfq_received_date', label: 'RFQ Received', visible: false, order: 21 },
+    { field: 'proposal_due_date', label: 'Proposal Due', visible: false, order: 22 },
+    { field: 'rfq_status', label: 'RFQ Status', visible: false, order: 23 },
+    { field: 'currency_type', label: 'Currency', visible: false, order: 24 },
+    { field: 'action_items', label: 'Action Items', visible: false, order: 25 },
+    { field: 'current_status', label: 'Current Status', visible: false, order: 26 },
+    { field: 'closing', label: 'Closing', visible: false, order: 27 },
+    { field: 'won_reason', label: 'Won Reason', visible: false, order: 28 },
+    { field: 'lost_reason', label: 'Lost Reason', visible: false, order: 29 },
+    { field: 'need_improvement', label: 'Need Improvement', visible: false, order: 30 },
+    { field: 'drop_reason', label: 'Drop Reason', visible: false, order: 31 },
+    { field: 'created_at', label: 'Created', visible: false, order: 32 },
+    { field: 'modified_at', label: 'Updated', visible: false, order: 33 },
+  ]);
 
   // Use the filtered deals hook
   const { filteredDeals, uniqueValues } = useFilteredDeals(deals, filters);
@@ -222,14 +259,6 @@ const DealsPage = () => {
     setIsCreating(false);
   };
 
-  const getStats = () => {
-    const totalDeals = filteredDeals.length;
-    const totalValue = filteredDeals.reduce((sum, deal) => sum + (deal.total_contract_value || 0), 0);
-    const wonDeals = filteredDeals.filter(deal => deal.stage === 'Won').length;
-    
-    return { totalDeals, totalValue, wonDeals };
-  };
-
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
@@ -257,79 +286,42 @@ const DealsPage = () => {
     return null;
   }
 
-  const stats = getStats();
-
   return (
     <div className="w-full h-screen overflow-hidden bg-background">
-      {/* Fixed Header */}
+      {/* Compact Header */}
       <div className="w-full bg-background border-b">
         <div className="w-full px-4 py-3">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 mb-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Deals Pipeline</h1>
-                <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                  {stats.totalDeals} deals
-                </span>
-              </div>
-              
-              {/* Only show stats cards in Kanban view */}
-              {activeView === 'kanban' && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3">
-                  <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4 text-blue-600" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Total Deals</p>
-                          <p className="text-xl font-bold">{stats.totalDeals}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Euro className="w-4 h-4 text-green-600" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Total Value</p>
-                          <p className="text-xl font-bold">€{stats.totalValue.toLocaleString()}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-purple-600" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Won Deals</p>
-                          <p className="text-xl font-bold">{stats.wonDeals}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <h1 className="text-2xl font-bold text-foreground">Deals Pipeline</h1>
+              <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                {filteredDeals.length} deals
+              </span>
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-shrink-0">
-              <div className="hidden sm:block">
-                <ImportExportBar
-                  deals={filteredDeals}
-                  onImport={handleImportDeals}
-                  onExport={() => {}}
-                  selectedDeals={[]}
-                  onRefresh={fetchDeals}
+            
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <ImportExportBar
+                deals={filteredDeals}
+                onImport={handleImportDeals}
+                onExport={() => {}}
+                selectedDeals={[]}
+                onRefresh={fetchDeals}
+              />
+              
+              {/* Columns button - moved to the right side, only shown in list view */}
+              {activeView === 'list' && (
+                <ColumnCustomizer
+                  columns={columns}
+                  onUpdate={setColumns}
                 />
-              </div>
+              )}
+              
               <div className="bg-muted rounded-lg p-1 flex">
                 <Button
                   variant={activeView === 'kanban' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setActiveView('kanban')}
-                  className={activeView === 'kanban' ? 'bg-primary text-primary-foreground' : ''}
+                  className={`h-8 px-3 text-sm ${activeView === 'kanban' ? 'bg-primary text-primary-foreground' : ''}`}
                 >
                   Kanban
                 </Button>
@@ -337,35 +329,38 @@ const DealsPage = () => {
                   variant={activeView === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setActiveView('list')}
-                  className={activeView === 'list' ? 'bg-primary text-primary-foreground' : ''}
+                  className={`h-8 px-3 text-sm ${activeView === 'list' ? 'bg-primary text-primary-foreground' : ''}`}
                 >
                   List
                 </Button>
               </div>
+              
               <Button 
                 onClick={() => handleCreateDeal('Lead')}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 text-sm"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">New Deal</span>
+                New Deal
               </Button>
             </div>
           </div>
 
           {/* Only show filters panel in List view */}
           {activeView === 'list' && (
-            <DealsFilterPanel
-              filters={filters}
-              onFiltersChange={setFilters}
-              uniqueValues={uniqueValues}
-              onRefresh={fetchDeals}
-            />
+            <div className="mt-3">
+              <DealsFilterPanel
+                filters={filters}
+                onFiltersChange={setFilters}
+                uniqueValues={uniqueValues}
+                onRefresh={fetchDeals}
+              />
+            </div>
           )}
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="w-full" style={{ height: activeView === 'list' ? 'calc(100vh - 180px)' : 'calc(100vh - 350px)' }}>
+      <div className="w-full" style={{ height: activeView === 'list' ? 'calc(100vh - 140px)' : 'calc(100vh - 100px)' }}>
         {activeView === 'kanban' ? (
           <KanbanBoard
             deals={filteredDeals}
@@ -384,6 +379,8 @@ const DealsPage = () => {
               onUpdateDeal={handleUpdateDeal}
               onDeleteDeals={handleDeleteDeals}
               onImportDeals={handleImportDeals}
+              columns={columns}
+              onColumnsChange={setColumns}
             />
           </div>
         )}

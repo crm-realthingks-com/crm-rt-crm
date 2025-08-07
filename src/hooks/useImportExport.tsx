@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -210,8 +211,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                   record[field] = `Contact ${i + 1}`;
                 } else if (field === 'lead_name') {
                   record[field] = `Lead ${i + 1}`;
-                } else if (field === 'title') {
-                  record[field] = `Meeting ${i + 1}`;
                 }
               });
               
@@ -225,9 +224,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             }
             
             record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
-            if (tableName !== 'meetings') {
-              record.modified_by = user?.id || null;
-            }
+            record.modified_by = user?.id || null;
 
             // Check for duplicates before insertion
             const isDuplicate = await checkDuplicate(record);
@@ -256,11 +253,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           } else if (tableName === 'leads') {
             insertResult = await supabase
               .from('leads')
-              .insert([record])
-              .select('id');
-          } else if (tableName === 'meetings') {
-            insertResult = await supabase
-              .from('meetings')
               .insert([record])
               .select('id');
           } else {

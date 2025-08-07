@@ -2,6 +2,7 @@
 import { DealStage } from './deal';
 
 export interface DealFilters {
+  searchTerm?: string;
   stages?: DealStage[];
   leadOwners?: string[];
   customers?: string[];
@@ -27,6 +28,12 @@ export interface DealFilters {
   createdDateTo?: string;
   modifiedDateFrom?: string;
   modifiedDateTo?: string;
+}
+
+export interface FilterField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'multiselect';
 }
 
 export interface SavedFilter {
