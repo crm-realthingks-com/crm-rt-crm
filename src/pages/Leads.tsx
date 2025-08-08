@@ -1,4 +1,3 @@
-
 import { LeadTable } from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -32,7 +31,7 @@ const Leads = () => {
     if (!file) return;
 
     console.log('=== IMPORT PROCESS STARTED ===');
-    console.log('File:', file.name, 'Size:', file.size);
+    console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
 
     if (!user) {
       console.error('No authenticated user found');
@@ -50,63 +49,51 @@ const Leads = () => {
       const result = await importLeads(file);
       console.log('Import result received:', result);
       
-      // Build detailed message
-      let message = '';
-      let description = '';
+      // Build summary message
+      const totalProcessed = result.success + result.duplicates + result.errors;
+      let title = "Import Complete";
+      let description = `Processed ${totalProcessed} rows: `;
       
-      if (result.success > 0) {
-        message = `Import completed: ${result.success} leads imported successfully`;
-        if (result.duplicates > 0) message += `, ${result.duplicates} duplicates skipped`;
-        if (result.errors > 0) message += `, ${result.errors} errors occurred`;
+      const parts = [];
+      if (result.success > 0) parts.push(`${result.success} imported`);
+      if (result.duplicates > 0) parts.push(`${result.duplicates} duplicates`);
+      if (result.errors > 0) parts.push(`${result.errors} errors`);
+      
+      description += parts.join(', ');
+      
+      // Show detailed messages if there are errors
+      if (result.errors > 0 && result.messages.length > 0) {
+        console.error('Import errors:', result.messages);
+        console.error('Error details:', result.errorDetails);
         
-        // Show detailed error messages if any
-        if (result.messages.length > 0) {
-          const errorMessages = result.messages.filter(msg => !msg.includes('Mapped'));
-          if (errorMessages.length > 0) {
-            description = errorMessages.slice(0, 5).join('; ');
-            if (errorMessages.length > 5) {
-              description += `... and ${errorMessages.length - 5} more errors`;
-            }
+        // Show first few error messages
+        const errorSummary = result.messages
+          .filter(msg => !msg.includes('Unknown column'))
+          .slice(0, 3)
+          .join('; ');
+        
+        if (errorSummary) {
+          description += `. Errors: ${errorSummary}`;
+          if (result.messages.length > 3) {
+            description += '... (see console for full details)';
           }
         }
-
-        toast({
-          title: "Import Successful",
-          description: message + (description ? ` - ${description}` : ''),
-        });
-        
-        // Trigger table refresh
-        setRefreshTrigger(prev => prev + 1);
-        
-      } else if (result.errors > 0) {
-        console.error('Import failed with errors:', result.messages);
-        
-        // Show detailed error information
-        const errorSummary = result.messages.slice(0, 3).join('; ');
-        const hasMoreErrors = result.messages.length > 3;
         
         toast({
-          title: "Import Failed",
-          description: `${result.errors} errors occurred. ${errorSummary}${hasMoreErrors ? '...' : ''}`,
-          variant: "destructive",
+          title: result.success > 0 ? "Import Partially Successful" : "Import Failed",
+          description,
+          variant: result.success > 0 ? "default" : "destructive",
         });
-        
-        // Log full error details for debugging
-        console.error('Full error details:', result.errorDetails);
-        
-      } else if (result.duplicates > 0) {
-        console.log('All records were duplicates');
-        toast({
-          title: "Import Completed - No Changes",
-          description: "All records were duplicates. No new leads were added.",
-        });
-        
       } else {
-        console.warn('Unexpected import result state');
         toast({
-          title: "Import Completed",
-          description: "No records were processed.",
+          title,
+          description,
         });
+      }
+      
+      // Trigger table refresh if any records were imported
+      if (result.success > 0) {
+        setRefreshTrigger(prev => prev + 1);
       }
       
       // Clear the file input
