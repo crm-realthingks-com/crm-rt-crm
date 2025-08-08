@@ -4,7 +4,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUsers } from '@/hooks/useUsers';
-import { LeadsImporter, LeadsImportResult } from '@/utils/leadsImport';
+import { LeadsImporter, LeadsImportResult } from '@/utils/leadsImporter';
 
 export interface LeadExportData {
   'Lead Name': string;
