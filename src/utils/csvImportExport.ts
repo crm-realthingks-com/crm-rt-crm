@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ImportResult {
@@ -6,6 +5,7 @@ export interface ImportResult {
   duplicates: number;
   errors: number;
   messages: string[];
+  errorDetails: any[];
 }
 
 export interface ExportOptions {
@@ -109,6 +109,7 @@ export class CSVImportExport {
 
       let success = 0, duplicates = 0, errors = 0;
       const messages: string[] = [];
+      const errorDetails: any[] = [];
 
       for (let i = 0; i < rows.length; i++) {
         try {
@@ -138,6 +139,7 @@ export class CSVImportExport {
           if (!contact.contact_name) {
             messages.push(`Row ${i + 2}: Contact Name is required`);
             errors++;
+            errorDetails.push({ row: i + 2, message: 'Contact Name is required' });
             continue;
           }
 
@@ -163,6 +165,7 @@ export class CSVImportExport {
             console.error(`Row ${i + 2}: Insert error:`, error);
             messages.push(`Row ${i + 2}: ${error.message}`);
             errors++;
+            errorDetails.push({ row: i + 2, message: error.message });
           } else {
             success++;
           }
@@ -170,13 +173,14 @@ export class CSVImportExport {
           console.error(`Row ${i + 2}: Processing error:`, rowError);
           messages.push(`Row ${i + 2}: ${rowError.message}`);
           errors++;
+          errorDetails.push({ row: i + 2, message: rowError.message });
         }
       }
 
-      return { success, duplicates, errors, messages };
+      return { success, duplicates, errors, messages, errorDetails };
     } catch (error: any) {
       console.error('Import failed:', error);
-      return { success: 0, duplicates: 0, errors: 1, messages: [error.message] };
+      return { success: 0, duplicates: 0, errors: 1, messages: [error.message], errorDetails: [{ message: error.message }] };
     }
   }
 
@@ -220,6 +224,7 @@ export class CSVImportExport {
 
       let success = 0, duplicates = 0, errors = 0;
       const messages: string[] = [];
+      const errorDetails: any[] = [];
 
       for (let i = 0; i < rows.length; i++) {
         try {
@@ -260,12 +265,14 @@ export class CSVImportExport {
           if (!lead.lead_name) {
             messages.push(`Row ${i + 2}: Lead Name is required`);
             errors++;
+            errorDetails.push({ row: i + 2, message: 'Lead Name is required' });
             continue;
           }
 
           if (!lead.company_name) {
             messages.push(`Row ${i + 2}: Company Name is required`);
             errors++;
+            errorDetails.push({ row: i + 2, message: 'Company Name is required' });
             continue;
           }
 
@@ -291,6 +298,7 @@ export class CSVImportExport {
             console.error(`Row ${i + 2}: Insert error:`, error);
             messages.push(`Row ${i + 2}: ${error.message}`);
             errors++;
+            errorDetails.push({ row: i + 2, message: error.message });
           } else {
             success++;
           }
@@ -298,13 +306,14 @@ export class CSVImportExport {
           console.error(`Row ${i + 2}: Processing error:`, rowError);
           messages.push(`Row ${i + 2}: ${rowError.message}`);
           errors++;
+          errorDetails.push({ row: i + 2, message: rowError.message });
         }
       }
 
-      return { success, duplicates, errors, messages };
+      return { success, duplicates, errors, messages, errorDetails };
     } catch (error: any) {
       console.error('Leads import failed:', error);
-      return { success: 0, duplicates: 0, errors: 1, messages: [error.message] };
+      return { success: 0, duplicates: 0, errors: 1, messages: [error.message], errorDetails: [{ message: error.message }] };
     }
   }
 
