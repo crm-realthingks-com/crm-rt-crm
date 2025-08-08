@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { LeadColumnCustomizer } from "./LeadColumnCustomizer";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useSorting } from '@/hooks/useSorting';
+import { SortableTableHead } from './SortableTableHead';
 import { Pencil, Trash2 } from 'lucide-react';
 
 interface LeadTableProps {
@@ -80,19 +83,19 @@ export const LeadTable = ({
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Use the correct status field and handle null/undefined values
-    const leadStatus = lead.status || lead.lead_status || 'New';
-    const matchesStatus = filterStatus === 'all' || 
-      (leadStatus === filterStatus) ||
-      (filterStatus === 'New' && (!lead.status && !lead.lead_status));
+    const leadStatus = lead.status || 'New';
+    const matchesStatus = filterStatus === 'all' || leadStatus === filterStatus;
     
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  // Use sorting hook
+  const { sortedData: sortedLeads, sortConfig, handleSort } = useSorting(filteredLeads);
+
+  const totalPages = Math.ceil(sortedLeads.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+  const paginatedLeads = sortedLeads.slice(startIndex, endIndex);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -174,7 +177,7 @@ export const LeadTable = ({
 
       {/* Results Info */}
       <div className="text-sm text-muted-foreground">
-        Showing {paginatedLeads.length} of {filteredLeads.length} leads
+        Showing {paginatedLeads.length} of {sortedLeads.length} leads
         {selectedLeads.length > 0 && ` (${selectedLeads.length} selected)`}
       </div>
 
@@ -189,20 +192,61 @@ export const LeadTable = ({
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <TableHead>Lead Name</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Region</TableHead>
+              <SortableTableHead
+                sortKey="lead_name"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Lead Name
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="company_name"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Company
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="email"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Email
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="phone_no"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Phone
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="status"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Status
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="contact_source"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Source
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="country"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Region
+              </SortableTableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedLeads.map((lead) => {
-              // Use the correct status field, prioritizing 'status' over 'lead_status'
-              const displayStatus = lead.status || lead.lead_status || 'New';
+              const displayStatus = lead.status || 'New';
               
               return (
                 <TableRow key={lead.id}>

@@ -1,148 +1,142 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Card } from "@/components/ui/card";
-import { ContactTableHeader } from "./contact-table/ContactTableHeader";
-import { ContactTableBody } from "./contact-table/ContactTableBody";
-import { ContactTablePagination } from "./contact-table/ContactTablePagination";
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ContactModal } from "./ContactModal";
-import { ContactColumnCustomizer, ContactColumnConfig } from "./ContactColumnCustomizer";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-
-interface Contact {
-  id: string;
-  contact_name: string;
-  company_name?: string;
-  position?: string;
-  email?: string;
-  phone_no?: string;
-  mobile_no?: string;
-  country?: string;
-  city?: string;
-  state?: string;
-  contact_owner?: string;
-  created_time?: string;
-  modified_time?: string;
-  lead_status?: string;
-  industry?: string;
-  contact_source?: string;
-  linkedin?: string;
-  website?: string;
-  description?: string;
-  annual_revenue?: number;
-  no_of_employees?: number;
-  created_by?: string;
-  modified_by?: string;
-}
-
-const defaultColumns: ContactColumnConfig[] = [
-  { field: 'contact_name', label: 'Contact Name', visible: true, order: 0 },
-  { field: 'company_name', label: 'Company Name', visible: true, order: 1 },
-  { field: 'position', label: 'Position', visible: true, order: 2 },
-  { field: 'email', label: 'Email', visible: true, order: 3 },
-  { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
-  { field: 'country', label: 'Region', visible: true, order: 5 },
-  { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 6 },
-];
+import { ContactColumnCustomizer } from "./ContactColumnCustomizer";
+import { ContactTableHeader } from "./contact-table/ContactTableHeader";
+import { ContactTablePagination } from "./contact-table/ContactTablePagination";
+import { ContactTableBody } from "./contact-table/ContactTableBody";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { useSorting } from '@/hooks/useSorting';
+import { SortableTableHead } from './SortableTableHead';
+import { Pencil, Trash2, Settings } from 'lucide-react';
 
 interface ContactTableProps {
   showColumnCustomizer: boolean;
   setShowColumnCustomizer: (show: boolean) => void;
   showModal: boolean;
   setShowModal: (show: boolean) => void;
-  onExportReady: (exportFn: () => void) => void;
+  onExportReady: (contacts: any[]) => void;
   selectedContacts: string[];
-  setSelectedContacts: React.Dispatch<React.SetStateAction<string[]>>;
+  setSelectedContacts: (contacts: string[]) => void;
   refreshTrigger?: number;
 }
 
-export const ContactTable = ({ 
-  showColumnCustomizer, 
-  setShowColumnCustomizer, 
-  showModal, 
+export const ContactTable = ({
+  showColumnCustomizer,
+  setShowColumnCustomizer,
+  showModal,
   setShowModal,
+  onExportReady,
   selectedContacts,
   setSelectedContacts,
-  refreshTrigger
+  refreshTrigger = 0
 }: ContactTableProps) => {
-  const { toast } = useToast();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
-  const [columns, setColumns] = useState(defaultColumns);
+  const [editingContact, setEditingContact] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(25);
 
-  console.log('ContactTable: Rendering with contacts:', contacts.length);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const fetchContacts = async () => {
+  // Load contacts function
+  const loadContacts = async () => {
     try {
-      console.log('ContactTable: Starting to fetch contacts...');
       setLoading(true);
-      
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
         .order('created_time', { ascending: false });
 
       if (error) {
-        console.error('ContactTable: Supabase error:', error);
-        throw error;
+        console.error('Error loading contacts:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load contacts",
+          variant: "destructive",
+        });
+        return;
       }
-      
-      console.log('ContactTable: Successfully fetched contacts:', data?.length || 0);
+
       setContacts(data || []);
-      
+      onExportReady(data || []);
     } catch (error) {
-      console.error('ContactTable: Error fetching contacts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch contacts. Please refresh the page.",
-        variant: "destructive",
-      });
+      console.error('Error in loadContacts:', error);
     } finally {
       setLoading(false);
-      console.log('ContactTable: Finished fetching contacts');
     }
   };
 
-  // Initial load
   useEffect(() => {
-    console.log('ContactTable: Initial mount, fetching contacts');
-    fetchContacts();
-  }, []);
-
-  // Handle refresh trigger
-  useEffect(() => {
-    if (refreshTrigger && refreshTrigger > 0) {
-      console.log('ContactTable: Refresh triggered:', refreshTrigger);
-      fetchContacts();
-    }
+    loadContacts();
   }, [refreshTrigger]);
 
-  // Filter contacts based on search
-  useEffect(() => {
-    console.log('ContactTable: Filtering contacts, search term:', searchTerm);
-    const filtered = contacts.filter(contact =>
-      contact.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter contacts based on search term
+  const filteredContacts = contacts.filter(contact => {
+    if (!searchTerm) return true;
+    
+    const searchableFields = [
+      contact.contact_name,
+      contact.company_name,
+      contact.email,
+      contact.phone_no,
+      contact.position,
+      contact.country
+    ];
+    
+    return searchableFields.some(field => 
+      field && field.toString().toLowerCase().includes(searchTerm.toLowerCase())
     );
-    setFilteredContacts(filtered);
-    setCurrentPage(1);
-    console.log('ContactTable: Filtered contacts:', filtered.length);
-  }, [contacts, searchTerm]);
+  });
 
-  const handleDelete = async (id: string) => {
+  // Use sorting hook
+  const { sortedData: sortedContacts, sortConfig, handleSort } = useSorting(filteredContacts);
+
+  // Pagination
+  const totalPages = Math.ceil(sortedContacts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedContacts = sortedContacts.slice(startIndex, endIndex);
+
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedContacts(paginatedContacts.map(contact => contact.id));
+    } else {
+      setSelectedContacts([]);
+    }
+  };
+
+  const handleSelectContact = (contactId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedContacts([...selectedContacts, contactId]);
+    } else {
+      setSelectedContacts(selectedContacts.filter(id => id !== contactId));
+    }
+  };
+
+  // CRUD operations
+  const handleEdit = (contact: any) => {
+    setEditingContact(contact);
+    setShowModal(true);
+  };
+
+  const handleDelete = async (contactId: string) => {
     try {
       const { error } = await supabase
         .from('contacts')
         .delete()
-        .eq('id', id);
+        .eq('id', contactId);
 
       if (error) throw error;
 
@@ -150,10 +144,9 @@ export const ContactTable = ({
         title: "Success",
         description: "Contact deleted successfully",
       });
-      
-      fetchContacts();
+
+      loadContacts();
     } catch (error) {
-      console.error('Delete error:', error);
       toast({
         title: "Error",
         description: "Failed to delete contact",
@@ -162,108 +155,186 @@ export const ContactTable = ({
     }
   };
 
-  const handleEditContact = (contact: Contact) => {
-    console.log('ContactTable: Editing contact:', contact.id);
-    setEditingContact(contact);
-    setShowModal(true);
+  const handleModalClose = () => {
+    setShowModal(false);
+    setEditingContact(null);
+    loadContacts();
   };
 
-  const visibleColumns = columns.filter(col => col.visible);
-  const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const pageContacts = filteredContacts.slice(startIndex, startIndex + itemsPerPage);
-
-  console.log('ContactTable: Render state - loading:', loading, 'contacts:', contacts.length, 'pageContacts:', pageContacts.length);
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading contacts...</p>
-        </div>
-      </div>
-    );
+    return <div className="flex justify-center p-8">Loading contacts...</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <ContactTableHeader 
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedContacts={selectedContacts}
-        setSelectedContacts={setSelectedContacts}
-        pageContacts={pageContacts}
-      />
-
-      <Card>
-        <ContactTableBody
-          loading={loading}
-          pageContacts={pageContacts}
-          visibleColumns={visibleColumns}
-          selectedContacts={selectedContacts}
-          setSelectedContacts={setSelectedContacts}
-          onEdit={handleEditContact}
-          onDelete={(id) => {
-            setContactToDelete(id);
-            setShowDeleteDialog(true);
-          }}
-          searchTerm={searchTerm}
-          onRefresh={fetchContacts}
+    <div className="space-y-4">
+      {/* Search and Controls */}
+      <div className="flex gap-4 items-center">
+        <Input
+          placeholder="Search contacts..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
         />
-      </Card>
+        <Button
+          variant="outline"
+          onClick={() => setShowColumnCustomizer(true)}
+          size="icon"
+        >
+          <Settings className="w-4 h-4" />
+        </Button>
+      </div>
 
+      {/* Results Info */}
+      <div className="text-sm text-muted-foreground">
+        Showing {paginatedContacts.length} of {sortedContacts.length} contacts
+        {selectedContacts.length > 0 && ` (${selectedContacts.length} selected)`}
+      </div>
+
+      {/* Table */}
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={paginatedContacts.length > 0 && selectedContacts.length === paginatedContacts.length}
+                  onCheckedChange={handleSelectAll}
+                />
+              </TableHead>
+              <SortableTableHead
+                sortKey="contact_name"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Contact Name
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="company_name"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Company Name
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="position"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Position
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="email"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Email
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="phone_no"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Phone
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="country"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Region
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="contact_owner"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              >
+                Contact Owner
+              </SortableTableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedContacts.map((contact) => (
+              <TableRow key={contact.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedContacts.includes(contact.id)}
+                    onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
+                  />
+                </TableCell>
+                <TableCell className="font-medium">{contact.contact_name}</TableCell>
+                <TableCell>{contact.company_name}</TableCell>
+                <TableCell>{contact.position}</TableCell>
+                <TableCell>{contact.email}</TableCell>
+                <TableCell>{contact.phone_no}</TableCell>
+                <TableCell>{contact.country}</TableCell>
+                <TableCell>{contact.contact_owner}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(contact)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(contact.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
       {totalPages > 1 && (
-        <ContactTablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredContacts.length}
-          onPageChange={setCurrentPage}
-        />
+        <div className="flex justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="flex items-center px-4">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
       )}
 
       {/* Modals */}
-      <ContactModal
-        open={showModal}
-        onOpenChange={setShowModal}
-        contact={editingContact}
-        onSuccess={() => {
-          fetchContacts();
-          setEditingContact(null);
-        }}
-      />
+      {showModal && (
+        <ContactModal 
+          open={showModal} 
+          onOpenChange={setShowModal}
+          contact={editingContact}
+          onSuccess={handleModalClose}
+        />
+      )}
 
-      <ContactColumnCustomizer
-        open={showColumnCustomizer}
-        onOpenChange={setShowColumnCustomizer}
-        columns={columns}
-        onColumnsChange={setColumns}
-      />
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the contact.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (contactToDelete) {
-                  handleDelete(contactToDelete);
-                  setContactToDelete(null);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {showColumnCustomizer && (
+        <ContactColumnCustomizer
+          open={showColumnCustomizer}
+          onOpenChange={setShowColumnCustomizer}
+          columns={[]}
+          onColumnsChange={() => {}}
+        />
+      )}
     </div>
   );
 };
