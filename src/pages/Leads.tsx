@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Settings, Plus, Trash2, Download, Upload } from "lucide-react";
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
@@ -20,22 +19,27 @@ const Leads = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [leads, setLeads] = useState<any[]>([]);
 
+  console.log('Leads page: Rendering');
+
   // Get user display names for owner fields
   const ownerIds = leads.map(lead => lead.contact_owner).filter(Boolean);
   const { displayNames } = useUserDisplayNames(ownerIds);
 
-  // Import/Export functionality
-  const { exportLeads, importLeads, isImporting, isExporting } = useLeadsImportExport();
+  // Import/Export functionality - matching Contacts module exactly
+  const { handleImportFile, exportLeads, isImporting, isExporting } = useLeadsImportExport();
 
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleImportCSV triggered, event:', event);
     const file = event.target.files?.[0];
-    if (!file) return;
-
-    console.log('=== HANDLING CSV IMPORT ===');
-    console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+    console.log('Selected file:', file);
+    
+    if (!file) {
+      console.log('No file selected, returning');
+      return;
+    }
 
     if (!user) {
-      console.error('No authenticated user found');
+      console.log('No user found, showing error');
       toast({
         title: "Authentication Error",
         description: "You must be logged in to import leads.",
@@ -47,74 +51,30 @@ const Leads = () => {
 
     try {
       console.log('Starting import process...');
-      const result = await importLeads(file);
+      const result = await handleImportFile(file);
       console.log('Import completed with result:', result);
       
-      // Build summary message
-      const totalProcessed = result.success + result.duplicates + result.errors;
-      let title = "Import Complete";
-      let description = "";
-      
-      if (totalProcessed > 0) {
-        description = `Processed ${totalProcessed} rows: `;
-        const parts = [];
-        if (result.success > 0) parts.push(`${result.success} imported`);
-        if (result.duplicates > 0) parts.push(`${result.duplicates} duplicates`);
-        if (result.errors > 0) parts.push(`${result.errors} errors`);
-        description += parts.join(', ');
-      } else {
-        description = "No rows were processed";
-      }
-      
-      // Show toast based on result
-      if (result.errors > 0) {
-        console.error('Import errors:', result.messages);
-        console.error('Error details:', result.errorDetails);
-        
-        let errorSummary = "";
-        if (result.messages.length > 0) {
-          errorSummary = result.messages
-            .filter(msg => !msg.includes('Unknown column') && !msg.includes('will be ignored'))
-            .slice(0, 3)
-            .join('; ');
-        }
-        
-        if (errorSummary) {
-          description += `. First errors: ${errorSummary}`;
-          if (result.messages.length > 3) {
-            description += ' (see console for all details)';
-          }
-        }
-        
-        toast({
-          title: result.success > 0 ? "Import Partially Successful" : "Import Failed",
-          description,
-          variant: result.success > 0 ? "default" : "destructive",
-        });
-      } else {
-        toast({
-          title,
-          description,
-        });
-      }
-      
-      // Trigger table refresh if any records were imported
       if (result.success > 0) {
-        console.log('Refreshing leads table...');
+        toast({
+          title: "Import Successful",
+          description: `Imported ${result.success} leads successfully. ${result.duplicates} duplicates skipped, ${result.errors} errors.`,
+        });
         setRefreshTrigger(prev => prev + 1);
+      } else if (result.errors > 0) {
+        toast({
+          title: "Import Failed",
+          description: `${result.errors} errors occurred. Check the console for details.`,
+          variant: "destructive",
+        });
       }
-      
     } catch (error: any) {
-      console.error('=== IMPORT EXCEPTION ===');
-      console.error('Error:', error);
-      
+      console.error('Import error:', error);
       toast({
         title: "Import Error",
-        description: error.message || "Failed to import leads. Please check your CSV format and try again.",
+        description: error.message || "Failed to import leads. Please check your CSV format.",
         variant: "destructive",
       });
     } finally {
-      // Clear the file input
       event.target.value = '';
     }
   };
@@ -189,6 +149,7 @@ const Leads = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Leads</h1>
+          <p className="text-muted-foreground">Manage your leads database</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -221,18 +182,46 @@ const Leads = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem asChild>
-                <label className="flex items-center cursor-pointer">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Import CSV
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleImportCSV}
-                    className="hidden"
-                    disabled={isImporting}
-                  />
-                </label>
+              <DropdownMenuItem
+                onClick={() => {
+                  console.log('Import CSV clicked');
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.csv';
+                  input.onchange = (e) => {
+                    const target = e.target as HTMLInputElement;
+                    const file = target.files?.[0];
+                    if (file) {
+                      console.log('File selected via dropdown:', file.name);
+                      handleImportFile(file).then(result => {
+                        if (result.success > 0) {
+                          toast({
+                            title: "Import Successful",
+                            description: `Imported ${result.success} leads successfully. ${result.duplicates} duplicates skipped, ${result.errors} errors.`,
+                          });
+                          setRefreshTrigger(prev => prev + 1);
+                        } else if (result.errors > 0) {
+                          toast({
+                            title: "Import Failed",
+                            description: `${result.errors} errors occurred. Check the console for details.`,
+                            variant: "destructive",
+                          });
+                        }
+                      }).catch(error => {
+                        console.error('Import error:', error);
+                        toast({
+                          title: "Import Error",
+                          description: error.message || "Failed to import leads. Please check your CSV format.",
+                          variant: "destructive",
+                        });
+                      });
+                    }
+                  };
+                  input.click();
+                }}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import CSV
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportLeads} disabled={isExporting}>
                 <Download className="w-4 h-4 mr-2" />

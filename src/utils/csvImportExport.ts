@@ -1,7 +1,5 @@
-// Enhanced CSV Import/Export utilities for Contacts and Leads
+
 import { supabase } from '@/integrations/supabase/client';
-import { CSVParser } from './csvParser';
-import { exportContactsToCSV, exportLeadsToCSV, parseContactsCSVFile, parseLeadsCSVFile, downloadCSV, ContactCSVRow, LeadCSVRow } from './csvUtils';
 
 export interface ImportResult {
   success: number;
@@ -16,237 +14,360 @@ export interface ExportOptions {
 }
 
 export class CSVImportExport {
-  
-  // Export Contacts with all fields
-  static async exportContacts(contacts: any[], options: ExportOptions = {}): Promise<void> {
-    try {
-      console.log('Exporting contacts:', contacts.length);
+  // CSV parsing utility
+  private static parseCSV(csvText: string): { headers: string[]; rows: string[][] } {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length === 0) throw new Error('Empty CSV file');
+    
+    const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+    const rows = lines.slice(1).map(line => {
+      const row = [];
+      let current = '';
+      let inQuotes = false;
       
-      const csvContent = exportContactsToCSV(contacts, options.userDisplayNames || {});
-      const filename = `contacts_export_${new Date().toISOString().split('T')[0]}.csv`;
-      
-      const success = downloadCSV(csvContent, filename);
-      if (!success) {
-        throw new Error('Failed to download CSV file');
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          row.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
       }
-      
-      console.log('Contacts export completed successfully');
-    } catch (error) {
-      console.error('Export contacts error:', error);
-      throw error;
-    }
+      row.push(current.trim());
+      return row.map(field => field.replace(/^"|"$/g, ''));
+    });
+    
+    return { headers, rows };
   }
 
-  // Export Leads with all fields
-  static async exportLeads(leads: any[], options: ExportOptions = {}): Promise<void> {
-    try {
-      console.log('Exporting leads:', leads.length);
-      
-      const csvContent = exportLeadsToCSV(leads, options.userDisplayNames || {});
-      const filename = `leads_export_${new Date().toISOString().split('T')[0]}.csv`;
-      
-      const success = downloadCSV(csvContent, filename);
-      if (!success) {
-        throw new Error('Failed to download CSV file');
-      }
-      
-      console.log('Leads export completed successfully');
-    } catch (error) {
-      console.error('Export leads error:', error);
-      throw error;
-    }
+  // CSV generation utility
+  private static generateCSV(data: any[], headers: string[]): string {
+    const csvRows = [headers];
+    
+    data.forEach(item => {
+      const row = headers.map(header => {
+        const value = item[header] || '';
+        // Escape quotes and wrap in quotes if contains comma
+        const stringValue = String(value);
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      });
+      csvRows.push(row);
+    });
+    
+    return csvRows.map(row => row.join(',')).join('\n');
   }
 
-  // Import Contacts with validation and duplicate checking
-  static async importContacts(file: File, currentUserId: string): Promise<ImportResult> {
+  // Download CSV file
+  private static downloadCSV(content: string, filename: string): void {
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + content], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Contacts Import
+  static async importContacts(file: File, userId: string): Promise<ImportResult> {
     try {
-      console.log('CSVImportExport.importContacts called with file:', file.name, 'size:', file.size, 'type:', file.type);
-      console.log('Current user ID:', currentUserId);
+      const text = await file.text();
+      const { headers, rows } = this.parseCSV(text);
       
-      const contacts = await parseContactsCSVFile(file);
-      console.log('Parsed contacts from CSV:', contacts.length, 'contacts:', contacts);
+      console.log('Importing contacts - Headers:', headers);
+      console.log('Importing contacts - Rows count:', rows.length);
       
-      let success = 0;
-      let duplicates = 0;
-      let errors = 0;
+      const headerMap: Record<string, string> = {
+        'Contact Name': 'contact_name',
+        'Company Name': 'company_name',
+        'Position': 'position',
+        'Email': 'email',
+        'Phone Number': 'phone_no',
+        'Mobile Number': 'mobile_no',
+        'LinkedIn': 'linkedin',
+        'Website': 'website',
+        'Contact Source': 'contact_source',
+        'Lead Status': 'lead_status',
+        'Industry': 'industry',
+        'City': 'city',
+        'State': 'state',
+        'Country': 'country',
+        'Description': 'description',
+        'Annual Revenue': 'annual_revenue',
+        'Number of Employees': 'no_of_employees',
+        'Contact Owner': 'contact_owner'
+      };
+
+      let success = 0, duplicates = 0, errors = 0;
       const messages: string[] = [];
 
-      for (let i = 0; i < contacts.length; i++) {
-        const contact = contacts[i];
-        
+      for (let i = 0; i < rows.length; i++) {
         try {
+          const row = rows[i];
+          const contact: any = {
+            created_by: userId,
+            modified_by: userId,
+            contact_owner: userId
+          };
+
+          // Map fields
+          headers.forEach((header, index) => {
+            const dbField = headerMap[header];
+            if (dbField && row[index]) {
+              let value = row[index].trim();
+              
+              if (dbField === 'annual_revenue' || dbField === 'no_of_employees') {
+                const numValue = parseFloat(value);
+                contact[dbField] = isNaN(numValue) ? null : numValue;
+              } else {
+                contact[dbField] = value || null;
+              }
+            }
+          });
+
           // Validate required fields
-          if (!contact['Contact Name'] || contact['Contact Name'].trim() === '') {
-            messages.push(`Row ${i + 1}: Contact Name is required`);
+          if (!contact.contact_name) {
+            messages.push(`Row ${i + 2}: Contact Name is required`);
             errors++;
             continue;
           }
 
           // Check for duplicates
-          const { data: existingContacts } = await supabase
+          const { data: existing } = await supabase
             .from('contacts')
             .select('id')
-            .eq('contact_name', contact['Contact Name'])
-            .eq('company_name', contact['Company Name'] || '')
+            .eq('contact_name', contact.contact_name)
+            .eq('company_name', contact.company_name || '')
             .limit(1);
 
-          if (existingContacts && existingContacts.length > 0) {
-            console.log(`Row ${i + 1}: Duplicate contact found: ${contact['Contact Name']}`);
+          if (existing && existing.length > 0) {
             duplicates++;
             continue;
           }
-
-          // Prepare contact data for insertion
-          const contactData = {
-            contact_name: contact['Contact Name'],
-            company_name: contact['Company Name'] || null,
-            position: contact['Position'] || null,
-            email: contact['Email'] || null,
-            phone_no: contact['Phone'] || null,
-            mobile_no: contact['Mobile'] || null,
-            linkedin: contact['LinkedIn'] || null,
-            website: contact['Website'] || null,
-            contact_source: contact['Contact Source'] || null,
-            industry: contact['Industry'] || null,
-            country: contact['Region'] || null,
-            city: contact['City'] || null,
-            state: contact['State'] || null,
-            description: contact['Description'] || null,
-            annual_revenue: contact['Annual Revenue'] ? parseFloat(contact['Annual Revenue']) : null,
-            no_of_employees: contact['No Of Employees'] ? parseInt(contact['No Of Employees']) : null,
-            created_by: currentUserId,
-            modified_by: currentUserId,
-            contact_owner: currentUserId // Default to current user if no owner specified
-          };
 
           // Insert contact
           const { error } = await supabase
             .from('contacts')
-            .insert([contactData]);
+            .insert([contact]);
 
           if (error) {
-            console.error(`Row ${i + 1}: Insert error:`, error);
-            messages.push(`Row ${i + 1}: ${error.message}`);
+            console.error(`Row ${i + 2}: Insert error:`, error);
+            messages.push(`Row ${i + 2}: ${error.message}`);
             errors++;
           } else {
             success++;
-            console.log(`Row ${i + 1}: Successfully imported: ${contact['Contact Name']}`);
           }
-
         } catch (rowError: any) {
-          console.error(`Row ${i + 1}: Processing error:`, rowError);
-          messages.push(`Row ${i + 1}: ${rowError.message}`);
+          console.error(`Row ${i + 2}: Processing error:`, rowError);
+          messages.push(`Row ${i + 2}: ${rowError.message}`);
           errors++;
         }
       }
 
-      console.log(`Contacts import completed - Success: ${success}, Duplicates: ${duplicates}, Errors: ${errors}`);
-      
-      return {
-        success,
-        duplicates,
-        errors,
-        messages
-      };
-
+      return { success, duplicates, errors, messages };
     } catch (error: any) {
-      console.error('Import contacts error:', error);
-      throw new Error(`Import failed: ${error.message}`);
+      console.error('Import failed:', error);
+      return { success: 0, duplicates: 0, errors: 1, messages: [error.message] };
     }
   }
 
-  // Import Leads with validation and duplicate checking  
-  static async importLeads(file: File, currentUserId: string): Promise<ImportResult> {
+  // Leads Import - Replicating exact contacts logic
+  static async importLeads(file: File, userId: string): Promise<ImportResult> {
     try {
-      console.log('Starting leads import from file:', file.name);
+      const text = await file.text();
+      const { headers, rows } = this.parseCSV(text);
       
-      const leads = await parseLeadsCSVFile(file);
-      console.log('Parsed leads:', leads.length);
+      console.log('Importing leads - Headers:', headers);
+      console.log('Importing leads - Rows count:', rows.length);
       
-      let success = 0;
-      let duplicates = 0;
-      let errors = 0;
+      const headerMap: Record<string, string> = {
+        'Lead Name': 'lead_name',
+        'Company Name': 'company_name',
+        'Position': 'position',
+        'Email': 'email',
+        'Phone Number': 'phone_no',
+        'LinkedIn': 'linkedin',
+        'Website': 'website',
+        'Lead Source': 'contact_source',
+        'Industry': 'industry',
+        'Region': 'country',
+        'Status': 'status',
+        'Description': 'description',
+        'Lead Owner': 'contact_owner'
+      };
+
+      // Valid dropdown values
+      const validSources = ['Website', 'LinkedIn', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Event', 'Partner', 'Advertisement', 'Other'];
+      const validIndustries = ['Automotive', 'Technology', 'Healthcare', 'Finance', 'Manufacturing', 'Retail', 'Education', 'Real Estate', 'Other'];
+      const validRegions = ['North America', 'South America', 'Europe', 'Asia', 'Africa', 'Australia', 'Other'];
+      const validStatuses = ['New', 'Contacted', 'Qualified'];
+
+      const validateDropdownValue = (value: string, validValues: string[]): string => {
+        if (!value || !value.trim()) return '';
+        const trimmedValue = value.trim();
+        const match = validValues.find(v => v.toLowerCase() === trimmedValue.toLowerCase());
+        return match || '';
+      };
+
+      let success = 0, duplicates = 0, errors = 0;
       const messages: string[] = [];
 
-      for (let i = 0; i < leads.length; i++) {
-        const lead = leads[i];
-        
+      for (let i = 0; i < rows.length; i++) {
         try {
+          const row = rows[i];
+          const lead: any = {
+            created_by: userId,
+            modified_by: userId,
+            contact_owner: userId
+          };
+
+          // Map fields
+          headers.forEach((header, index) => {
+            const dbField = headerMap[header];
+            if (dbField && row[index]) {
+              let value = row[index].trim();
+              
+              // Apply dropdown validation
+              if (dbField === 'contact_source') {
+                lead[dbField] = validateDropdownValue(value, validSources) || null;
+              } else if (dbField === 'industry') {
+                lead[dbField] = validateDropdownValue(value, validIndustries) || null;
+              } else if (dbField === 'country') {
+                lead[dbField] = validateDropdownValue(value, validRegions) || null;
+              } else if (dbField === 'status') {
+                lead[dbField] = validateDropdownValue(value, validStatuses) || 'New';
+              } else {
+                lead[dbField] = value || null;
+              }
+            }
+          });
+
+          // Set default status if not provided
+          if (!lead.status) {
+            lead.status = 'New';
+          }
+
           // Validate required fields
-          if (!lead['Lead Name'] || lead['Lead Name'].trim() === '') {
-            messages.push(`Row ${i + 1}: Lead Name is required`);
+          if (!lead.lead_name) {
+            messages.push(`Row ${i + 2}: Lead Name is required`);
+            errors++;
+            continue;
+          }
+
+          if (!lead.company_name) {
+            messages.push(`Row ${i + 2}: Company Name is required`);
             errors++;
             continue;
           }
 
           // Check for duplicates
-          const { data: existingLeads } = await supabase
+          const { data: existing } = await supabase
             .from('leads')
             .select('id')
-            .eq('lead_name', lead['Lead Name'])
-            .eq('company_name', lead['Company Name'] || '')
+            .eq('lead_name', lead.lead_name)
+            .eq('company_name', lead.company_name)
             .limit(1);
 
-          if (existingLeads && existingLeads.length > 0) {
-            console.log(`Row ${i + 1}: Duplicate lead found: ${lead['Lead Name']}`);
+          if (existing && existing.length > 0) {
             duplicates++;
             continue;
           }
 
-          // Prepare lead data for insertion
-          const leadData = {
-            lead_name: lead['Lead Name'],
-            company_name: lead['Company Name'] || null,
-            position: lead['Position'] || null,
-            email: lead['Email'] || null,
-            phone_no: lead['Phone'] || null,
-            mobile_no: lead['Mobile'] || null,
-            linkedin: lead['LinkedIn'] || null,
-            website: lead['Website'] || null,
-            contact_source: lead['Lead Source'] || null,
-            lead_status: lead['Lead Status'] || null,
-            industry: lead['Industry'] || null,
-            country: lead['Region'] || null,
-            city: lead['City'] || null,
-            description: lead['Description'] || null,
-            created_by: currentUserId,
-            modified_by: currentUserId,
-            contact_owner: currentUserId // Default to current user if no owner specified
-          };
-
           // Insert lead
           const { error } = await supabase
             .from('leads')
-            .insert([leadData]);
+            .insert([lead]);
 
           if (error) {
-            console.error(`Row ${i + 1}: Insert error:`, error);
-            messages.push(`Row ${i + 1}: ${error.message}`);
+            console.error(`Row ${i + 2}: Insert error:`, error);
+            messages.push(`Row ${i + 2}: ${error.message}`);
             errors++;
           } else {
             success++;
-            console.log(`Row ${i + 1}: Successfully imported: ${lead['Lead Name']}`);
           }
-
         } catch (rowError: any) {
-          console.error(`Row ${i + 1}: Processing error:`, rowError);
-          messages.push(`Row ${i + 1}: ${rowError.message}`);
+          console.error(`Row ${i + 2}: Processing error:`, rowError);
+          messages.push(`Row ${i + 2}: ${rowError.message}`);
           errors++;
         }
       }
 
-      console.log(`Leads import completed - Success: ${success}, Duplicates: ${duplicates}, Errors: ${errors}`);
-      
-      return {
-        success,
-        duplicates,
-        errors,
-        messages
-      };
-
+      return { success, duplicates, errors, messages };
     } catch (error: any) {
-      console.error('Import leads error:', error);
-      throw new Error(`Import failed: ${error.message}`);
+      console.error('Leads import failed:', error);
+      return { success: 0, duplicates: 0, errors: 1, messages: [error.message] };
     }
+  }
+
+  // Contacts Export
+  static async exportContacts(contacts: any[], options: ExportOptions = {}): Promise<void> {
+    const headers = [
+      'Contact Name', 'Company Name', 'Position', 'Email', 'Phone Number', 'Mobile Number',
+      'LinkedIn', 'Website', 'Contact Source', 'Lead Status', 'Industry', 'City', 'State',
+      'Country', 'Description', 'Annual Revenue', 'Number of Employees', 'Contact Owner'
+    ];
+
+    const exportData = contacts.map(contact => ({
+      'Contact Name': contact.contact_name || '',
+      'Company Name': contact.company_name || '',
+      'Position': contact.position || '',
+      'Email': contact.email || '',
+      'Phone Number': contact.phone_no || '',
+      'Mobile Number': contact.mobile_no || '',
+      'LinkedIn': contact.linkedin || '',
+      'Website': contact.website || '',
+      'Contact Source': contact.contact_source || '',
+      'Lead Status': contact.lead_status || '',
+      'Industry': contact.industry || '',
+      'City': contact.city || '',
+      'State': contact.state || '',
+      'Country': contact.country || '',
+      'Description': contact.description || '',
+      'Annual Revenue': contact.annual_revenue || '',
+      'Number of Employees': contact.no_of_employees || '',
+      'Contact Owner': options.userDisplayNames?.[contact.contact_owner] || contact.contact_owner || ''
+    }));
+
+    const csvContent = this.generateCSV(exportData, headers);
+    const filename = `contacts_export_${new Date().toISOString().split('T')[0]}.csv`;
+    this.downloadCSV(csvContent, filename);
+  }
+
+  // Leads Export - Replicating exact contacts logic
+  static async exportLeads(leads: any[], options: ExportOptions = {}): Promise<void> {
+    const headers = [
+      'Lead Name', 'Company Name', 'Position', 'Email', 'Phone Number',
+      'LinkedIn', 'Website', 'Lead Source', 'Industry', 'Region',
+      'Status', 'Description', 'Lead Owner'
+    ];
+
+    const exportData = leads.map(lead => ({
+      'Lead Name': lead.lead_name || '',
+      'Company Name': lead.company_name || '',
+      'Position': lead.position || '',
+      'Email': lead.email || '',
+      'Phone Number': lead.phone_no || '',
+      'LinkedIn': lead.linkedin || '',
+      'Website': lead.website || '',
+      'Lead Source': lead.contact_source || '',
+      'Industry': lead.industry || '',
+      'Region': lead.country || '',
+      'Status': lead.status || lead.lead_status || '',
+      'Description': lead.description || '',
+      'Lead Owner': options.userDisplayNames?.[lead.contact_owner] || lead.contact_owner || ''
+    }));
+
+    const csvContent = this.generateCSV(exportData, headers);
+    const filename = `leads_export_${new Date().toISOString().split('T')[0]}.csv`;
+    this.downloadCSV(csvContent, filename);
   }
 }
