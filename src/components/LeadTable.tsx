@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -82,10 +80,11 @@ export const LeadTable = ({
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Updated filtering logic to handle status filtering correctly
+    // Use the correct status field and handle null/undefined values
+    const leadStatus = lead.status || lead.lead_status || 'New';
     const matchesStatus = filterStatus === 'all' || 
-      (lead.lead_status === filterStatus) ||
-      (filterStatus === 'New' && !lead.lead_status);
+      (leadStatus === filterStatus) ||
+      (filterStatus === 'New' && (!lead.status && !lead.lead_status));
     
     return matchesSearch && matchesStatus;
   });
@@ -201,50 +200,55 @@ export const LeadTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedLeads.map((lead) => (
-              <TableRow key={lead.id}>
-                <TableCell>
-                  <Checkbox
-                    checked={selectedLeads.includes(lead.id)}
-                    onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
-                  />
-                </TableCell>
-                <TableCell className="font-medium">{lead.lead_name}</TableCell>
-                <TableCell>{lead.company_name}</TableCell>
-                <TableCell>{lead.email}</TableCell>
-                <TableCell>{lead.phone_no}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    lead.lead_status === 'Qualified' ? 'bg-blue-100 text-blue-800' :
-                    lead.lead_status === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {lead.lead_status || 'New'}
-                  </span>
-                </TableCell>
-                <TableCell>{lead.contact_source}</TableCell>
-                <TableCell>{lead.country}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(lead)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(lead.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {paginatedLeads.map((lead) => {
+              // Use the correct status field, prioritizing 'status' over 'lead_status'
+              const displayStatus = lead.status || lead.lead_status || 'New';
+              
+              return (
+                <TableRow key={lead.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedLeads.includes(lead.id)}
+                      onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{lead.lead_name}</TableCell>
+                  <TableCell>{lead.company_name}</TableCell>
+                  <TableCell>{lead.email}</TableCell>
+                  <TableCell>{lead.phone_no}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      displayStatus === 'Qualified' ? 'bg-blue-100 text-blue-800' :
+                      displayStatus === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {displayStatus}
+                    </span>
+                  </TableCell>
+                  <TableCell>{lead.contact_source}</TableCell>
+                  <TableCell>{lead.country}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(lead)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(lead.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -293,4 +297,3 @@ export const LeadTable = ({
     </div>
   );
 };
-
