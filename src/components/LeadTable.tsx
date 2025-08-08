@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,10 @@ export const LeadTable = ({
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = filterStatus === 'all' || lead.lead_status === filterStatus;
+    // Updated filtering logic to handle status filtering correctly
+    const matchesStatus = filterStatus === 'all' || 
+      (lead.lead_status === filterStatus) ||
+      (filterStatus === 'New' && !lead.lead_status);
     
     return matchesSearch && matchesStatus;
   });
@@ -158,7 +162,7 @@ export const LeadTable = ({
         />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Statuses" />
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
@@ -289,3 +293,4 @@ export const LeadTable = ({
     </div>
   );
 };
+
