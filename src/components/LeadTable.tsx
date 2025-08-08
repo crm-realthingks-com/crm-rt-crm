@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -157,18 +158,13 @@ export const LeadTable = ({
         />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="New">New</SelectItem>
             <SelectItem value="Contacted">Contacted</SelectItem>
             <SelectItem value="Qualified">Qualified</SelectItem>
-            <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
-            <SelectItem value="Negotiating">Negotiating</SelectItem>
-            <SelectItem value="Closed Won">Closed Won</SelectItem>
-            <SelectItem value="Closed Lost">Closed Lost</SelectItem>
-            <SelectItem value="On Hold">On Hold</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -215,9 +211,8 @@ export const LeadTable = ({
                 <TableCell>{lead.phone_no}</TableCell>
                 <TableCell>
                   <span className={`px-2 py-1 rounded-full text-xs ${
-                    lead.lead_status === 'Closed Won' ? 'bg-green-100 text-green-800' :
-                    lead.lead_status === 'Closed Lost' ? 'bg-red-100 text-red-800' :
                     lead.lead_status === 'Qualified' ? 'bg-blue-100 text-blue-800' :
+                    lead.lead_status === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
                     {lead.lead_status || 'New'}
