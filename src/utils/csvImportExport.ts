@@ -77,6 +77,43 @@ export class CSVImportExport {
     window.URL.revokeObjectURL(url);
   }
 
+  // Helper function to resolve user ID from display name, email, or UUID
+  private static async resolveUserId(ownerValue: string, currentUserId: string): Promise<string> {
+    if (!ownerValue || !ownerValue.trim()) {
+      return currentUserId;
+    }
+
+    const trimmedValue = ownerValue.trim();
+    
+    // Check if it's already a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(trimmedValue)) {
+      return trimmedValue;
+    }
+
+    try {
+      // Fetch all users to match by display name or email
+      const { data: { users }, error } = await supabase.auth.admin.listUsers();
+      
+      if (error || !users) {
+        console.warn('Could not fetch users for owner resolution:', error);
+        return currentUserId;
+      }
+
+      // Find user by display name or email
+      const user = users.find(u => 
+        (u.user_metadata?.display_name && u.user_metadata.display_name.toLowerCase() === trimmedValue.toLowerCase()) ||
+        (u.user_metadata?.full_name && u.user_metadata.full_name.toLowerCase() === trimmedValue.toLowerCase()) ||
+        (u.email && u.email.toLowerCase() === trimmedValue.toLowerCase())
+      );
+
+      return user?.id || currentUserId;
+    } catch (error) {
+      console.warn('Error resolving user ID:', error);
+      return currentUserId;
+    }
+  }
+
   // Contacts Import
   static async importContacts(file: File, userId: string): Promise<ImportResult> {
     try {
@@ -121,19 +158,22 @@ export class CSVImportExport {
           };
 
           // Map fields
-          headers.forEach((header, index) => {
+          for (let j = 0; j < headers.length; j++) {
+            const header = headers[j];
             const dbField = headerMap[header];
-            if (dbField && row[index]) {
-              let value = row[index].trim();
+            if (dbField && row[j]) {
+              let value = row[j].trim();
               
-              if (dbField === 'annual_revenue' || dbField === 'no_of_employees') {
+              if (dbField === 'contact_owner') {
+                contact[dbField] = await this.resolveUserId(value, userId);
+              } else if (dbField === 'annual_revenue' || dbField === 'no_of_employees') {
                 const numValue = parseFloat(value);
                 contact[dbField] = isNaN(numValue) ? null : numValue;
               } else {
                 contact[dbField] = value || null;
               }
             }
-          });
+          }
 
           // Validate required fields
           if (!contact.contact_name) {
@@ -184,7 +224,7 @@ export class CSVImportExport {
     }
   }
 
-  // Leads Import - Replicating exact contacts logic
+  // Leads Import - with proper user resolution
   static async importLeads(file: File, userId: string): Promise<ImportResult> {
     try {
       const text = await file.text();
@@ -236,13 +276,17 @@ export class CSVImportExport {
           };
 
           // Map fields
-          headers.forEach((header, index) => {
+          for (let j = 0; j < headers.length; j++) {
+            const header = headers[j];
             const dbField = headerMap[header];
-            if (dbField && row[index]) {
-              let value = row[index].trim();
+            if (dbField && row[j]) {
+              let value = row[j].trim();
               
-              // Apply dropdown validation
-              if (dbField === 'contact_source') {
+              // Handle Lead Owner field with proper user resolution
+              if (dbField === 'contact_owner') {
+                lead[dbField] = await this.resolveUserId(value, userId);
+                console.log(`Row ${i + 2}: Resolved owner "${value}" to "${lead[dbField]}"`);
+              } else if (dbField === 'contact_source') {
                 lead[dbField] = validateDropdownValue(value, validSources) || null;
               } else if (dbField === 'industry') {
                 lead[dbField] = validateDropdownValue(value, validIndustries) || null;
@@ -254,12 +298,14 @@ export class CSVImportExport {
                 lead[dbField] = value || null;
               }
             }
-          });
+          }
 
           // Set default status if not provided
           if (!lead.status) {
             lead.status = 'New';
           }
+
+          console.log(`Row ${i + 2}: Processing lead:`, lead);
 
           // Validate required fields
           if (!lead.lead_name) {
@@ -285,6 +331,7 @@ export class CSVImportExport {
             .limit(1);
 
           if (existing && existing.length > 0) {
+            console.log(`Row ${i + 2}: Duplicate found, skipping`);
             duplicates++;
             continue;
           }
@@ -300,6 +347,7 @@ export class CSVImportExport {
             errors++;
             errorDetails.push({ row: i + 2, message: error.message });
           } else {
+            console.log(`Row ${i + 2}: Successfully inserted lead`);
             success++;
           }
         } catch (rowError: any) {
@@ -313,7 +361,7 @@ export class CSVImportExport {
       return { success, duplicates, errors, messages, errorDetails };
     } catch (error: any) {
       console.error('Leads import failed:', error);
-      return { success: 0, duplicates: 0, errors: 1, messages: [error.message], errorDetails: [{ message: error.message }] };
+      return { success: 0, duplicates, errors: 1, messages: [error.message], errorDetails: [{ message: error.message }] };
     }
   }
 
@@ -351,7 +399,7 @@ export class CSVImportExport {
     this.downloadCSV(csvContent, filename);
   }
 
-  // Leads Export - Replicating exact contacts logic
+  // Leads Export - matching contacts exactly
   static async exportLeads(leads: any[], options: ExportOptions = {}): Promise<void> {
     const headers = [
       'Lead Name', 'Company Name', 'Position', 'Email', 'Phone Number',
