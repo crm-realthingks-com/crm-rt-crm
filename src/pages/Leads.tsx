@@ -1,3 +1,4 @@
+
 import { LeadTable } from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -30,8 +31,8 @@ const Leads = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('=== IMPORT PROCESS STARTED ===');
-    console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
+    console.log('=== HANDLING CSV IMPORT ===');
+    console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
 
     if (!user) {
       console.error('No authenticated user found');
@@ -45,37 +46,43 @@ const Leads = () => {
     }
 
     try {
-      console.log('Calling importLeads function...');
+      console.log('Starting import process...');
       const result = await importLeads(file);
-      console.log('Import result received:', result);
+      console.log('Import completed with result:', result);
       
       // Build summary message
       const totalProcessed = result.success + result.duplicates + result.errors;
       let title = "Import Complete";
-      let description = `Processed ${totalProcessed} rows: `;
+      let description = "";
       
-      const parts = [];
-      if (result.success > 0) parts.push(`${result.success} imported`);
-      if (result.duplicates > 0) parts.push(`${result.duplicates} duplicates`);
-      if (result.errors > 0) parts.push(`${result.errors} errors`);
+      if (totalProcessed > 0) {
+        description = `Processed ${totalProcessed} rows: `;
+        const parts = [];
+        if (result.success > 0) parts.push(`${result.success} imported`);
+        if (result.duplicates > 0) parts.push(`${result.duplicates} duplicates`);
+        if (result.errors > 0) parts.push(`${result.errors} errors`);
+        description += parts.join(', ');
+      } else {
+        description = "No rows were processed";
+      }
       
-      description += parts.join(', ');
-      
-      // Show detailed messages if there are errors
-      if (result.errors > 0 && result.messages.length > 0) {
+      // Show toast based on result
+      if (result.errors > 0) {
         console.error('Import errors:', result.messages);
         console.error('Error details:', result.errorDetails);
         
-        // Show first few error messages
-        const errorSummary = result.messages
-          .filter(msg => !msg.includes('Unknown column'))
-          .slice(0, 3)
-          .join('; ');
+        let errorSummary = "";
+        if (result.messages.length > 0) {
+          errorSummary = result.messages
+            .filter(msg => !msg.includes('Unknown column') && !msg.includes('will be ignored'))
+            .slice(0, 3)
+            .join('; ');
+        }
         
         if (errorSummary) {
-          description += `. Errors: ${errorSummary}`;
+          description += `. First errors: ${errorSummary}`;
           if (result.messages.length > 3) {
-            description += '... (see console for full details)';
+            description += ' (see console for all details)';
           }
         }
         
@@ -93,22 +100,21 @@ const Leads = () => {
       
       // Trigger table refresh if any records were imported
       if (result.success > 0) {
+        console.log('Refreshing leads table...');
         setRefreshTrigger(prev => prev + 1);
       }
       
-      // Clear the file input
-      event.target.value = '';
-      
     } catch (error: any) {
-      console.error('=== IMPORT ERROR CAUGHT ===');
-      console.error('Error details:', error);
+      console.error('=== IMPORT EXCEPTION ===');
+      console.error('Error:', error);
       
       toast({
         title: "Import Error",
         description: error.message || "Failed to import leads. Please check your CSV format and try again.",
         variant: "destructive",
       });
-      
+    } finally {
+      // Clear the file input
       event.target.value = '';
     }
   };
