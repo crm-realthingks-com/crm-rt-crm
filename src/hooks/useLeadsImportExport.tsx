@@ -4,13 +4,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUsers } from '@/hooks/useUsers';
-
-export interface LeadImportResult {
-  success: number;
-  duplicates: number;
-  errors: number;
-  messages: string[];
-}
+import { LeadsImporter, LeadsImportResult } from '@/utils/leadsImport';
 
 export interface LeadExportData {
   'Lead Name': string;
@@ -34,13 +28,7 @@ export const useLeadsImportExport = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Valid dropdown values matching the Add Lead form
-  const validSources = ['Website', 'LinkedIn', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Event', 'Partner', 'Advertisement', 'Other'];
-  const validIndustries = ['Automotive', 'Technology', 'Healthcare', 'Finance', 'Manufacturing', 'Retail', 'Education', 'Real Estate', 'Other'];
-  const validRegions = ['North America', 'South America', 'Europe', 'Asia', 'Africa', 'Australia', 'Other'];
-  const validStatuses = ['New', 'Contacted', 'Qualified'];
-
-  // Expected headers from export - this is the canonical list
+  // Expected headers from export - canonical list
   const expectedHeaders = [
     'Lead Name',
     'Company Name', 
@@ -71,9 +59,6 @@ export const useLeadsImportExport = () => {
         return;
       }
 
-      // Use exact headers matching the expected structure
-      const headers = expectedHeaders;
-
       // Convert leads to CSV rows using exact database field mappings
       const csvRows = leads.map(lead => [
         lead.lead_name || '',
@@ -92,7 +77,7 @@ export const useLeadsImportExport = () => {
       ]);
 
       // Combine headers and data
-      const allRows = [headers, ...csvRows];
+      const allRows = [expectedHeaders, ...csvRows];
 
       // Convert to CSV string
       const csvContent = allRows
@@ -147,281 +132,46 @@ export const useLeadsImportExport = () => {
     }
   };
 
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    let i = 0;
-
-    while (i < line.length) {
-      const char = line[i];
-      const nextChar = line[i + 1];
-
-      if (char === '"') {
-        if (inQuotes && nextChar === '"') {
-          // Escaped quote
-          current += '"';
-          i += 2;
-        } else {
-          // Toggle quote state
-          inQuotes = !inQuotes;
-          i++;
-        }
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-        i++;
-      } else {
-        current += char;
-        i++;
-      }
-    }
+  const importLeads = async (file: File): Promise<LeadsImportResult> => {
+    console.log('=== IMPORT LEADS FUNCTION CALLED ===');
+    console.log('File:', file.name, 'Size:', file.size, 'User:', user?.id);
     
-    result.push(current.trim());
-    return result.map(field => field.replace(/^"|"$/g, '')); // Remove surrounding quotes
-  };
-
-  const validateDropdownValue = (value: string, validValues: string[], fieldName: string): string => {
-    if (!value || value.trim() === '') return '';
-    
-    const trimmedValue = value.trim();
-    // Case-insensitive matching
-    const matchedValue = validValues.find(v => v.toLowerCase() === trimmedValue.toLowerCase());
-    
-    if (matchedValue) {
-      return matchedValue;
-    }
-    
-    console.warn(`Invalid ${fieldName} value: "${trimmedValue}". Valid values: ${validValues.join(', ')}`);
-    return ''; // Return empty string for invalid values
-  };
-
-  const resolveOwnerId = (ownerValue?: string): string => {
-    const fallback = user?.id || '';
-    const v = (ownerValue || '').trim();
-    if (!v) return fallback;
-    
-    // UUID pattern
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(v)) return v;
-    
-    const found = users?.find(u => (
-      (u.display_name && u.display_name.toLowerCase() === v.toLowerCase()) ||
-      (u.full_name && u.full_name.toLowerCase() === v.toLowerCase()) ||
-      (u.email && u.email.toLowerCase() === v.toLowerCase())
-    ));
-    return found?.id || fallback;
-  };
-
-  // Create a flexible header mapping function that handles various formats
-  const mapHeaderToField = (header: string): string | null => {
-    const normalizedHeader = header.toLowerCase().trim();
-    
-    // Direct mapping to expected headers
-    const headerMappings: Record<string, string> = {
-      'lead name': 'Lead Name',
-      'name': 'Lead Name',
-      'leadname': 'Lead Name',
-      'company name': 'Company Name', 
-      'company': 'Company Name',
-      'companyname': 'Company Name',
-      'position': 'Position',
-      'title': 'Position',
-      'job title': 'Position',
-      'email': 'Email',
-      'email address': 'Email',
-      'phone number': 'Phone Number',
-      'phone': 'Phone Number',
-      'phone_no': 'Phone Number',
-      'mobile': 'Phone Number',
-      'linkedin': 'LinkedIn',
-      'linkedin profile': 'LinkedIn',
-      'website': 'Website',
-      'website url': 'Website',
-      'lead source': 'Lead Source',
-      'source': 'Lead Source',
-      'contact source': 'Lead Source',
-      'industry': 'Industry',
-      'region': 'Region',
-      'country': 'Region',
-      'location': 'Region',
-      'status': 'Status',
-      'lead status': 'Status',
-      'description': 'Description',
-      'notes': 'Description',
-      'comments': 'Description',
-      'lead owner': 'Lead Owner',
-      'owner': 'Lead Owner',
-      'contact owner': 'Lead Owner',
-      'assigned to': 'Lead Owner'
-    };
-
-    return headerMappings[normalizedHeader] || null;
-  };
-
-  const importLeads = async (file: File): Promise<LeadImportResult> => {
-    console.log('importLeads function called with file:', file.name);
     setIsImporting(true);
     
     try {
       if (!user) {
-        console.error('No user found for import');
         throw new Error('You must be logged in to import leads');
       }
 
-      console.log('Reading file content...');
-      const text = await file.text();
-      console.log('File content length:', text.length);
+      // Create importer instance
+      const importer = new LeadsImporter(users || [], user.id);
       
-      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line);
-      console.log('Total lines after filtering:', lines.length);
+      // Execute import
+      const result = await importer.importFromFile(file);
       
-      if (lines.length < 2) {
-        throw new Error('CSV file must have at least a header and one data row');
+      // Log detailed results for debugging
+      console.log('=== IMPORT RESULTS ===');
+      console.log('Success:', result.success);
+      console.log('Duplicates:', result.duplicates);
+      console.log('Errors:', result.errors);
+      console.log('Messages:', result.messages);
+      if (result.errorDetails.length > 0) {
+        console.log('Error Details:', result.errorDetails);
       }
 
-      // Parse headers with improved handling
-      const csvHeaders = parseCSVLine(lines[0]);
-      console.log('Original CSV headers:', csvHeaders);
-
-      // Map headers to expected format
-      const headerMapping: Record<number, string> = {};
-      const unmappedHeaders: string[] = [];
-
-      csvHeaders.forEach((header, index) => {
-        const mappedHeader = mapHeaderToField(header);
-        if (mappedHeader) {
-          headerMapping[index] = mappedHeader;
-        } else {
-          unmappedHeaders.push(header);
-        }
-      });
-
-      console.log('Header mapping:', headerMapping);
-      console.log('Unmapped headers (will be ignored):', unmappedHeaders);
-
-      // Check for required fields
-      const mappedHeaderValues = Object.values(headerMapping);
-      const hasLeadName = mappedHeaderValues.includes('Lead Name');
-      const hasCompanyName = mappedHeaderValues.includes('Company Name');
-
-      if (!hasLeadName) {
-        throw new Error('Required field "Lead Name" not found in CSV headers. Please ensure your CSV includes a Lead Name column.');
-      }
-
-      if (!hasCompanyName) {
-        throw new Error('Required field "Company Name" not found in CSV headers. Please ensure your CSV includes a Company Name column.');
-      }
-
-      // Parse all data rows
-      const csvData = [];
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
-        const rowData: Record<string, string> = {};
-        
-        // Map values using the header mapping
-        Object.entries(headerMapping).forEach(([index, fieldName]) => {
-          const value = values[parseInt(index)] || '';
-          rowData[fieldName] = value.trim();
-        });
-        
-        csvData.push(rowData);
-      }
-
-      console.log('Parsed CSV data:', csvData.length, 'rows');
-
-      let success = 0;
-      let duplicates = 0;
-      let errors = 0;
-      const messages: string[] = [];
-
-      for (let i = 0; i < csvData.length; i++) {
-        const rowData = csvData[i];
-        
-        try {
-          // Validate required fields with consistent casing and trimming
-          const leadName = (rowData['Lead Name'] || '').trim();
-          const companyName = (rowData['Company Name'] || '').trim();
-
-          if (!leadName) {
-            messages.push(`Row ${i + 1}: Lead Name is required`);
-            errors++;
-            continue;
-          }
-
-          if (!companyName) {
-            messages.push(`Row ${i + 1}: Company Name is required`);
-            errors++;
-            continue;
-          }
-
-          // Check for duplicates
-          const { data: existingLeads } = await supabase
-            .from('leads')
-            .select('id')
-            .eq('lead_name', leadName)
-            .eq('company_name', companyName)
-            .limit(1);
-
-          if (existingLeads && existingLeads.length > 0) {
-            duplicates++;
-            continue;
-          }
-
-          // Map to database fields with consistent validation and trimming
-          const lead = {
-            lead_name: leadName,
-            company_name: companyName,
-            position: (rowData['Position'] || '').trim() || null,
-            email: (rowData['Email'] || '').trim() || null,
-            phone_no: (rowData['Phone Number'] || '').trim() || null,
-            linkedin: (rowData['LinkedIn'] || '').trim() || null,
-            website: (rowData['Website'] || '').trim() || null,
-            contact_source: validateDropdownValue(rowData['Lead Source'] || '', validSources, 'Lead Source') || null,
-            industry: validateDropdownValue(rowData['Industry'] || '', validIndustries, 'Industry') || null,
-            country: validateDropdownValue(rowData['Region'] || '', validRegions, 'Region') || null,
-            status: validateDropdownValue(rowData['Status'] || 'New', validStatuses, 'Status') || 'New',
-            description: (rowData['Description'] || '').trim() || null,
-            created_by: user.id,
-            modified_by: user.id,
-            contact_owner: resolveOwnerId(rowData['Lead Owner'])
-          };
-
-          console.log(`Row ${i + 1}: Inserting lead:`, lead);
-
-          // Insert lead
-          const { error: insertError } = await supabase
-            .from('leads')
-            .insert([lead]);
-
-          if (insertError) {
-            console.error(`Row ${i + 1}: Insert error:`, insertError);
-            messages.push(`Row ${i + 1}: ${insertError.message}`);
-            errors++;
-          } else {
-            success++;
-            console.log(`Row ${i + 1}: Successfully imported: ${leadName}`);
-          }
-
-        } catch (rowError: any) {
-          console.error(`Row ${i + 1}: Processing error:`, rowError);
-          messages.push(`Row ${i + 1}: ${rowError.message}`);
-          errors++;
-        }
-      }
-
-      console.log(`Import completed - Success: ${success}, Duplicates: ${duplicates}, Errors: ${errors}`);
-      
-      return {
-        success,
-        duplicates,
-        errors,
-        messages
-      };
+      return result;
 
     } catch (error: any) {
-      console.error('Import error:', error);
-      throw new Error(`Import failed: ${error.message}`);
+      console.error('=== IMPORT FUNCTION ERROR ===');
+      console.error('Error details:', error);
+      
+      return {
+        success: 0,
+        duplicates: 0,
+        errors: 1,
+        messages: [`Import failed: ${error.message}`],
+        errorDetails: [{ error: error.message, stack: error.stack }]
+      };
     } finally {
       setIsImporting(false);
     }
@@ -431,8 +181,6 @@ export const useLeadsImportExport = () => {
     exportLeads,
     importLeads,
     isImporting,
-    isExporting,
-    parseCSVLine,
-    validateDropdownValue
+    isExporting
   };
 };

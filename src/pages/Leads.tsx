@@ -31,7 +31,8 @@ const Leads = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('Import process started with file:', file.name, 'Size:', file.size);
+    console.log('=== IMPORT PROCESS STARTED ===');
+    console.log('File:', file.name, 'Size:', file.size);
 
     if (!user) {
       console.error('No authenticated user found');
@@ -47,46 +48,59 @@ const Leads = () => {
     try {
       console.log('Calling importLeads function...');
       const result = await importLeads(file);
-      console.log('Import result:', result);
+      console.log('Import result received:', result);
       
-      if (!result) {
-        console.error('Import function returned no result');
-        toast({
-          title: "Import Error",
-          description: "Import function failed to return a result",
-          variant: "destructive",
-        });
-        event.target.value = '';
-        return;
-      }
-
-      // Build success message
-      let message = `Import completed: ${result.success} new leads added`;
-      if (result.duplicates > 0) message += `, ${result.duplicates} duplicates skipped`;
-      if (result.errors > 0) message += `, ${result.errors} errors`;
-
-      // Show appropriate toast based on results
+      // Build detailed message
+      let message = '';
+      let description = '';
+      
       if (result.success > 0) {
-        console.log('Import successful:', message);
+        message = `Import completed: ${result.success} leads imported successfully`;
+        if (result.duplicates > 0) message += `, ${result.duplicates} duplicates skipped`;
+        if (result.errors > 0) message += `, ${result.errors} errors occurred`;
+        
+        // Show detailed error messages if any
+        if (result.messages.length > 0) {
+          const errorMessages = result.messages.filter(msg => !msg.includes('Mapped'));
+          if (errorMessages.length > 0) {
+            description = errorMessages.slice(0, 5).join('; ');
+            if (errorMessages.length > 5) {
+              description += `... and ${errorMessages.length - 5} more errors`;
+            }
+          }
+        }
+
         toast({
           title: "Import Successful",
-          description: message,
+          description: message + (description ? ` - ${description}` : ''),
         });
+        
         // Trigger table refresh
         setRefreshTrigger(prev => prev + 1);
+        
       } else if (result.errors > 0) {
-        console.error('Import had errors:', result.messages);
+        console.error('Import failed with errors:', result.messages);
+        
+        // Show detailed error information
+        const errorSummary = result.messages.slice(0, 3).join('; ');
+        const hasMoreErrors = result.messages.length > 3;
+        
         toast({
           title: "Import Failed",
-          description: `${result.errors} errors occurred. ${result.messages.slice(0, 3).join('. ')}`,
+          description: `${result.errors} errors occurred. ${errorSummary}${hasMoreErrors ? '...' : ''}`,
           variant: "destructive",
         });
+        
+        // Log full error details for debugging
+        console.error('Full error details:', result.errorDetails);
+        
       } else if (result.duplicates > 0) {
         console.log('All records were duplicates');
         toast({
           title: "Import Completed - No Changes",
-          description: "All records were duplicates, no new data was added.",
+          description: "All records were duplicates. No new leads were added.",
         });
+        
       } else {
         console.warn('Unexpected import result state');
         toast({
@@ -99,12 +113,15 @@ const Leads = () => {
       event.target.value = '';
       
     } catch (error: any) {
-      console.error('Import error caught:', error);
+      console.error('=== IMPORT ERROR CAUGHT ===');
+      console.error('Error details:', error);
+      
       toast({
         title: "Import Error",
         description: error.message || "Failed to import leads. Please check your CSV format and try again.",
         variant: "destructive",
       });
+      
       event.target.value = '';
     }
   };
