@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ImportResult {
@@ -93,14 +94,23 @@ export class CSVImportExport {
 
     try {
       // Fetch all users to match by display name or email
-      const { data: { users }, error } = await supabase.auth.admin.listUsers();
+      const { data, error } = await supabase.functions.invoke('admin-list-users');
       
-      if (error || !users) {
+      if (error || !data || !data.users) {
         console.warn('Could not fetch users for owner resolution:', error);
         return currentUserId;
       }
 
-      // Find user by display name or email
+      // Find user by display name or email with proper typing
+      const users = data.users as Array<{
+        id: string;
+        email?: string;
+        user_metadata?: {
+          display_name?: string;
+          full_name?: string;
+        };
+      }>;
+
       const user = users.find(u => 
         (u.user_metadata?.display_name && u.user_metadata.display_name.toLowerCase() === trimmedValue.toLowerCase()) ||
         (u.user_metadata?.full_name && u.user_metadata.full_name.toLowerCase() === trimmedValue.toLowerCase()) ||
@@ -144,7 +154,9 @@ export class CSVImportExport {
         'Contact Owner': 'contact_owner'
       };
 
-      let success = 0, duplicates = 0, errors = 0;
+      let success = 0;
+      let duplicates = 0;
+      let errors = 0;
       const messages: string[] = [];
       const errorDetails: any[] = [];
 
@@ -262,7 +274,9 @@ export class CSVImportExport {
         return match || '';
       };
 
-      let success = 0, duplicates = 0, errors = 0;
+      let success = 0;
+      let duplicates = 0;
+      let errors = 0;
       const messages: string[] = [];
       const errorDetails: any[] = [];
 
@@ -361,7 +375,7 @@ export class CSVImportExport {
       return { success, duplicates, errors, messages, errorDetails };
     } catch (error: any) {
       console.error('Leads import failed:', error);
-      return { success: 0, duplicates, errors: 1, messages: [error.message], errorDetails: [{ message: error.message }] };
+      return { success: 0, duplicates: 0, errors: 1, messages: [error.message], errorDetails: [{ message: error.message }] };
     }
   }
 
