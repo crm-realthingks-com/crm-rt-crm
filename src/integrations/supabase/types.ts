@@ -407,11 +407,11 @@ export type Database = {
           lead_name: string
           lead_status: string | null
           linkedin: string | null
-          mobile_no: string | null
           modified_by: string | null
           modified_time: string | null
           phone_no: string | null
           position: string | null
+          status: string | null
           website: string | null
         }
         Insert: {
@@ -429,11 +429,11 @@ export type Database = {
           lead_name: string
           lead_status?: string | null
           linkedin?: string | null
-          mobile_no?: string | null
           modified_by?: string | null
           modified_time?: string | null
           phone_no?: string | null
           position?: string | null
+          status?: string | null
           website?: string | null
         }
         Update: {
@@ -451,11 +451,11 @@ export type Database = {
           lead_name?: string
           lead_status?: string | null
           linkedin?: string | null
-          mobile_no?: string | null
           modified_by?: string | null
           modified_time?: string | null
           phone_no?: string | null
           position?: string | null
+          status?: string | null
           website?: string | null
         }
         Relationships: []

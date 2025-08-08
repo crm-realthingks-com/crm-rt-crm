@@ -7,36 +7,56 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useImportExport } from "@/hooks/useImportExport";
+import { CSVImportExport } from "@/utils/csvImportExport";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { useAuth } from "@/hooks/useAuth";
 
 const Contacts = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [contacts, setContacts] = useState<any[]>([]);
 
   console.log('Contacts page: Rendering');
 
-  // Use the import/export hook
-  const { handleImport, handleExportAll } = useImportExport({
-    moduleName: 'contacts',
-    tableName: 'contacts',
-    onRefresh: () => {
-      console.log('Contacts page: Import hook triggering refresh...');
-      setRefreshTrigger(prev => prev + 1);
+  // Get user display names for owner fields
+  const ownerIds = contacts.map(contact => contact.contact_owner).filter(Boolean);
+  const { displayNames } = useUserDisplayNames(ownerIds);
+
+  const handleImportFile = async (file: File) => {
+    console.log('handleImportFile called with file:', file);
+    
+    if (!user) {
+      console.log('No user found, showing error');
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to import contacts.",
+        variant: "destructive",
+      });
+      return;
     }
-  });
 
-  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    console.log('Contacts page: Starting CSV import with file:', file.name);
+    console.log('Contacts page: Starting CSV import with file:', file.name, 'User ID:', user.id);
     
     try {
-      await handleImport(file);
-      event.target.value = '';
+      const result = await CSVImportExport.importContacts(file, user.id);
+      
+      if (result.success > 0) {
+        toast({
+          title: "Import Successful",
+          description: `Imported ${result.success} contacts successfully. ${result.duplicates} duplicates skipped, ${result.errors} errors.`,
+        });
+        setRefreshTrigger(prev => prev + 1);
+      } else if (result.errors > 0) {
+        toast({
+          title: "Import Failed",
+          description: `${result.errors} errors occurred. Check the console for details.`,
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Import error:', error);
       toast({
@@ -47,9 +67,23 @@ const Contacts = () => {
     }
   };
 
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleImportCSV triggered, event:', event);
+    const file = event.target.files?.[0];
+    console.log('Selected file:', file);
+    
+    if (!file) {
+      console.log('No file selected, returning');
+      return;
+    }
+
+    await handleImportFile(file);
+    event.target.value = '';
+  };
+
   const handleExportContacts = async () => {
     try {
-      const { data: contacts, error } = await supabase
+      const { data: contactsData, error } = await supabase
         .from('contacts')
         .select('*')
         .order('created_time', { ascending: false });
@@ -59,7 +93,7 @@ const Contacts = () => {
         throw error;
       }
 
-      if (!contacts || contacts.length === 0) {
+      if (!contactsData || contactsData.length === 0) {
         toast({
           title: "No Data",
           description: "No contacts available to export",
@@ -68,7 +102,16 @@ const Contacts = () => {
         return;
       }
 
-      await handleExportAll(contacts);
+      await CSVImportExport.exportContacts(contactsData, {
+        includeOwnerNames: true,
+        userDisplayNames: displayNames
+      });
+
+      toast({
+        title: "Export Successful",
+        description: `Exported ${contactsData.length} contacts successfully.`,
+      });
+
     } catch (error) {
       console.error('Export error:', error);
       toast({
@@ -131,17 +174,25 @@ const Contacts = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem asChild>
-                <label className="flex items-center cursor-pointer">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Import CSV
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleImportCSV}
-                    className="hidden"
-                  />
-                </label>
+              <DropdownMenuItem
+                onClick={() => {
+                  console.log('Import CSV clicked');
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.csv';
+                  input.onchange = (e) => {
+                    const target = e.target as HTMLInputElement;
+                    const file = target.files?.[0];
+                    if (file) {
+                      console.log('File selected via dropdown:', file.name);
+                      handleImportFile(file);
+                    }
+                  };
+                  input.click();
+                }}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import CSV
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportContacts}>
                 <Download className="w-4 h-4 mr-2" />

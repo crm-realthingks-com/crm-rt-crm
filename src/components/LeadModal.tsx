@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useUsers } from "@/hooks/useUsers";
 
 const leadSchema = z.object({
   lead_name: z.string().min(1, "Lead name is required"),
@@ -23,7 +25,9 @@ const leadSchema = z.object({
   contact_source: z.string().optional(),
   industry: z.string().optional(),
   country: z.string().optional(),
+  status: z.string().optional(),
   description: z.string().optional(),
+  contact_owner: z.string().optional(),
 });
 
 type LeadFormData = z.infer<typeof leadSchema>;
@@ -40,7 +44,9 @@ interface Lead {
   contact_source?: string;
   industry?: string;
   country?: string;
+  status?: string;
   description?: string;
+  contact_owner?: string;
 }
 
 interface LeadModalProps {
@@ -52,12 +58,14 @@ interface LeadModalProps {
 
 const leadSources = [
   "Website",
-  "Referral", 
-  "Social Media",
-  "Email Campaign",
-  "Trade Show",
+  "LinkedIn", 
+  "Referral",
   "Cold Call",
-  "LinkedIn",
+  "Email",
+  "Social Media",
+  "Event",
+  "Partner",
+  "Advertisement",
   "Other"
 ];
 
@@ -74,17 +82,25 @@ const industries = [
 ];
 
 const regions = [
-  "EU",
-  "US", 
-  "ASIA",
-  "APAC",
-  "LATAM",
-  "MEA",
+  "North America",
+  "South America", 
+  "Europe",
+  "Asia",
+  "Africa",
+  "Australia",
   "Other"
+];
+
+const statusOptions = [
+  "New",
+  "Contacted",
+  "Qualified"
 ];
 
 export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { users, loading: usersLoading } = useUsers();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<LeadFormData>({
@@ -99,8 +115,10 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
       website: "",
       contact_source: "",
       industry: "Automotive",
-      country: "EU",
+      country: "Europe",
+      status: "New",
       description: "",
+      contact_owner: user?.id || "",
     },
   });
 
@@ -116,8 +134,10 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         website: lead.website || "",
         contact_source: lead.contact_source || "",
         industry: lead.industry || "Automotive",
-        country: lead.country || "EU",
+        country: lead.country || "Europe",
+        status: lead.status || "New",
         description: lead.description || "",
+        contact_owner: lead.contact_owner || user?.id || "",
       });
     } else {
       form.reset({
@@ -130,18 +150,19 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         website: "",
         contact_source: "",
         industry: "Automotive",
-        country: "EU",
+        country: "Europe",
+        status: "New",
         description: "",
+        contact_owner: user?.id || "",
       });
     }
-  }, [lead, form]);
+  }, [lead, form, user?.id]);
 
   const onSubmit = async (data: LeadFormData) => {
     try {
       setLoading(true);
-      const user = await supabase.auth.getUser();
       
-      if (!user.data.user) {
+      if (!user) {
         toast({
           title: "Error",
           description: "You must be logged in to perform this action",
@@ -161,10 +182,11 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         contact_source: data.contact_source || null,
         industry: data.industry || null,
         country: data.country || null,
+        status: data.status || "New",
         description: data.description || null,
-        created_by: user.data.user.id,
-        modified_by: user.data.user.id,
-        contact_owner: user.data.user.id,
+        created_by: user.id,
+        modified_by: user.id,
+        contact_owner: data.contact_owner || user.id,
       };
 
       if (lead) {
@@ -294,6 +316,31 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
               <FormField
                 control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {statusOptions.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="linkedin"
                 render={({ field }) => (
                   <FormItem>
@@ -386,6 +433,31 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                         {regions.map((region) => (
                           <SelectItem key={region} value={region}>
                             {region}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="contact_owner"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lead Owner</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={usersLoading}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={usersLoading ? "Loading users..." : "Select owner"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.display_name}
                           </SelectItem>
                         ))}
                       </SelectContent>

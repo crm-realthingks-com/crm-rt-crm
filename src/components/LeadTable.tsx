@@ -1,58 +1,15 @@
-
-import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
-import { Card } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  Edit, 
-  Trash2, 
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight
-} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadModal } from "./LeadModal";
-import { LeadColumnCustomizer, LeadColumnConfig } from "./LeadColumnCustomizer";
-
-interface Lead {
-  id: string;
-  lead_name: string;
-  company_name?: string;
-  position?: string;
-  email?: string;
-  phone_no?: string;
-  mobile_no?: string;
-  country?: string;
-  city?: string;
-  contact_owner?: string;
-  created_time?: string;
-  modified_time?: string;
-  lead_status?: string;
-  industry?: string;
-  contact_source?: string;
-  linkedin?: string;
-  website?: string;
-  description?: string;
-  created_by?: string;
-  modified_by?: string;
-}
-
-const defaultColumns: LeadColumnConfig[] = [
-  { field: 'lead_name', label: 'Lead Name', visible: true, order: 0 },
-  { field: 'company_name', label: 'Company Name', visible: true, order: 1 },
-  { field: 'position', label: 'Position', visible: true, order: 2 },
-  { field: 'email', label: 'Email', visible: true, order: 3 },
-  { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
-  { field: 'country', label: 'Region', visible: true, order: 5 },
-  { field: 'contact_owner', label: 'Lead Owner', visible: true, order: 6 },
-];
+import { LeadColumnCustomizer } from "./LeadColumnCustomizer";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { Pencil, Trash2 } from 'lucide-react';
 
 interface LeadTableProps {
   showColumnCustomizer: boolean;
@@ -60,44 +17,33 @@ interface LeadTableProps {
   showModal: boolean;
   setShowModal: (show: boolean) => void;
   selectedLeads: string[];
-  setSelectedLeads: React.Dispatch<React.SetStateAction<string[]>>;
+  setSelectedLeads: (leads: string[]) => void;
+  refreshTrigger?: number;
+  onLeadsChange?: (leads: any[]) => void;
 }
 
-export const LeadTable = ({ 
-  showColumnCustomizer, 
-  setShowColumnCustomizer, 
-  showModal, 
+export const LeadTable = ({
+  showColumnCustomizer,
+  setShowColumnCustomizer,
+  showModal,
   setShowModal,
   selectedLeads,
-  setSelectedLeads
+  setSelectedLeads,
+  refreshTrigger = 0,
+  onLeadsChange
 }: LeadTableProps) => {
-  const { toast } = useToast();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
-  const [columns, setColumns] = useState(defaultColumns);
+  const [editingLead, setEditingLead] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(25);
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    const filtered = leads.filter(lead =>
-      lead.lead_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredLeads(filtered);
-    setCurrentPage(1);
-  }, [leads, searchTerm]);
-
-  const fetchLeads = async () => {
+  const loadLeads = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -105,25 +51,72 @@ export const LeadTable = ({
         .select('*')
         .order('created_time', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading leads:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load leads",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setLeads(data || []);
+      onLeadsChange?.(data || []);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch leads",
-        variant: "destructive",
-      });
+      console.error('Error in loadLeads:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  useEffect(() => {
+    loadLeads();
+  }, [refreshTrigger]);
+
+  const filteredLeads = leads.filter(lead => {
+    const matchesSearch = !searchTerm || 
+      lead.lead_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filterStatus === 'all' || lead.lead_status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedLeads(paginatedLeads.map(lead => lead.id));
+    } else {
+      setSelectedLeads([]);
+    }
+  };
+
+  const handleSelectLead = (leadId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLeads([...selectedLeads, leadId]);
+    } else {
+      setSelectedLeads(selectedLeads.filter(id => id !== leadId));
+    }
+  };
+
+  const handleEdit = (lead: any) => {
+    setEditingLead(lead);
+    setShowModal(true);
+  };
+
+  const handleDelete = async (leadId: string) => {
     try {
       const { error } = await supabase
         .from('leads')
         .delete()
-        .eq('id', id);
+        .eq('id', leadId);
 
       if (error) throw error;
 
@@ -131,8 +124,8 @@ export const LeadTable = ({
         title: "Success",
         description: "Lead deleted successfully",
       });
-      
-      fetchLeads();
+
+      loadLeads();
     } catch (error) {
       toast({
         title: "Error",
@@ -142,241 +135,162 @@ export const LeadTable = ({
     }
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const pageLeads = getCurrentPageLeads().slice(0, 50);
-      setSelectedLeads(pageLeads.map(l => l.id));
-    } else {
-      setSelectedLeads([]);
-    }
+  const handleModalClose = () => {
+    setShowModal(false);
+    setEditingLead(null);
+    loadLeads();
   };
 
-  const handleSelectLead = (leadId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedLeads(prev => [...prev, leadId]);
-    } else {
-      setSelectedLeads(prev => prev.filter(id => id !== leadId));
-    }
-  };
-
-  const getCurrentPageLeads = () => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredLeads.slice(startIndex, startIndex + itemsPerPage);
-  };
-
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
-
-  // Memoize user IDs to prevent unnecessary re-fetches
-  const createdByIds = useMemo(() => {
-    return [...new Set(leads.map(l => l.created_by).filter(Boolean))];
-  }, [leads]);
-
-  // Use the optimized hook
-  const { displayNames } = useUserDisplayNames(createdByIds);
-
-  const visibleColumns = columns.filter(col => col.visible);
-  const pageLeads = getCurrentPageLeads();
+  if (loading) {
+    return <div className="flex justify-center p-8">Loading leads...</div>;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header and Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search leads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-80"
-            />
-          </div>
-          <Checkbox
-            checked={selectedLeads.length > 0 && selectedLeads.length === Math.min(pageLeads.length, 50)}
-            onCheckedChange={handleSelectAll}
-          />
-          <span className="text-sm text-muted-foreground">Select all</span>
-        </div>
+    <div className="space-y-4">
+      {/* Search and Filter Controls */}
+      <div className="flex gap-4 items-center">
+        <Input
+          placeholder="Search leads..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
+        />
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="New">New</SelectItem>
+            <SelectItem value="Contacted">Contacted</SelectItem>
+            <SelectItem value="Qualified">Qualified</SelectItem>
+            <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
+            <SelectItem value="Negotiating">Negotiating</SelectItem>
+            <SelectItem value="Closed Won">Closed Won</SelectItem>
+            <SelectItem value="Closed Lost">Closed Lost</SelectItem>
+            <SelectItem value="On Hold">On Hold</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Results Info */}
+      <div className="text-sm text-muted-foreground">
+        Showing {paginatedLeads.length} of {filteredLeads.length} leads
+        {selectedLeads.length > 0 && ` (${selectedLeads.length} selected)`}
       </div>
 
       {/* Table */}
-      <Card>
+      <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">
                 <Checkbox
-                  checked={selectedLeads.length > 0 && selectedLeads.length === Math.min(pageLeads.length, 50)}
+                  checked={paginatedLeads.length > 0 && selectedLeads.length === paginatedLeads.length}
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              {visibleColumns.map((column) => (
-                <TableHead key={column.field}>
-                  <div className="flex items-center gap-2">
-                    {column.label}
-                    <ArrowUpDown className="w-4 h-4" />
-                  </div>
-                </TableHead>
-              ))}
+              <TableHead>Lead Name</TableHead>
+              <TableHead>Company</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Region</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-                  Loading leads...
+            {paginatedLeads.map((lead) => (
+              <TableRow key={lead.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedLeads.includes(lead.id)}
+                    onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
+                  />
+                </TableCell>
+                <TableCell className="font-medium">{lead.lead_name}</TableCell>
+                <TableCell>{lead.company_name}</TableCell>
+                <TableCell>{lead.email}</TableCell>
+                <TableCell>{lead.phone_no}</TableCell>
+                <TableCell>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    lead.lead_status === 'Closed Won' ? 'bg-green-100 text-green-800' :
+                    lead.lead_status === 'Closed Lost' ? 'bg-red-100 text-red-800' :
+                    lead.lead_status === 'Qualified' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {lead.lead_status || 'New'}
+                  </span>
+                </TableCell>
+                <TableCell>{lead.contact_source}</TableCell>
+                <TableCell>{lead.country}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(lead)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(lead.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
-            ) : pageLeads.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-                  No leads found
-                </TableCell>
-              </TableRow>
-            ) : (
-              pageLeads.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedLeads.includes(lead.id)}
-                      onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
-                    />
-                  </TableCell>
-                  {visibleColumns.map((column) => (
-                    <TableCell key={column.field}>
-                      {column.field === 'lead_name' ? (
-                        <button
-                          onClick={() => {
-                            setEditingLead(lead);
-                            setShowModal(true);
-                          }}
-                          className="text-primary hover:underline font-medium"
-                        >
-                          {lead[column.field as keyof Lead]}
-                        </button>
-                      ) : column.field === 'contact_owner' ? (
-                        <span>
-                          {lead.created_by 
-                            ? displayNames[lead.created_by] || "Loading..."
-                            : '-'
-                          }
-                        </span>
-                      ) : column.field === 'lead_status' && lead.lead_status ? (
-                        <Badge variant={lead.lead_status === 'Qualified' ? 'default' : 'secondary'}>
-                          {lead.lead_status}
-                        </Badge>
-                      ) : (
-                        lead[column.field as keyof Lead] || '-'
-                      )}
-                    </TableCell>
-                  ))}
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingLead(lead);
-                          setShowModal(true);
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setLeadToDelete(lead.id);
-                          setShowDeleteDialog(true);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
-      </Card>
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLeads.length)} of {filteredLeads.length} leads
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Previous
-            </Button>
-            <span className="text-sm">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+        <div className="flex justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="flex items-center px-4">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
         </div>
       )}
 
       {/* Modals */}
-      <LeadModal
-        open={showModal}
-        onOpenChange={setShowModal}
-        lead={editingLead}
-        onSuccess={() => {
-          fetchLeads();
-          setEditingLead(null);
-        }}
-      />
+      {showModal && (
+        <LeadModal 
+          open={showModal} 
+          onOpenChange={setShowModal}
+          lead={editingLead}
+          onSuccess={handleModalClose}
+        />
+      )}
 
-      <LeadColumnCustomizer
-        open={showColumnCustomizer}
-        onOpenChange={setShowColumnCustomizer}
-        columns={columns}
-        onColumnsChange={setColumns}
-      />
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the lead.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (leadToDelete) {
-                  handleDelete(leadToDelete);
-                  setLeadToDelete(null);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {showColumnCustomizer && (
+        <LeadColumnCustomizer
+          open={showColumnCustomizer}
+          onOpenChange={setShowColumnCustomizer}
+          columns={[]}
+          onColumnsChange={() => {}}
+        />
+      )}
     </div>
   );
 };

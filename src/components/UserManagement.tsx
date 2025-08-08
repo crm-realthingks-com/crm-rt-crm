@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { MoreHorizontal, Plus, RefreshCw, RotateCcw, AlertCircle } from "lucide-react";
+import { MoreHorizontal, Plus, RefreshCw, RotateCcw, AlertCircle, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
 import UserModal from "./UserModal";
 import EditUserModal from "./EditUserModal";
@@ -240,7 +240,7 @@ const UserManagement = () => {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <Button size="sm" onClick={() => setShowAddModal(true)}>
+              <Button size="sm" onClick={() => setShowAddModal(true)} className="btn-add">
                 <Plus className="h-4 w-4 mr-2" />
                 Add User
               </Button>
@@ -248,7 +248,8 @@ const UserManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="table-container">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Display Name</TableHead>
@@ -284,7 +285,7 @@ const UserManagement = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -309,7 +310,8 @@ const UserManagement = () => {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
           
           {users.length === 0 && (
             <div className="text-center py-8">

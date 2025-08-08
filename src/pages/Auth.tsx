@@ -72,34 +72,12 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Clean up existing state first - Safari compatible
-      cleanupAuthState();
-      
-      // Add small delay for Safari to process cleanup
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Attempt global sign out to clear any existing session
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-        // Another small delay for Safari
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (err) {
-        console.warn('Pre-login signout failed:', err);
-      }
-
-      // Safari-specific login with extended timeout
-      const { data, error } = await Promise.race([
-        supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Login timeout')), 15000)
-        )
-      ]) as any;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
       if (error) {
-        console.error('Login error:', error);
         toast({
           title: "Authentication Error",
           description: error.message || "Login failed. Please try again.",
@@ -109,32 +87,18 @@ const Auth = () => {
       }
 
       if (data.user && data.session) {
-        console.log('Login successful for Safari');
         toast({
           title: "Success",
           description: "Logged in successfully!",
         });
         
-        // Safari-compatible redirect with delay
-        setTimeout(() => {
-          window.location.replace("/");
-        }, 500);
-      } else {
-        throw new Error('No user data received');
+        // Immediate redirect
+        window.location.replace("/");
       }
     } catch (error: any) {
-      console.error('Login process error:', error);
-      let errorMessage = "An unexpected error occurred";
-      
-      if (error.message === 'Login timeout') {
-        errorMessage = "Login timed out. Please check your connection and try again.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {

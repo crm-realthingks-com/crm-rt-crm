@@ -9,17 +9,18 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
+        default: "bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm rounded-xl transition-all",
+        primary: "bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm rounded-xl transition-all",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm rounded-xl transition-all",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm",
+          "border border-accent text-accent bg-background hover:bg-accent/5 shadow-sm rounded-xl transition-all",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        success: "bg-green-600 text-white hover:bg-green-700 shadow-sm",
-        warning: "bg-yellow-600 text-white hover:bg-yellow-700 shadow-sm",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm rounded-xl transition-all",
+        ghost: "hover:bg-accent/5 hover:text-accent-foreground rounded-xl transition-all",
+        link: "text-link underline-offset-4 hover:underline hover:text-link-hover transition-all",
+        success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm rounded-xl transition-all",
+        warning: "bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm rounded-xl transition-all",
       },
       size: {
         default: "h-10 px-4 py-2",

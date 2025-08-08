@@ -70,6 +70,7 @@ const commonMappings: HeaderMapping = {
   'website': 'website',
   'source': 'contact_source',
   'contact source': 'contact_source',
+  'lead source': 'contact_source',
   'lead status': 'lead_status',
   'industry': 'industry',
   'city': 'city',
@@ -81,6 +82,8 @@ const commonMappings: HeaderMapping = {
   'employees': 'no_of_employees',
   'number of employees': 'no_of_employees',
   'no of employees': 'no_of_employees',
+  'contact owner': 'contact_owner',
+  'owner': 'contact_owner',
 };
 
 export const mapHeaders = (headers: string[]): string[] => {

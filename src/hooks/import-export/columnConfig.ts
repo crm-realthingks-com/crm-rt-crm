@@ -40,7 +40,8 @@ export const columnConfigs: ColumnConfigs = {
     optional: [
       'id', 'company_name', 'position', 'email', 'phone_no', 'mobile_no',
       'linkedin', 'website', 'contact_source', 'lead_status', 'industry',
-      'city', 'state', 'country', 'description', 'annual_revenue', 'no_of_employees'
+      'city', 'state', 'country', 'description', 'annual_revenue', 'no_of_employees',
+      'contact_owner', 'created_by', 'modified_by', 'created_time', 'modified_time'
     ],
     get allowedColumns() {
       return [...this.required, ...this.optional];
@@ -54,7 +55,8 @@ export const columnConfigs: ColumnConfigs = {
     optional: [
       'id', 'company_name', 'position', 'email', 'phone_no', 'mobile_no',
       'linkedin', 'website', 'contact_source', 'lead_status', 'industry',
-      'city', 'state', 'country', 'description', 'annual_revenue', 'no_of_employees'
+      'city', 'state', 'country', 'description', 'annual_revenue', 'no_of_employees',
+      'contact_owner', 'created_by', 'modified_by', 'created_time', 'modified_time'
     ],
     get allowedColumns() {
       return [...this.required, ...this.optional];
@@ -64,11 +66,12 @@ export const columnConfigs: ColumnConfigs = {
     booleanFields: []
   },
   leads: {
-    required: ['lead_name'],
+    required: ['lead_name', 'company_name'],
     optional: [
-      'id', 'company_name', 'position', 'email', 'phone_no', 'mobile_no',
-      'linkedin', 'website', 'contact_source', 'lead_status', 'industry',
-      'city', 'country', 'description'
+      'id', 'position', 'email', 'phone_no', 'linkedin', 'website', 
+      'contact_source', 'lead_status', 'industry', 'city', 'country', 
+      'status', 'description', 'contact_owner', 'created_by', 
+      'modified_by', 'created_time', 'modified_time'
     ],
     get allowedColumns() {
       return [...this.required, ...this.optional];
