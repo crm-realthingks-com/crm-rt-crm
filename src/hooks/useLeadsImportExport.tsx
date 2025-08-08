@@ -4,6 +4,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUsers } from '@/hooks/useUsers';
+
 export interface LeadImportResult {
   success: number;
   duplicates: number;
@@ -32,11 +33,29 @@ export const useLeadsImportExport = () => {
   const { users } = useUsers();
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
   // Valid dropdown values matching the Add Lead form
   const validSources = ['Website', 'LinkedIn', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Event', 'Partner', 'Advertisement', 'Other'];
   const validIndustries = ['Automotive', 'Technology', 'Healthcare', 'Finance', 'Manufacturing', 'Retail', 'Education', 'Real Estate', 'Other'];
   const validRegions = ['North America', 'South America', 'Europe', 'Asia', 'Africa', 'Australia', 'Other'];
   const validStatuses = ['New', 'Contacted', 'Qualified'];
+
+  // Expected headers from export - this is the canonical list
+  const expectedHeaders = [
+    'Lead Name',
+    'Company Name', 
+    'Position',
+    'Email',
+    'Phone Number',
+    'LinkedIn',
+    'Website', 
+    'Lead Source',
+    'Industry',
+    'Region',
+    'Status',
+    'Description',
+    'Lead Owner'
+  ];
 
   const exportLeads = async (leads: any[], userDisplayNames: Record<string, string> = {}) => {
     setIsExporting(true);
@@ -52,24 +71,10 @@ export const useLeadsImportExport = () => {
         return;
       }
 
-      // Headers matching exactly the Add Lead form fields
-      const headers = [
-        'Lead Name',
-        'Company Name',
-        'Position',
-        'Email',
-        'Phone Number',
-        'LinkedIn',
-        'Website',
-        'Lead Source',
-        'Industry',
-        'Region',
-        'Status',
-        'Description',
-        'Lead Owner'
-      ];
+      // Use exact headers matching the expected structure
+      const headers = expectedHeaders;
 
-      // Convert leads to CSV rows using the exact database field mappings
+      // Convert leads to CSV rows using exact database field mappings
       const csvRows = leads.map(lead => [
         lead.lead_name || '',
         lead.company_name || '',
@@ -195,15 +200,63 @@ export const useLeadsImportExport = () => {
     const fallback = user?.id || '';
     const v = (ownerValue || '').trim();
     if (!v) return fallback;
+    
     // UUID pattern
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(v)) return v;
+    
     const found = users?.find(u => (
       (u.display_name && u.display_name.toLowerCase() === v.toLowerCase()) ||
       (u.full_name && u.full_name.toLowerCase() === v.toLowerCase()) ||
       (u.email && u.email.toLowerCase() === v.toLowerCase())
     ));
     return found?.id || fallback;
+  };
+
+  // Create a flexible header mapping function that handles various formats
+  const mapHeaderToField = (header: string): string | null => {
+    const normalizedHeader = header.toLowerCase().trim();
+    
+    // Direct mapping to expected headers
+    const headerMappings: Record<string, string> = {
+      'lead name': 'Lead Name',
+      'name': 'Lead Name',
+      'leadname': 'Lead Name',
+      'company name': 'Company Name', 
+      'company': 'Company Name',
+      'companyname': 'Company Name',
+      'position': 'Position',
+      'title': 'Position',
+      'job title': 'Position',
+      'email': 'Email',
+      'email address': 'Email',
+      'phone number': 'Phone Number',
+      'phone': 'Phone Number',
+      'phone_no': 'Phone Number',
+      'mobile': 'Phone Number',
+      'linkedin': 'LinkedIn',
+      'linkedin profile': 'LinkedIn',
+      'website': 'Website',
+      'website url': 'Website',
+      'lead source': 'Lead Source',
+      'source': 'Lead Source',
+      'contact source': 'Lead Source',
+      'industry': 'Industry',
+      'region': 'Region',
+      'country': 'Region',
+      'location': 'Region',
+      'status': 'Status',
+      'lead status': 'Status',
+      'description': 'Description',
+      'notes': 'Description',
+      'comments': 'Description',
+      'lead owner': 'Lead Owner',
+      'owner': 'Lead Owner',
+      'contact owner': 'Lead Owner',
+      'assigned to': 'Lead Owner'
+    };
+
+    return headerMappings[normalizedHeader] || null;
   };
 
   const importLeads = async (file: File): Promise<LeadImportResult> => {
@@ -227,91 +280,49 @@ export const useLeadsImportExport = () => {
         throw new Error('CSV file must have at least a header and one data row');
       }
 
-      // Parse headers
-      const headers = parseCSVLine(lines[0]);
-      console.log('CSV headers parsed:', headers);
+      // Parse headers with improved handling
+      const csvHeaders = parseCSVLine(lines[0]);
+      console.log('Original CSV headers:', csvHeaders);
 
-      // Expected headers from the Add Lead form
-      const expectedHeaders = [
-        'Lead Name', 'Company Name', 'Position', 'Email', 'Phone Number',
-        'LinkedIn', 'Website', 'Lead Source', 'Industry', 'Region', 
-        'Status', 'Description', 'Lead Owner'
-      ];
+      // Map headers to expected format
+      const headerMapping: Record<number, string> = {};
+      const unmappedHeaders: string[] = [];
 
-      console.log('Expected headers:', expectedHeaders);
+      csvHeaders.forEach((header, index) => {
+        const mappedHeader = mapHeaderToField(header);
+        if (mappedHeader) {
+          headerMapping[index] = mappedHeader;
+        } else {
+          unmappedHeaders.push(header);
+        }
+      });
+
+      console.log('Header mapping:', headerMapping);
+      console.log('Unmapped headers (will be ignored):', unmappedHeaders);
+
+      // Check for required fields
+      const mappedHeaderValues = Object.values(headerMapping);
+      const hasLeadName = mappedHeaderValues.includes('Lead Name');
+      const hasCompanyName = mappedHeaderValues.includes('Company Name');
+
+      if (!hasLeadName) {
+        throw new Error('Required field "Lead Name" not found in CSV headers. Please ensure your CSV includes a Lead Name column.');
+      }
+
+      if (!hasCompanyName) {
+        throw new Error('Required field "Company Name" not found in CSV headers. Please ensure your CSV includes a Company Name column.');
+      }
 
       // Parse all data rows
       const csvData = [];
       for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
-        const rowData: any = {};
+        const rowData: Record<string, string> = {};
         
-        // Map headers to values with flexible matching
-        headers.forEach((header, index) => {
-          const value = values[index] || '';
-          
-          // Map to expected field names
-          switch (header.toLowerCase().trim()) {
-            case 'lead name':
-            case 'name':
-              rowData['Lead Name'] = value;
-              break;
-            case 'company name':
-            case 'company':
-              rowData['Company Name'] = value;
-              break;
-            case 'position':
-            case 'title':
-            case 'job title':
-              rowData['Position'] = value;
-              break;
-            case 'email':
-            case 'email address':
-              rowData['Email'] = value;
-              break;
-            case 'phone number':
-            case 'phone':
-            case 'phone_no':
-              rowData['Phone Number'] = value;
-              break;
-            case 'linkedin':
-            case 'linkedin profile':
-              rowData['LinkedIn'] = value;
-              break;
-            case 'website':
-            case 'website url':
-              rowData['Website'] = value;
-              break;
-            case 'lead source':
-            case 'source':
-            case 'contact source':
-              rowData['Lead Source'] = value;
-              break;
-            case 'industry':
-              rowData['Industry'] = value;
-              break;
-            case 'region':
-            case 'country':
-              rowData['Region'] = value;
-              break;
-            case 'status':
-            case 'lead status':
-              rowData['Status'] = value;
-              break;
-            case 'description':
-            case 'notes':
-              rowData['Description'] = value;
-              break;
-            case 'lead owner':
-            case 'owner':
-            case 'contact owner':
-              rowData['Lead Owner'] = value;
-              break;
-            default:
-              // Try to match with exact header name
-              rowData[header] = value;
-              break;
-          }
+        // Map values using the header mapping
+        Object.entries(headerMapping).forEach(([index, fieldName]) => {
+          const value = values[parseInt(index)] || '';
+          rowData[fieldName] = value.trim();
         });
         
         csvData.push(rowData);
@@ -319,7 +330,6 @@ export const useLeadsImportExport = () => {
 
       console.log('Parsed CSV data:', csvData.length, 'rows');
 
-      // Process leads directly here instead of using edge function
       let success = 0;
       let duplicates = 0;
       let errors = 0;
@@ -329,14 +339,17 @@ export const useLeadsImportExport = () => {
         const rowData = csvData[i];
         
         try {
-          // Validate required fields
-          if (!rowData['Lead Name'] || rowData['Lead Name'].trim() === '') {
+          // Validate required fields with consistent casing and trimming
+          const leadName = (rowData['Lead Name'] || '').trim();
+          const companyName = (rowData['Company Name'] || '').trim();
+
+          if (!leadName) {
             messages.push(`Row ${i + 1}: Lead Name is required`);
             errors++;
             continue;
           }
 
-          if (!rowData['Company Name'] || rowData['Company Name'].trim() === '') {
+          if (!companyName) {
             messages.push(`Row ${i + 1}: Company Name is required`);
             errors++;
             continue;
@@ -346,8 +359,8 @@ export const useLeadsImportExport = () => {
           const { data: existingLeads } = await supabase
             .from('leads')
             .select('id')
-            .eq('lead_name', rowData['Lead Name'])
-            .eq('company_name', rowData['Company Name'])
+            .eq('lead_name', leadName)
+            .eq('company_name', companyName)
             .limit(1);
 
           if (existingLeads && existingLeads.length > 0) {
@@ -355,20 +368,20 @@ export const useLeadsImportExport = () => {
             continue;
           }
 
-          // Map to database fields with validation
+          // Map to database fields with consistent validation and trimming
           const lead = {
-            lead_name: rowData['Lead Name'],
-            company_name: rowData['Company Name'],
-            position: rowData['Position'] || null,
-            email: rowData['Email'] || null,
-            phone_no: rowData['Phone Number'] || null,
-            linkedin: rowData['LinkedIn'] || null,
-            website: rowData['Website'] || null,
+            lead_name: leadName,
+            company_name: companyName,
+            position: (rowData['Position'] || '').trim() || null,
+            email: (rowData['Email'] || '').trim() || null,
+            phone_no: (rowData['Phone Number'] || '').trim() || null,
+            linkedin: (rowData['LinkedIn'] || '').trim() || null,
+            website: (rowData['Website'] || '').trim() || null,
             contact_source: validateDropdownValue(rowData['Lead Source'] || '', validSources, 'Lead Source') || null,
             industry: validateDropdownValue(rowData['Industry'] || '', validIndustries, 'Industry') || null,
             country: validateDropdownValue(rowData['Region'] || '', validRegions, 'Region') || null,
             status: validateDropdownValue(rowData['Status'] || 'New', validStatuses, 'Status') || 'New',
-            description: rowData['Description'] || null,
+            description: (rowData['Description'] || '').trim() || null,
             created_by: user.id,
             modified_by: user.id,
             contact_owner: resolveOwnerId(rowData['Lead Owner'])
@@ -387,7 +400,7 @@ export const useLeadsImportExport = () => {
             errors++;
           } else {
             success++;
-            console.log(`Row ${i + 1}: Successfully imported: ${rowData['Lead Name']}`);
+            console.log(`Row ${i + 1}: Successfully imported: ${leadName}`);
           }
 
         } catch (rowError: any) {
