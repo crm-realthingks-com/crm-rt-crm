@@ -2,8 +2,9 @@
 import { ContactTable } from "@/components/ContactTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Download, Upload, Plus, Trash2 } from "lucide-react";
+import { Settings, Download, Upload, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CSVImportExport } from "@/utils/csvImportExport";
@@ -157,6 +158,14 @@ const Contacts = () => {
           <p className="text-muted-foreground">Manage your contact database</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            onClick={() => setShowColumnCustomizer(true)}
+            size="icon"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="default">
