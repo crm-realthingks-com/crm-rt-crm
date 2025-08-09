@@ -39,6 +39,9 @@ interface Contact {
   contact_source?: string;
   industry?: string;
   description?: string;
+  contact_owner?: string;
+  created_by?: string;
+  modified_by?: string;
 }
 
 interface ContactModalProps {
@@ -93,6 +96,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
 
   useEffect(() => {
     if (contact) {
+      console.log('ContactModal: Setting form values for contact:', contact);
       form.reset({
         contact_name: contact.contact_name || "",
         company_name: contact.company_name || "",
@@ -137,41 +141,42 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         return;
       }
 
+      // Prepare the contact data with exact field names matching the database
       const contactData = {
-        contact_name: data.contact_name,
-        company_name: data.company_name,
-        position: data.position || null,
-        email: data.email || null,
-        phone_no: data.phone_no || null,
-        linkedin: data.linkedin || null,
-        website: data.website || null,
-        contact_source: data.contact_source || null,
-        industry: data.industry || null,
-        description: data.description || null,
+        contact_name: data.contact_name.trim(),
+        company_name: data.company_name?.trim() || null,
+        position: data.position?.trim() || null,
+        email: data.email?.trim() || null,
+        phone_no: data.phone_no?.trim() || null,
+        linkedin: data.linkedin?.trim() || null,
+        website: data.website?.trim() || null,
+        contact_source: data.contact_source?.trim() || null,
+        industry: data.industry?.trim() || null,
+        description: data.description?.trim() || null,
         modified_by: user.data.user.id,
       };
 
       if (contact) {
-        // Update existing contact - remove .single() to avoid coercion errors
-        console.log('ContactModal: Updating contact with ID:', contact.id);
-        const { data: updatedContact, error } = await supabase
+        // Update existing contact
+        console.log('ContactModal: Updating contact with ID:', contact.id, 'Data:', contactData);
+        
+        const { error } = await supabase
           .from('contacts')
           .update(contactData)
-          .eq('id', contact.id)
-          .select();
+          .eq('id', contact.id);
 
         if (error) {
           console.error('ContactModal: Update error:', error);
           throw error;
         }
 
-        console.log('ContactModal: Contact updated successfully:', updatedContact);
+        console.log('ContactModal: Contact updated successfully');
         toast({
           title: "Success",
           description: "Contact updated successfully",
         });
       } else {
-        // Create new contact - remove .single() to avoid coercion errors
+        // Create new contact
         console.log('ContactModal: Creating new contact');
         const newContactData = {
           ...contactData,
@@ -179,17 +184,16 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
           contact_owner: user.data.user.id,
         };
         
-        const { data: newContact, error } = await supabase
+        const { error } = await supabase
           .from('contacts')
-          .insert(newContactData)
-          .select();
+          .insert(newContactData);
 
         if (error) {
           console.error('ContactModal: Insert error:', error);
           throw error;
         }
 
-        console.log('ContactModal: Contact created successfully:', newContact);
+        console.log('ContactModal: Contact created successfully');
         toast({
           title: "Success",
           description: "Contact created successfully",
