@@ -36,40 +36,38 @@ export const columnConfigs: ColumnConfigs = {
     booleanFields: []
   },
   contacts: {
-    required: ['contact_name'],
+    required: ['contact_name', 'company_name'],
     optional: [
-      'id', 'company_name', 'position', 'email', 'phone_no', 'mobile_no',
-      'linkedin', 'website', 'contact_source', 'lead_status', 'industry',
-      'city', 'state', 'country', 'description', 'annual_revenue', 'no_of_employees',
-      'contact_owner', 'created_by', 'modified_by', 'created_time', 'modified_time'
+      'id', 'position', 'email', 'phone_no', 'linkedin', 'website', 
+      'contact_source', 'industry', 'description',
+      'contact_owner', 'created_by', 'modified_by'
     ],
     get allowedColumns() {
       return [...this.required, ...this.optional];
     },
-    dateFields: ['created_time', 'modified_time'],
-    numericFields: ['annual_revenue', 'no_of_employees'],
+    dateFields: [],
+    numericFields: [],
     booleanFields: []
   },
   contacts_module: {
-    required: ['contact_name'],
+    required: ['contact_name', 'company_name'],
     optional: [
-      'id', 'company_name', 'position', 'email', 'phone_no', 'mobile_no',
-      'linkedin', 'website', 'contact_source', 'lead_status', 'industry',
-      'city', 'state', 'country', 'description', 'annual_revenue', 'no_of_employees',
-      'contact_owner', 'created_by', 'modified_by', 'created_time', 'modified_time'
+      'id', 'position', 'email', 'phone_no', 'linkedin', 'website', 
+      'contact_source', 'industry', 'description',
+      'contact_owner', 'created_by', 'modified_by'
     ],
     get allowedColumns() {
       return [...this.required, ...this.optional];
     },
-    dateFields: ['created_time', 'modified_time'],
-    numericFields: ['annual_revenue', 'no_of_employees'],
+    dateFields: [],
+    numericFields: [],
     booleanFields: []
   },
   leads: {
     required: ['lead_name', 'company_name'],
     optional: [
       'id', 'position', 'email', 'phone_no', 'linkedin', 'website', 
-      'contact_source', 'lead_status', 'industry', 'city', 'country', 
+      'contact_source', 'lead_status', 'industry', 'country', 
       'status', 'description', 'contact_owner', 'created_by', 
       'modified_by', 'created_time', 'modified_time'
     ],

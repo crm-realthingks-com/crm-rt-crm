@@ -53,7 +53,7 @@ const commonMappings: HeaderMapping = {
   'updated': 'modified_at',
   'modified at': 'modified_at',
   
-  // Contact field mappings
+  // Contact field mappings (updated to match current schema)
   'contact name': 'contact_name',
   'name': 'contact_name',
   'company': 'company_name',
@@ -64,24 +64,13 @@ const commonMappings: HeaderMapping = {
   'email': 'email',
   'phone': 'phone_no',
   'phone number': 'phone_no',
-  'mobile': 'mobile_no',
-  'mobile number': 'mobile_no',
   'linkedin': 'linkedin',
   'website': 'website',
   'source': 'contact_source',
   'contact source': 'contact_source',
   'lead source': 'contact_source',
-  'lead status': 'lead_status',
   'industry': 'industry',
-  'city': 'city',
-  'state': 'state',
-  'country': 'country',
   'description': 'description',
-  'annual revenue': 'annual_revenue',
-  'revenue': 'annual_revenue',
-  'employees': 'no_of_employees',
-  'number of employees': 'no_of_employees',
-  'no of employees': 'no_of_employees',
   'contact owner': 'contact_owner',
   'owner': 'contact_owner',
 };

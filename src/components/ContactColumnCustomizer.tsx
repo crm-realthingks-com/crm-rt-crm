@@ -50,8 +50,7 @@ export const ContactColumnCustomizer = ({
       { field: 'website', label: 'Website', visible: false, order: 6 },
       { field: 'contact_source', label: 'Contact Source', visible: false, order: 7 },
       { field: 'industry', label: 'Industry', visible: true, order: 8 },
-      { field: 'country', label: 'Region', visible: true, order: 9 },
-      { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 10 },
+      { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 9 },
     ];
     setLocalColumns(defaultColumns);
   };

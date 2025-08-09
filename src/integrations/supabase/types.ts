@@ -16,78 +16,51 @@ export type Database = {
     Tables: {
       contacts: {
         Row: {
-          annual_revenue: number | null
-          city: string | null
           company_name: string | null
           contact_name: string
           contact_owner: string | null
           contact_source: string | null
-          country: string | null
           created_by: string | null
-          created_time: string | null
           description: string | null
           email: string | null
           id: string
           industry: string | null
-          lead_status: string | null
           linkedin: string | null
-          mobile_no: string | null
           modified_by: string | null
-          modified_time: string | null
-          no_of_employees: number | null
           phone_no: string | null
           position: string | null
-          state: string | null
           website: string | null
         }
         Insert: {
-          annual_revenue?: number | null
-          city?: string | null
           company_name?: string | null
           contact_name: string
           contact_owner?: string | null
           contact_source?: string | null
-          country?: string | null
           created_by?: string | null
-          created_time?: string | null
           description?: string | null
           email?: string | null
           id?: string
           industry?: string | null
-          lead_status?: string | null
           linkedin?: string | null
-          mobile_no?: string | null
           modified_by?: string | null
-          modified_time?: string | null
-          no_of_employees?: number | null
           phone_no?: string | null
           position?: string | null
-          state?: string | null
           website?: string | null
         }
         Update: {
-          annual_revenue?: number | null
-          city?: string | null
           company_name?: string | null
           contact_name?: string
           contact_owner?: string | null
           contact_source?: string | null
-          country?: string | null
           created_by?: string | null
-          created_time?: string | null
           description?: string | null
           email?: string | null
           id?: string
           industry?: string | null
-          lead_status?: string | null
           linkedin?: string | null
-          mobile_no?: string | null
           modified_by?: string | null
-          modified_time?: string | null
-          no_of_employees?: number | null
           phone_no?: string | null
           position?: string | null
-          state?: string | null
           website?: string | null
         }
         Relationships: []
@@ -170,7 +143,6 @@ export type Database = {
           lost_reason: string | null
           modified_at: string | null
           modified_by: string | null
-          nda_signed: boolean | null
           need_improvement: string | null
           need_summary: string | null
           negotiation_notes: string | null
@@ -190,18 +162,14 @@ export type Database = {
           quarterly_revenue_q4: number | null
           region: string | null
           related_lead_id: string | null
-          related_meeting_id: string | null
           relationship_strength: string | null
           revenue: number | null
           rfq_confirmation_note: string | null
-          rfq_document_url: string | null
           rfq_received_date: string | null
           rfq_status: string | null
-          rfq_value: number | null
           signed_contract_date: string | null
           stage: string
           start_date: string | null
-          supplier_portal_access: string | null
           supplier_portal_required: boolean | null
           timeline: string | null
           total_contract_value: number | null
@@ -256,7 +224,6 @@ export type Database = {
           lost_reason?: string | null
           modified_at?: string | null
           modified_by?: string | null
-          nda_signed?: boolean | null
           need_improvement?: string | null
           need_summary?: string | null
           negotiation_notes?: string | null
@@ -276,18 +243,14 @@ export type Database = {
           quarterly_revenue_q4?: number | null
           region?: string | null
           related_lead_id?: string | null
-          related_meeting_id?: string | null
           relationship_strength?: string | null
           revenue?: number | null
           rfq_confirmation_note?: string | null
-          rfq_document_url?: string | null
           rfq_received_date?: string | null
           rfq_status?: string | null
-          rfq_value?: number | null
           signed_contract_date?: string | null
           stage?: string
           start_date?: string | null
-          supplier_portal_access?: string | null
           supplier_portal_required?: boolean | null
           timeline?: string | null
           total_contract_value?: number | null
@@ -342,7 +305,6 @@ export type Database = {
           lost_reason?: string | null
           modified_at?: string | null
           modified_by?: string | null
-          nda_signed?: boolean | null
           need_improvement?: string | null
           need_summary?: string | null
           negotiation_notes?: string | null
@@ -362,18 +324,14 @@ export type Database = {
           quarterly_revenue_q4?: number | null
           region?: string | null
           related_lead_id?: string | null
-          related_meeting_id?: string | null
           relationship_strength?: string | null
           revenue?: number | null
           rfq_confirmation_note?: string | null
-          rfq_document_url?: string | null
           rfq_received_date?: string | null
           rfq_status?: string | null
-          rfq_value?: number | null
           signed_contract_date?: string | null
           stage?: string
           start_date?: string | null
-          supplier_portal_access?: string | null
           supplier_portal_required?: boolean | null
           timeline?: string | null
           total_contract_value?: number | null
@@ -393,10 +351,8 @@ export type Database = {
       }
       leads: {
         Row: {
-          city: string | null
           company_name: string | null
           contact_owner: string | null
-          contact_source: string | null
           country: string | null
           created_by: string | null
           created_time: string | null
@@ -405,6 +361,7 @@ export type Database = {
           id: string
           industry: string | null
           lead_name: string
+          lead_source: string | null
           lead_status: string | null
           linkedin: string | null
           modified_by: string | null
@@ -415,10 +372,8 @@ export type Database = {
           website: string | null
         }
         Insert: {
-          city?: string | null
           company_name?: string | null
           contact_owner?: string | null
-          contact_source?: string | null
           country?: string | null
           created_by?: string | null
           created_time?: string | null
@@ -427,6 +382,7 @@ export type Database = {
           id?: string
           industry?: string | null
           lead_name: string
+          lead_source?: string | null
           lead_status?: string | null
           linkedin?: string | null
           modified_by?: string | null
@@ -437,10 +393,8 @@ export type Database = {
           website?: string | null
         }
         Update: {
-          city?: string | null
           company_name?: string | null
           contact_owner?: string | null
-          contact_source?: string | null
           country?: string | null
           created_by?: string | null
           created_time?: string | null
@@ -449,6 +403,7 @@ export type Database = {
           id?: string
           industry?: string | null
           lead_name?: string
+          lead_source?: string | null
           lead_status?: string | null
           linkedin?: string | null
           modified_by?: string | null

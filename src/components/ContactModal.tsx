@@ -22,7 +22,6 @@ const contactSchema = z.object({
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
   contact_source: z.string().optional(),
   industry: z.string().optional(),
-  country: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -39,7 +38,6 @@ interface Contact {
   website?: string;
   contact_source?: string;
   industry?: string;
-  country?: string;
   description?: string;
 }
 
@@ -73,16 +71,6 @@ const industries = [
   "Other"
 ];
 
-const regions = [
-  "EU",
-  "US", 
-  "ASIA",
-  "APAC",
-  "LATAM",
-  "MEA",
-  "Other"
-];
-
 export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: ContactModalProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -99,7 +87,6 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       website: "",
       contact_source: "",
       industry: "Automotive",
-      country: "EU",
       description: "",
     },
   });
@@ -116,7 +103,6 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: contact.website || "",
         contact_source: contact.contact_source || "",
         industry: contact.industry || "Automotive",
-        country: contact.country || "EU",
         description: contact.description || "",
       });
     } else {
@@ -130,7 +116,6 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: "",
         contact_source: "",
         industry: "Automotive",
-        country: "EU",
         description: "",
       });
     }
@@ -162,10 +147,8 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: data.website || null,
         contact_source: data.contact_source || null,
         industry: data.industry || null,
-        country: data.country || null,
         description: data.description || null,
         modified_by: user.data.user.id,
-        modified_time: new Date().toISOString(),
       };
 
       if (contact) {
@@ -195,7 +178,6 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
           ...contactData,
           created_by: user.data.user.id,
           contact_owner: user.data.user.id,
-          created_time: new Date().toISOString(),
         };
         
         const { data: newContact, error } = await supabase
@@ -381,31 +363,6 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                         {industries.map((industry) => (
                           <SelectItem key={industry} value={industry}>
                             {industry}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Region</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select region" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {regions.map((region) => (
-                          <SelectItem key={region} value={region}>
-                            {region}
                           </SelectItem>
                         ))}
                       </SelectContent>

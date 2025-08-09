@@ -19,13 +19,10 @@ interface Contact {
   website?: string;
   contact_source?: string;
   industry?: string;
-  country?: string;
   description?: string;
   contact_owner?: string;
   created_by?: string;
   modified_by?: string;
-  created_time?: string;
-  modified_time?: string;
 }
 
 interface ContactTableBodyProps {
