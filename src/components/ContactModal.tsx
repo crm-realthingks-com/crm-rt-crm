@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -128,25 +129,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
     try {
       setLoading(true);
       console.log('ContactModal: Submitting form data:', data);
-      
-      // Validate required fields before proceeding
-      if (!data.contact_name?.trim()) {
-        toast({
-          title: "Error",
-          description: "Contact name is required",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!data.company_name?.trim()) {
-        toast({
-          title: "Error",
-          description: "Company name is required",
-          variant: "destructive",
-        });
-        return;
-      }
+      console.log('ContactModal: Contact being edited:', contact);
       
       const user = await supabase.auth.getUser();
       
@@ -185,21 +168,22 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
 
       console.log('ContactModal: Prepared contact data:', contactData);
 
-      if (contact) {
+      if (contact?.id) {
         // Update existing contact
         console.log('ContactModal: Updating contact with ID:', contact.id);
         
-        const { error } = await supabase
+        const { data: updatedData, error } = await supabase
           .from('contacts')
           .update(contactData)
-          .eq('id', contact.id);
+          .eq('id', contact.id)
+          .select();
 
         if (error) {
           console.error('ContactModal: Update error:', error);
           throw error;
         }
 
-        console.log('ContactModal: Contact updated successfully');
+        console.log('ContactModal: Contact updated successfully:', updatedData);
         toast({
           title: "Success",
           description: "Contact updated successfully",
@@ -213,16 +197,17 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
           contact_owner: user.data.user.id,
         };
         
-        const { error } = await supabase
+        const { data: newData, error } = await supabase
           .from('contacts')
-          .insert(newContactData);
+          .insert(newContactData)
+          .select();
 
         if (error) {
           console.error('ContactModal: Insert error:', error);
           throw error;
         }
 
-        console.log('ContactModal: Contact created successfully');
+        console.log('ContactModal: Contact created successfully:', newData);
         toast({
           title: "Success",
           description: "Contact created successfully",
