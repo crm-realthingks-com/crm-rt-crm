@@ -139,6 +139,8 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
   const onSubmit = async (data: ContactFormData) => {
     try {
       setLoading(true);
+      console.log('ContactModal: Submitting form data:', data);
+      
       const user = await supabase.auth.getUser();
       
       if (!user.data.user) {
@@ -162,35 +164,52 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         industry: data.industry || null,
         country: data.country || null,
         description: data.description || null,
-        created_by: user.data.user.id,
         modified_by: user.data.user.id,
-        contact_owner: user.data.user.id,
+        modified_time: new Date().toISOString(),
       };
 
       if (contact) {
         // Update existing contact
-        const { error } = await supabase
+        console.log('ContactModal: Updating contact with ID:', contact.id);
+        const { data: updatedContact, error } = await supabase
           .from('contacts')
-          .update({
-            ...contactData,
-            modified_time: new Date().toISOString(),
-          })
-          .eq('id', contact.id);
+          .update(contactData)
+          .eq('id', contact.id)
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('ContactModal: Update error:', error);
+          throw error;
+        }
 
+        console.log('ContactModal: Contact updated successfully:', updatedContact);
         toast({
           title: "Success",
           description: "Contact updated successfully",
         });
       } else {
         // Create new contact
-        const { error } = await supabase
+        console.log('ContactModal: Creating new contact');
+        const newContactData = {
+          ...contactData,
+          created_by: user.data.user.id,
+          contact_owner: user.data.user.id,
+          created_time: new Date().toISOString(),
+        };
+        
+        const { data: newContact, error } = await supabase
           .from('contacts')
-          .insert(contactData);
+          .insert(newContactData)
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('ContactModal: Insert error:', error);
+          throw error;
+        }
 
+        console.log('ContactModal: Contact created successfully:', newContact);
         toast({
           title: "Success",
           description: "Contact created successfully",
@@ -199,10 +218,11 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
 
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('ContactModal: Submit error:', error);
       toast({
         title: "Error",
-        description: contact ? "Failed to update contact" : "Failed to create contact",
+        description: error.message || (contact ? "Failed to update contact" : "Failed to create contact"),
         variant: "destructive",
       });
     } finally {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +10,7 @@ import { ContactModal } from "./ContactModal";
 import { ContactColumnCustomizer, ContactColumnConfig } from "./ContactColumnCustomizer";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useSorting } from "@/hooks/useSorting";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
 
 interface Contact {
   id: string;
@@ -17,23 +19,17 @@ interface Contact {
   position?: string;
   email?: string;
   phone_no?: string;
-  mobile_no?: string;
-  country?: string;
-  city?: string;
-  state?: string;
-  contact_owner?: string;
-  created_time?: string;
-  modified_time?: string;
-  lead_status?: string;
-  industry?: string;
-  contact_source?: string;
   linkedin?: string;
   website?: string;
+  contact_source?: string;
+  industry?: string;
+  country?: string;
   description?: string;
-  annual_revenue?: number;
-  no_of_employees?: number;
+  contact_owner?: string;
   created_by?: string;
   modified_by?: string;
+  created_time?: string;
+  modified_time?: string;
 }
 
 const defaultColumns: ContactColumnConfig[] = [
@@ -42,8 +38,12 @@ const defaultColumns: ContactColumnConfig[] = [
   { field: 'position', label: 'Position', visible: true, order: 2 },
   { field: 'email', label: 'Email', visible: true, order: 3 },
   { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
-  { field: 'country', label: 'Region', visible: true, order: 5 },
-  { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 6 },
+  { field: 'linkedin', label: 'LinkedIn Profile', visible: false, order: 5 },
+  { field: 'website', label: 'Website', visible: false, order: 6 },
+  { field: 'contact_source', label: 'Contact Source', visible: false, order: 7 },
+  { field: 'industry', label: 'Industry', visible: true, order: 8 },
+  { field: 'country', label: 'Region', visible: true, order: 9 },
+  { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 10 },
 ];
 
 interface ContactTableProps {
@@ -80,6 +80,10 @@ export const ContactTable = ({
 
   const { sortedData, sortConfig, handleSort } = useSorting(filteredContacts);
 
+  // Get all unique user IDs for display names
+  const userIds = contacts.map(contact => contact.contact_owner || contact.created_by).filter(Boolean);
+  const { displayNames } = useUserDisplayNames(userIds);
+
   console.log('ContactTable: Rendering with contacts:', contacts.length);
 
   const fetchContacts = async () => {
@@ -89,7 +93,25 @@ export const ContactTable = ({
       
       const { data, error } = await supabase
         .from('contacts')
-        .select('*')
+        .select(`
+          id,
+          contact_name,
+          company_name,
+          position,
+          email,
+          phone_no,
+          linkedin,
+          website,
+          contact_source,
+          industry,
+          country,
+          description,
+          contact_owner,
+          created_by,
+          modified_by,
+          created_time,
+          modified_time
+        `)
         .order('created_time', { ascending: false });
 
       if (error) {
@@ -133,7 +155,9 @@ export const ContactTable = ({
     const filtered = contacts.filter(contact =>
       contact.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.industry?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.country?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredContacts(filtered);
     setCurrentPage(1);
@@ -215,6 +239,7 @@ export const ContactTable = ({
           onRefresh={fetchContacts}
           sortConfig={sortConfig}
           onSort={handleSort}
+          displayNames={displayNames}
         />
       </Card>
 

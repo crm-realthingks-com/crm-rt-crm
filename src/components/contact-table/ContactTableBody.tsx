@@ -15,23 +15,17 @@ interface Contact {
   position?: string;
   email?: string;
   phone_no?: string;
-  mobile_no?: string;
-  country?: string;
-  city?: string;
-  state?: string;
-  contact_owner?: string;
-  created_time?: string;
-  modified_time?: string;
-  lead_status?: string;
-  industry?: string;
-  contact_source?: string;
   linkedin?: string;
   website?: string;
+  contact_source?: string;
+  industry?: string;
+  country?: string;
   description?: string;
-  annual_revenue?: number;
-  no_of_employees?: number;
+  contact_owner?: string;
   created_by?: string;
   modified_by?: string;
+  created_time?: string;
+  modified_time?: string;
 }
 
 interface ContactTableBodyProps {
@@ -46,6 +40,7 @@ interface ContactTableBodyProps {
   onRefresh: () => void;
   sortConfig: SortConfig;
   onSort: (field: string) => void;
+  displayNames: Record<string, string>;
 }
 
 export const ContactTableBody = ({
@@ -59,7 +54,8 @@ export const ContactTableBody = ({
   searchTerm,
   onRefresh,
   sortConfig,
-  onSort
+  onSort,
+  displayNames
 }: ContactTableBodyProps) => {
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -78,6 +74,16 @@ export const ContactTableBody = ({
   };
 
   const isAllSelected = pageContacts.length > 0 && selectedContacts.length === pageContacts.length;
+
+  const formatFieldValue = (contact: Contact, field: string): string => {
+    if (field === 'contact_owner') {
+      const ownerId = contact.contact_owner || contact.created_by;
+      return ownerId ? (displayNames[ownerId] || 'Loading...') : '-';
+    }
+    
+    const value = contact[field as keyof Contact];
+    return value?.toString() || '-';
+  };
 
   if (loading) {
     return (
@@ -148,11 +154,7 @@ export const ContactTableBody = ({
                   </TableCell>
                   {visibleColumns.map(column => (
                     <TableCell key={`${contact.id}-${column.field}`}>
-                      {column.field === 'lead_status' && contact.lead_status ? (
-                        <Badge variant="secondary">{contact.lead_status}</Badge>
-                      ) : (
-                        contact[column.field as keyof Contact]?.toString() || '-'
-                      )}
+                      {formatFieldValue(contact, column.field)}
                     </TableCell>
                   ))}
                   <TableCell className="text-right">
