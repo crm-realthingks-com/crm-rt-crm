@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 
 const contactSchema = z.object({
-  contact_name: z.string().min(1, "Contact name is required"),
-  company_name: z.string().min(1, "Company name is required"),
+  contact_name: z.string().min(1, "Contact name is required").trim(),
+  company_name: z.string().min(1, "Company name is required").trim(),
   position: z.string().optional(),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone_no: z.string().optional(),
@@ -130,6 +129,25 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       setLoading(true);
       console.log('ContactModal: Submitting form data:', data);
       
+      // Validate required fields before proceeding
+      if (!data.contact_name?.trim()) {
+        toast({
+          title: "Error",
+          description: "Contact name is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!data.company_name?.trim()) {
+        toast({
+          title: "Error",
+          description: "Company name is required",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const user = await supabase.auth.getUser();
       
       if (!user.data.user) {
@@ -141,10 +159,10 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         return;
       }
 
-      // Prepare the contact data with exact field names matching the database
+      // Prepare the contact data with proper validation and trimming
       const contactData = {
         contact_name: data.contact_name.trim(),
-        company_name: data.company_name?.trim() || null,
+        company_name: data.company_name.trim(),
         position: data.position?.trim() || null,
         email: data.email?.trim() || null,
         phone_no: data.phone_no?.trim() || null,
@@ -156,9 +174,20 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         modified_by: user.data.user.id,
       };
 
+      // Additional validation for URLs if provided
+      if (contactData.linkedin && contactData.linkedin !== '' && !contactData.linkedin.startsWith('http')) {
+        contactData.linkedin = `https://${contactData.linkedin}`;
+      }
+      
+      if (contactData.website && contactData.website !== '' && !contactData.website.startsWith('http')) {
+        contactData.website = `https://${contactData.website}`;
+      }
+
+      console.log('ContactModal: Prepared contact data:', contactData);
+
       if (contact) {
         // Update existing contact
-        console.log('ContactModal: Updating contact with ID:', contact.id, 'Data:', contactData);
+        console.log('ContactModal: Updating contact with ID:', contact.id);
         
         const { error } = await supabase
           .from('contacts')
@@ -204,9 +233,22 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       onOpenChange(false);
     } catch (error: any) {
       console.error('ContactModal: Submit error:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = "An unexpected error occurred";
+      if (error.message?.includes('contact_name')) {
+        errorMessage = "Contact name is required and cannot be empty";
+      } else if (error.message?.includes('company_name')) {
+        errorMessage = "Company name is required and cannot be empty";
+      } else if (error.message?.includes('email')) {
+        errorMessage = "Please provide a valid email address";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || (contact ? "Failed to update contact" : "Failed to create contact"),
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -233,7 +275,11 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>Contact Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input 
+                        placeholder="John Doe" 
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -247,7 +293,11 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>Company Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Acme Corp" {...field} />
+                      <Input 
+                        placeholder="Acme Corp" 
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -330,7 +380,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Contact Source</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select source" />
@@ -355,7 +405,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Industry</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select industry" />
