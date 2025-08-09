@@ -1,13 +1,12 @@
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Edit, Trash2, ArrowUpDown, MoreHorizontal, UserPlus } from "lucide-react";
-import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Edit, Trash2, MoreVertical, RefreshCw } from "lucide-react";
 import { ContactColumnConfig } from "../ContactColumnCustomizer";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { SortableTableHead } from "../SortableTableHead";
+import { SortConfig } from "@/hooks/useSorting";
 
 interface Contact {
   id: string;
@@ -17,18 +16,22 @@ interface Contact {
   email?: string;
   phone_no?: string;
   mobile_no?: string;
-  linkedin?: string;
-  website?: string;
-  contact_source?: string;
-  lead_status?: string;
-  industry?: string;
+  country?: string;
   city?: string;
   state?: string;
-  country?: string;
-  description?: string;
   contact_owner?: string;
+  created_time?: string;
+  modified_time?: string;
+  lead_status?: string;
+  industry?: string;
+  contact_source?: string;
+  linkedin?: string;
+  website?: string;
+  description?: string;
+  annual_revenue?: number;
+  no_of_employees?: number;
   created_by?: string;
-  [key: string]: any;
+  modified_by?: string;
 }
 
 interface ContactTableBodyProps {
@@ -40,7 +43,9 @@ interface ContactTableBodyProps {
   onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
   searchTerm: string;
-  onRefresh?: () => void;
+  onRefresh: () => void;
+  sortConfig: SortConfig;
+  onSort: (field: string) => void;
 }
 
 export const ContactTableBody = ({
@@ -52,16 +57,13 @@ export const ContactTableBody = ({
   onEdit,
   onDelete,
   searchTerm,
-  onRefresh
+  onRefresh,
+  sortConfig,
+  onSort
 }: ContactTableBodyProps) => {
-  const { toast } = useToast();
-  const createdByIds = [...new Set(pageContacts.map(c => c.created_by).filter(Boolean))];
-  const { displayNames } = useUserDisplayNames(createdByIds);
-
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const pageContactIds = pageContacts.slice(0, 50).map(c => c.id);
-      setSelectedContacts(pageContactIds);
+      setSelectedContacts(pageContacts.map(contact => contact.id));
     } else {
       setSelectedContacts([]);
     }
@@ -75,210 +77,113 @@ export const ContactTableBody = ({
     }
   };
 
-  const handleConvertToLead = async (contact: Contact) => {
-    try {
-      // Validate required fields for lead conversion
-      if (!contact.contact_name || !contact.contact_name.trim()) {
-        toast({
-          title: "Validation Error",
-          description: "Contact name is required to convert to lead.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get current user for ownership
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        toast({
-          title: "Authentication Error",
-          description: "You must be logged in to convert contacts to leads.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Create a new lead with contact information, ensuring all fields exist
-      const leadData = {
-        lead_name: contact.contact_name,
-        company_name: contact.company_name || null,
-        position: contact.position || null,
-        email: contact.email || null,
-        phone_no: contact.phone_no || null,
-        mobile_no: contact.mobile_no || null,
-        linkedin: contact.linkedin || null,
-        website: contact.website || null,
-        contact_source: contact.contact_source || null,
-        lead_status: contact.lead_status || 'New',
-        industry: contact.industry || null,
-        city: contact.city || null,
-        country: contact.country || null,
-        description: contact.description || null,
-        contact_owner: contact.contact_owner || user.id,
-        created_by: user.id,
-        created_time: new Date().toISOString(),
-        modified_time: new Date().toISOString()
-      };
-
-      console.log('Converting contact to lead with data:', leadData);
-
-      const { data, error } = await supabase
-        .from('leads')
-        .insert([leadData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error converting contact to lead:', error);
-        throw error;
-      }
-
-      console.log('Successfully converted contact to lead:', data);
-
-      toast({
-        title: "Success",
-        description: `Contact "${contact.contact_name}" has been converted to a lead successfully.`,
-      });
-
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      console.error('Error converting contact to lead:', error);
-      toast({
-        title: "Conversion Error",
-        description: "Failed to convert contact to lead. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+  const isAllSelected = pageContacts.length > 0 && selectedContacts.length === pageContacts.length;
 
   if (loading) {
     return (
-      <Table>
-        <TableBody>
-          <TableRow>
-            <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
-                Loading contacts...
-              </div>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    );
-  }
-
-  if (pageContacts.length === 0) {
-    return (
-      <Table>
-        <TableBody>
-          <TableRow>
-            <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-              <div className="flex flex-col items-center gap-2">
-                <p className="text-muted-foreground">No contacts found</p>
-                {searchTerm && (
-                  <p className="text-sm text-muted-foreground">
-                    Try adjusting your search terms
-                  </p>
-                )}
-              </div>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading contacts...</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">
-            <Checkbox
-              checked={selectedContacts.length > 0 && selectedContacts.length === Math.min(pageContacts.length, 50)}
-              onCheckedChange={handleSelectAll}
-            />
-          </TableHead>
-          {visibleColumns.map((column) => (
-            <TableHead key={column.field}>
-              <div className="flex items-center gap-2">
-                {column.label}
-                <ArrowUpDown className="w-4 h-4" />
-              </div>
-            </TableHead>
-          ))}
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {pageContacts.map((contact) => (
-          <TableRow key={contact.id}>
-            <TableCell>
-              <Checkbox
-                checked={selectedContacts.includes(contact.id)}
-                onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
-              />
-            </TableCell>
-            {visibleColumns.map((column) => (
-              <TableCell key={column.field}>
-                {column.field === 'contact_name' ? (
-                  <button
-                    onClick={() => onEdit(contact)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {contact[column.field as keyof Contact]}
-                  </button>
-                ) : column.field === 'contact_owner' ? (
-                  // Always show the display name or fallback without any loading state
-                  contact.created_by ? (
-                    displayNames[contact.created_by] || "Unknown"
-                  ) : (
-                    '-'
-                  )
-                ) : column.field === 'lead_status' && contact.lead_status ? (
-                  <Badge variant={contact.lead_status === 'Converted' ? 'default' : 'secondary'}>
-                    {contact.lead_status}
-                  </Badge>
-                ) : (
-                  contact[column.field as keyof Contact] || '-'
-                )}
-              </TableCell>
-            ))}
-            <TableCell>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onEdit(contact)}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleConvertToLead(contact)}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Convert to Lead
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => onDelete(contact.id)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="p-6">
+      {pageContacts.length === 0 && searchTerm && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground mb-4">No contacts found for "{searchTerm}"</p>
+          <Button onClick={onRefresh} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      )}
+
+      {pageContacts.length === 0 && !searchTerm && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground mb-4">No contacts available</p>
+          <Button onClick={onRefresh} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      )}
+
+      {pageContacts.length > 0 && (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all contacts"
+                  />
+                </TableHead>
+                {visibleColumns.map(column => (
+                  <SortableTableHead
+                    key={column.field}
+                    field={column.field}
+                    label={column.label}
+                    sortConfig={sortConfig}
+                    onSort={onSort}
+                  />
+                ))}
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pageContacts.map(contact => (
+                <TableRow key={contact.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedContacts.includes(contact.id)}
+                      onCheckedChange={(checked) => handleSelectContact(contact.id, Boolean(checked))}
+                      aria-label={`Select ${contact.contact_name}`}
+                    />
+                  </TableCell>
+                  {visibleColumns.map(column => (
+                    <TableCell key={`${contact.id}-${column.field}`}>
+                      {column.field === 'lead_status' && contact.lead_status ? (
+                        <Badge variant="secondary">{contact.lead_status}</Badge>
+                      ) : (
+                        contact[column.field as keyof Contact]?.toString() || '-'
+                      )}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit(contact)}
+                        title="Edit contact"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDelete(contact.id)}
+                        title="Delete contact"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" title="More actions">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
   );
 };

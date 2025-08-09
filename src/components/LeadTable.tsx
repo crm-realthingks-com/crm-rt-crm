@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Pencil, Trash2 } from 'lucide-react';
+import { useSorting } from "@/hooks/useSorting";
+import { SortableTableHead } from "./SortableTableHead";
 
 interface LeadTableProps {
   showColumnCustomizer: boolean;
@@ -43,6 +45,25 @@ export const LeadTable = ({
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Filter leads first
+  const filteredLeads = leads.filter(lead => {
+    const matchesSearch = !searchTerm || 
+      lead.lead_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Use the correct status field and handle null/undefined values
+    const leadStatus = lead.status || lead.lead_status || 'New';
+    const matchesStatus = filterStatus === 'all' || 
+      (leadStatus === filterStatus) ||
+      (filterStatus === 'New' && (!lead.status && !lead.lead_status));
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Apply sorting to filtered leads
+  const { sortedData, sortConfig, handleSort } = useSorting(filteredLeads);
+
   const loadLeads = async () => {
     try {
       setLoading(true);
@@ -74,25 +95,10 @@ export const LeadTable = ({
     loadLeads();
   }, [refreshTrigger]);
 
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = !searchTerm || 
-      lead.lead_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Use the correct status field and handle null/undefined values
-    const leadStatus = lead.status || lead.lead_status || 'New';
-    const matchesStatus = filterStatus === 'all' || 
-      (leadStatus === filterStatus) ||
-      (filterStatus === 'New' && (!lead.status && !lead.lead_status));
-    
-    return matchesSearch && matchesStatus;
-  });
-
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+  const paginatedLeads = sortedData.slice(startIndex, endIndex);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -174,7 +180,7 @@ export const LeadTable = ({
 
       {/* Results Info */}
       <div className="text-sm text-muted-foreground">
-        Showing {paginatedLeads.length} of {filteredLeads.length} leads
+        Showing {paginatedLeads.length} of {sortedData.length} leads
         {selectedLeads.length > 0 && ` (${selectedLeads.length} selected)`}
       </div>
 
@@ -189,13 +195,48 @@ export const LeadTable = ({
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <TableHead>Lead Name</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Region</TableHead>
+              <SortableTableHead
+                field="lead_name"
+                label="Lead Name"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+              <SortableTableHead
+                field="company_name"
+                label="Company"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+              <SortableTableHead
+                field="email"
+                label="Email"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+              <SortableTableHead
+                field="phone_no"
+                label="Phone"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+              <SortableTableHead
+                field="status"
+                label="Status"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+              <SortableTableHead
+                field="contact_source"
+                label="Source"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+              <SortableTableHead
+                field="country"
+                label="Region"
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>

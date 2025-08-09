@@ -8,6 +8,7 @@ import { ContactTablePagination } from "./contact-table/ContactTablePagination";
 import { ContactModal } from "./ContactModal";
 import { ContactColumnCustomizer, ContactColumnConfig } from "./ContactColumnCustomizer";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useSorting } from "@/hooks/useSorting";
 
 interface Contact {
   id: string;
@@ -76,6 +77,8 @@ export const ContactTable = ({
   const [columns, setColumns] = useState(defaultColumns);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+
+  const { sortedData, sortConfig, handleSort } = useSorting(filteredContacts);
 
   console.log('ContactTable: Rendering with contacts:', contacts.length);
 
@@ -169,9 +172,9 @@ export const ContactTable = ({
   };
 
   const visibleColumns = columns.filter(col => col.visible);
-  const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const pageContacts = filteredContacts.slice(startIndex, startIndex + itemsPerPage);
+  const pageContacts = sortedData.slice(startIndex, startIndex + itemsPerPage);
 
   console.log('ContactTable: Render state - loading:', loading, 'contacts:', contacts.length, 'pageContacts:', pageContacts.length);
 
@@ -210,6 +213,8 @@ export const ContactTable = ({
           }}
           searchTerm={searchTerm}
           onRefresh={fetchContacts}
+          sortConfig={sortConfig}
+          onSort={handleSort}
         />
       </Card>
 
@@ -218,12 +223,11 @@ export const ContactTable = ({
           currentPage={currentPage}
           totalPages={totalPages}
           itemsPerPage={itemsPerPage}
-          totalItems={filteredContacts.length}
+          totalItems={sortedData.length}
           onPageChange={setCurrentPage}
         />
       )}
 
-      {/* Modals */}
       <ContactModal
         open={showModal}
         onOpenChange={setShowModal}
