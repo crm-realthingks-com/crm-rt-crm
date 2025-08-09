@@ -152,14 +152,13 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       };
 
       if (contact) {
-        // Update existing contact
+        // Update existing contact - remove .single() to avoid coercion errors
         console.log('ContactModal: Updating contact with ID:', contact.id);
         const { data: updatedContact, error } = await supabase
           .from('contacts')
           .update(contactData)
           .eq('id', contact.id)
-          .select()
-          .single();
+          .select();
 
         if (error) {
           console.error('ContactModal: Update error:', error);
@@ -172,7 +171,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
           description: "Contact updated successfully",
         });
       } else {
-        // Create new contact
+        // Create new contact - remove .single() to avoid coercion errors
         console.log('ContactModal: Creating new contact');
         const newContactData = {
           ...contactData,
@@ -183,8 +182,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         const { data: newContact, error } = await supabase
           .from('contacts')
           .insert(newContactData)
-          .select()
-          .single();
+          .select();
 
         if (error) {
           console.error('ContactModal: Insert error:', error);
