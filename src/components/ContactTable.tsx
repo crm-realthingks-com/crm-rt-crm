@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -86,6 +87,7 @@ export const ContactTable = ({
       console.log('ContactTable: Starting to fetch contacts...');
       setLoading(true);
       
+      // Only select columns that exist in the database
       const { data, error } = await supabase
         .from('contacts')
         .select(`
@@ -121,6 +123,7 @@ export const ContactTable = ({
         description: "Failed to fetch contacts. Please refresh the page.",
         variant: "destructive",
       });
+      setContacts([]); // Set empty array on error
     } finally {
       setLoading(false);
       console.log('ContactTable: Finished fetching contacts');
