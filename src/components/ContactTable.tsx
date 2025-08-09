@@ -23,13 +23,12 @@ interface Contact {
   website?: string;
   contact_source?: string;
   industry?: string;
-  country?: string;
   description?: string;
   contact_owner?: string;
   created_by?: string;
   modified_by?: string;
-  created_time?: string;
-  modified_time?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 const defaultColumns: ContactColumnConfig[] = [
@@ -42,8 +41,7 @@ const defaultColumns: ContactColumnConfig[] = [
   { field: 'website', label: 'Website', visible: false, order: 6 },
   { field: 'contact_source', label: 'Contact Source', visible: false, order: 7 },
   { field: 'industry', label: 'Industry', visible: true, order: 8 },
-  { field: 'country', label: 'Region', visible: true, order: 9 },
-  { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 10 },
+  { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 9 },
 ];
 
 interface ContactTableProps {
@@ -104,15 +102,14 @@ export const ContactTable = ({
           website,
           contact_source,
           industry,
-          country,
           description,
           contact_owner,
           created_by,
           modified_by,
-          created_time,
-          modified_time
+          created_at,
+          updated_at
         `)
-        .order('created_time', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('ContactTable: Supabase error:', error);
@@ -156,8 +153,7 @@ export const ContactTable = ({
       contact.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.industry?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.country?.toLowerCase().includes(searchTerm.toLowerCase())
+      contact.industry?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredContacts(filtered);
     setCurrentPage(1);
