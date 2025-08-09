@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -27,8 +26,6 @@ interface Contact {
   contact_owner?: string;
   created_by?: string;
   modified_by?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 const defaultColumns: ContactColumnConfig[] = [
@@ -105,11 +102,9 @@ export const ContactTable = ({
           description,
           contact_owner,
           created_by,
-          modified_by,
-          created_at,
-          updated_at
+          modified_by
         `)
-        .order('created_at', { ascending: false });
+        .order('contact_name', { ascending: true });
 
       if (error) {
         console.error('ContactTable: Supabase error:', error);
