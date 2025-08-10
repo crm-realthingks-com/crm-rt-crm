@@ -21,9 +21,7 @@ const leadSchema = z.object({
   linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
   lead_source: z.string().optional(),
-  lead_status: z.string().optional(),
   industry: z.string().optional(),
-  country: z.string().optional(),
   region: z.string().optional(),
   status: z.string().optional(),
   description: z.string().optional(),
@@ -41,9 +39,7 @@ interface Lead {
   linkedin?: string;
   website?: string;
   lead_source?: string;
-  lead_status?: string;
   industry?: string;
-  country?: string;
   region?: string;
   status?: string;
   description?: string;
@@ -70,16 +66,6 @@ const leadSources = [
   "Partner",
   "Advertisement",
   "Other"
-];
-
-const leadStatuses = [
-  "New",
-  "Contacted",
-  "Qualified",
-  "Proposal",
-  "Negotiation",
-  "Closed Won",
-  "Closed Lost"
 ];
 
 const industries = [
@@ -122,9 +108,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
       linkedin: "",
       website: "",
       lead_source: "",
-      lead_status: "",
       industry: "Automotive",
-      country: "",
       region: "EU",
       status: "New",
       description: "",
@@ -143,9 +127,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         linkedin: lead.linkedin || "",
         website: lead.website || "",
         lead_source: lead.lead_source || "",
-        lead_status: lead.lead_status || "",
         industry: lead.industry || "Automotive",
-        country: lead.country || "",
         region: lead.region || "EU",
         status: lead.status || "New",
         description: lead.description || "",
@@ -160,9 +142,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         linkedin: "",
         website: "",
         lead_source: "",
-        lead_status: "",
         industry: "Automotive",
-        country: "",
         region: "EU",
         status: "New",
         description: "",
@@ -197,9 +177,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         linkedin: data.linkedin?.trim() || null,
         website: data.website?.trim() || null,
         lead_source: data.lead_source?.trim() || null,
-        lead_status: data.lead_status?.trim() || null,
         industry: data.industry?.trim() || null,
-        country: data.country?.trim() || null,
         region: data.region?.trim() || "EU",
         status: data.status?.trim() || "New",
         description: data.description?.trim() || null,
@@ -437,31 +415,6 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
               <FormField
                 control={form.control}
-                name="lead_status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lead Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select lead status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {leadStatuses.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="industry"
                 render={({ field }) => (
                   <FormItem>
@@ -480,20 +433,6 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Country</FormLabel>
-                    <FormControl>
-                      <Input placeholder="United States" {...field} />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

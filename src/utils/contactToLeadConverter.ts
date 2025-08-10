@@ -1,10 +1,9 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 
-interface Contact {
-  id: string;
+export interface ContactToLeadData {
   contact_name: string;
-  company_name?: string;
+  company_name: string;
   position?: string;
   email?: string;
   phone_no?: string;
@@ -15,37 +14,72 @@ interface Contact {
   region?: string;
   description?: string;
   contact_owner?: string;
-  created_by?: string;
-  modified_by?: string;
 }
 
-export interface ConvertToLeadResult {
-  success: boolean;
-  leadId?: string;
-  error?: string;
+export interface LeadData {
+  lead_name: string;
+  company_name: string;
+  position?: string;
+  email?: string;
+  phone_no?: string;
+  linkedin?: string;
+  website?: string;
+  lead_source?: string;
+  industry?: string;
+  region?: string;
+  status: string;
+  description?: string;
+  contact_owner?: string;
+  created_by: string;
+  modified_by: string;
+  created_time: string;
+  modified_time: string;
 }
 
-export const convertContactToLead = async (contact: Contact, currentUserId: string): Promise<ConvertToLeadResult> => {
+export const convertContactToLead = async (
+  contactData: ContactToLeadData,
+  userId: string
+): Promise<{ success: boolean; leadId?: string; error?: string }> => {
   try {
-    console.log('Converting contact to lead:', contact.id, contact.contact_name);
+    console.log('Converting contact to lead:', contactData);
+    
+    // Check if lead already exists
+    const { data: existingLead, error: checkError } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('lead_name', contactData.contact_name)
+      .eq('company_name', contactData.company_name || '')
+      .limit(1);
 
-    // Map contact fields to lead fields
-    const leadData = {
-      lead_name: contact.contact_name,
-      company_name: contact.company_name || '',
-      position: contact.position || null,
-      email: contact.email || null,
-      phone_no: contact.phone_no || null,
-      linkedin: contact.linkedin || null,
-      website: contact.website || null,
-      lead_source: contact.contact_source || null,
-      industry: contact.industry || null,
-      region: contact.region || 'EU',
-      description: contact.description || null,
-      status: 'New', // Default status for new leads
-      contact_owner: contact.contact_owner || currentUserId,
-      created_by: currentUserId,
-      modified_by: currentUserId,
+    if (checkError) {
+      console.error('Error checking for existing lead:', checkError);
+      return { success: false, error: checkError.message };
+    }
+
+    if (existingLead && existingLead.length > 0) {
+      return { 
+        success: false, 
+        error: 'A lead with this name and company already exists' 
+      };
+    }
+
+    // Convert contact data to lead data
+    const leadData: LeadData = {
+      lead_name: contactData.contact_name,
+      company_name: contactData.company_name || '',
+      position: contactData.position || null,
+      email: contactData.email || null,
+      phone_no: contactData.phone_no || null,
+      linkedin: contactData.linkedin || null,
+      website: contactData.website || null,
+      lead_source: contactData.contact_source || null,
+      industry: contactData.industry || null,
+      region: contactData.region || 'EU',
+      status: 'New',
+      description: contactData.description || null,
+      contact_owner: contactData.contact_owner || userId,
+      created_by: userId,
+      modified_by: userId,
       created_time: new Date().toISOString(),
       modified_time: new Date().toISOString()
     };
@@ -53,22 +87,22 @@ export const convertContactToLead = async (contact: Contact, currentUserId: stri
     console.log('Lead data to insert:', leadData);
 
     // Insert the new lead
-    const { data, error } = await supabase
+    const { data: insertedLead, error: insertError } = await supabase
       .from('leads')
       .insert([leadData])
       .select('id')
       .single();
 
-    if (error) {
-      console.error('Error converting contact to lead:', error);
-      return { success: false, error: error.message };
+    if (insertError) {
+      console.error('Error inserting lead:', insertError);
+      return { success: false, error: insertError.message };
     }
 
-    console.log('Successfully converted contact to lead:', data?.id);
-    return { success: true, leadId: data?.id };
+    console.log('Lead created successfully:', insertedLead);
+    return { success: true, leadId: insertedLead.id };
 
   } catch (error: any) {
-    console.error('Exception during contact to lead conversion:', error);
-    return { success: false, error: error.message || 'Unknown error occurred' };
+    console.error('Error in convertContactToLead:', error);
+    return { success: false, error: error.message };
   }
 };

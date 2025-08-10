@@ -19,7 +19,6 @@ export interface ImportedLeadData {
   website?: string;
   contact_source?: string;
   industry?: string;
-  country?: string;
   region?: string;
   status?: string;
   description?: string;
@@ -95,7 +94,6 @@ export class LeadsImporter {
       'Lead Source': 'contact_source',
       'Industry': 'industry',
       'Region': 'region',
-      'Country': 'country',
       'Status': 'status',
       'Description': 'description',
       'Lead Owner': 'contact_owner'
@@ -180,7 +178,6 @@ export class LeadsImporter {
       website: rowData.website?.trim() || null,
       contact_source: this.validateDropdownValue(rowData.contact_source || '', VALID_SOURCES) || null,
       industry: this.validateDropdownValue(rowData.industry || '', VALID_INDUSTRIES) || null,
-      country: rowData.country?.trim() || null,
       region: this.validateDropdownValue(rowData.region || 'EU', VALID_REGIONS) || 'EU',
       status: this.validateDropdownValue(rowData.status || 'New', VALID_STATUSES) || 'New',
       description: rowData.description?.trim() || null,

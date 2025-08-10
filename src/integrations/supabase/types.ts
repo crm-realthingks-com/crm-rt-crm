@@ -356,7 +356,6 @@ export type Database = {
         Row: {
           company_name: string | null
           contact_owner: string | null
-          country: string | null
           created_by: string | null
           created_time: string | null
           description: string | null
@@ -365,7 +364,6 @@ export type Database = {
           industry: string | null
           lead_name: string
           lead_source: string | null
-          lead_status: string | null
           linkedin: string | null
           modified_by: string | null
           modified_time: string | null
@@ -378,7 +376,6 @@ export type Database = {
         Insert: {
           company_name?: string | null
           contact_owner?: string | null
-          country?: string | null
           created_by?: string | null
           created_time?: string | null
           description?: string | null
@@ -387,7 +384,6 @@ export type Database = {
           industry?: string | null
           lead_name: string
           lead_source?: string | null
-          lead_status?: string | null
           linkedin?: string | null
           modified_by?: string | null
           modified_time?: string | null
@@ -400,7 +396,6 @@ export type Database = {
         Update: {
           company_name?: string | null
           contact_owner?: string | null
-          country?: string | null
           created_by?: string | null
           created_time?: string | null
           description?: string | null
@@ -409,7 +404,6 @@ export type Database = {
           industry?: string | null
           lead_name?: string
           lead_source?: string | null
-          lead_status?: string | null
           linkedin?: string | null
           modified_by?: string | null
           modified_time?: string | null

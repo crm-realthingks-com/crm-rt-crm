@@ -67,9 +67,8 @@ export const columnConfigs: ColumnConfigs = {
     required: ['lead_name', 'company_name'],
     optional: [
       'id', 'position', 'email', 'phone_no', 'linkedin', 'website', 
-      'contact_source', 'lead_status', 'industry', 'country', 'region',
-      'status', 'description', 'contact_owner', 'created_by', 
-      'modified_by', 'created_time', 'modified_time'
+      'lead_source', 'industry', 'region', 'status', 'description', 
+      'contact_owner', 'created_by', 'modified_by', 'created_time', 'modified_time'
     ],
     get allowedColumns() {
       return [...this.required, ...this.optional];
