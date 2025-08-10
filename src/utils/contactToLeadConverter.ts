@@ -12,6 +12,7 @@ interface Contact {
   website?: string;
   contact_source?: string;
   industry?: string;
+  region?: string;
   description?: string;
   contact_owner?: string;
   created_by?: string;
@@ -39,6 +40,7 @@ export const convertContactToLead = async (contact: Contact, currentUserId: stri
       website: contact.website || null,
       lead_source: contact.contact_source || null,
       industry: contact.industry || null,
+      region: contact.region || 'EU',
       description: contact.description || null,
       status: 'New', // Default status for new leads
       contact_owner: contact.contact_owner || currentUserId,

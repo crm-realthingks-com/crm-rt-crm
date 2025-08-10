@@ -11,23 +11,22 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { useUsers } from "@/hooks/useUsers";
 
 const leadSchema = z.object({
-  lead_name: z.string().min(1, "Lead name is required"),
-  company_name: z.string().min(1, "Company name is required"),
+  lead_name: z.string().min(1, "Lead name is required").trim(),
+  company_name: z.string().min(1, "Company name is required").trim(),
   position: z.string().optional(),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone_no: z.string().optional(),
   linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
-  contact_source: z.string().optional(),
+  lead_source: z.string().optional(),
+  lead_status: z.string().optional(),
   industry: z.string().optional(),
   country: z.string().optional(),
+  region: z.string().optional(),
   status: z.string().optional(),
   description: z.string().optional(),
-  contact_owner: z.string().optional(),
 });
 
 type LeadFormData = z.infer<typeof leadSchema>;
@@ -41,12 +40,16 @@ interface Lead {
   phone_no?: string;
   linkedin?: string;
   website?: string;
-  contact_source?: string;
+  lead_source?: string;
+  lead_status?: string;
   industry?: string;
   country?: string;
+  region?: string;
   status?: string;
   description?: string;
   contact_owner?: string;
+  created_by?: string;
+  modified_by?: string;
 }
 
 interface LeadModalProps {
@@ -58,7 +61,7 @@ interface LeadModalProps {
 
 const leadSources = [
   "Website",
-  "LinkedIn", 
+  "LinkedIn",
   "Referral",
   "Cold Call",
   "Email",
@@ -67,6 +70,16 @@ const leadSources = [
   "Partner",
   "Advertisement",
   "Other"
+];
+
+const leadStatuses = [
+  "New",
+  "Contacted",
+  "Qualified",
+  "Proposal",
+  "Negotiation",
+  "Closed Won",
+  "Closed Lost"
 ];
 
 const industries = [
@@ -82,16 +95,13 @@ const industries = [
 ];
 
 const regions = [
-  "North America",
-  "South America", 
-  "Europe",
+  "EU",
+  "US", 
   "Asia",
-  "Africa",
-  "Australia",
   "Other"
 ];
 
-const statusOptions = [
+const statuses = [
   "New",
   "Contacted",
   "Qualified"
@@ -99,8 +109,6 @@ const statusOptions = [
 
 export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProps) => {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { users, loading: usersLoading } = useUsers();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<LeadFormData>({
@@ -113,17 +121,19 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
       phone_no: "",
       linkedin: "",
       website: "",
-      contact_source: "",
+      lead_source: "",
+      lead_status: "",
       industry: "Automotive",
-      country: "Europe",
+      country: "",
+      region: "EU",
       status: "New",
       description: "",
-      contact_owner: user?.id || "",
     },
   });
 
   useEffect(() => {
     if (lead) {
+      console.log('LeadModal: Setting form values for lead:', lead);
       form.reset({
         lead_name: lead.lead_name || "",
         company_name: lead.company_name || "",
@@ -132,12 +142,13 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         phone_no: lead.phone_no || "",
         linkedin: lead.linkedin || "",
         website: lead.website || "",
-        contact_source: lead.contact_source || "",
+        lead_source: lead.lead_source || "",
+        lead_status: lead.lead_status || "",
         industry: lead.industry || "Automotive",
-        country: lead.country || "Europe",
+        country: lead.country || "",
+        region: lead.region || "EU",
         status: lead.status || "New",
         description: lead.description || "",
-        contact_owner: lead.contact_owner || user?.id || "",
       });
     } else {
       form.reset({
@@ -148,21 +159,26 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         phone_no: "",
         linkedin: "",
         website: "",
-        contact_source: "",
+        lead_source: "",
+        lead_status: "",
         industry: "Automotive",
-        country: "Europe",
+        country: "",
+        region: "EU",
         status: "New",
         description: "",
-        contact_owner: user?.id || "",
       });
     }
-  }, [lead, form, user?.id]);
+  }, [lead, form]);
 
   const onSubmit = async (data: LeadFormData) => {
     try {
       setLoading(true);
+      console.log('LeadModal: Submitting form data:', data);
+      console.log('LeadModal: Lead being edited:', lead);
       
-      if (!user) {
+      const user = await supabase.auth.getUser();
+      
+      if (!user.data.user) {
         toast({
           title: "Error",
           description: "You must be logged in to perform this action",
@@ -171,48 +187,78 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         return;
       }
 
+      // Prepare the lead data with proper validation and trimming
       const leadData = {
-        lead_name: data.lead_name,
-        company_name: data.company_name,
-        position: data.position || null,
-        email: data.email || null,
-        phone_no: data.phone_no || null,
-        linkedin: data.linkedin || null,
-        website: data.website || null,
-        contact_source: data.contact_source || null,
-        industry: data.industry || null,
-        country: data.country || null,
-        status: data.status || "New",
-        description: data.description || null,
-        created_by: user.id,
-        modified_by: user.id,
-        contact_owner: data.contact_owner || user.id,
+        lead_name: data.lead_name.trim(),
+        company_name: data.company_name.trim(),
+        position: data.position?.trim() || null,
+        email: data.email?.trim() || null,
+        phone_no: data.phone_no?.trim() || null,
+        linkedin: data.linkedin?.trim() || null,
+        website: data.website?.trim() || null,
+        lead_source: data.lead_source?.trim() || null,
+        lead_status: data.lead_status?.trim() || null,
+        industry: data.industry?.trim() || null,
+        country: data.country?.trim() || null,
+        region: data.region?.trim() || "EU",
+        status: data.status?.trim() || "New",
+        description: data.description?.trim() || null,
+        modified_by: user.data.user.id,
+        modified_time: new Date().toISOString(),
       };
 
-      if (lead) {
+      // Additional validation for URLs if provided
+      if (leadData.linkedin && leadData.linkedin !== '' && !leadData.linkedin.startsWith('http')) {
+        leadData.linkedin = `https://${leadData.linkedin}`;
+      }
+      
+      if (leadData.website && leadData.website !== '' && !leadData.website.startsWith('http')) {
+        leadData.website = `https://${leadData.website}`;
+      }
+
+      console.log('LeadModal: Prepared lead data:', leadData);
+
+      if (lead?.id) {
         // Update existing lead
-        const { error } = await supabase
+        console.log('LeadModal: Updating lead with ID:', lead.id);
+        
+        const { data: updatedData, error } = await supabase
           .from('leads')
-          .update({
-            ...leadData,
-            modified_time: new Date().toISOString(),
-          })
-          .eq('id', lead.id);
+          .update(leadData)
+          .eq('id', lead.id)
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('LeadModal: Update error:', error);
+          throw error;
+        }
 
+        console.log('LeadModal: Lead updated successfully:', updatedData);
         toast({
           title: "Success",
           description: "Lead updated successfully",
         });
       } else {
         // Create new lead
-        const { error } = await supabase
+        console.log('LeadModal: Creating new lead');
+        const newLeadData = {
+          ...leadData,
+          created_by: user.data.user.id,
+          contact_owner: user.data.user.id,
+          created_time: new Date().toISOString(),
+        };
+        
+        const { data: newData, error } = await supabase
           .from('leads')
-          .insert(leadData);
+          .insert(newLeadData)
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('LeadModal: Insert error:', error);
+          throw error;
+        }
 
+        console.log('LeadModal: Lead created successfully:', newData);
         toast({
           title: "Success",
           description: "Lead created successfully",
@@ -221,10 +267,24 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('LeadModal: Submit error:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = "An unexpected error occurred";
+      if (error.message?.includes('lead_name')) {
+        errorMessage = "Lead name is required and cannot be empty";
+      } else if (error.message?.includes('company_name')) {
+        errorMessage = "Company name is required and cannot be empty";
+      } else if (error.message?.includes('email')) {
+        errorMessage = "Please provide a valid email address";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: lead ? "Failed to update lead" : "Failed to create lead",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -251,7 +311,11 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                   <FormItem>
                     <FormLabel>Lead Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input 
+                        placeholder="John Doe" 
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -265,7 +329,11 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                   <FormItem>
                     <FormLabel>Company Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Acme Corp" {...field} />
+                      <Input 
+                        placeholder="Acme Corp" 
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -316,31 +384,6 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
               <FormField
                 control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {statusOptions.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="linkedin"
                 render={({ field }) => (
                   <FormItem>
@@ -369,14 +412,14 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
               <FormField
                 control={form.control}
-                name="contact_source"
+                name="lead_source"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lead Source</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select source" />
+                          <SelectValue placeholder="Select lead source" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -394,11 +437,36 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
               <FormField
                 control={form.control}
+                name="lead_status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lead Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select lead status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {leadStatuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="industry"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Industry</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select industry" />
@@ -422,8 +490,22 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                 name="country"
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel>Country</FormLabel>
+                    <FormControl>
+                      <Input placeholder="United States" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="region"
+                render={({ field }) => (
+                  <FormItem>
                     <FormLabel>Region</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || "EU"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select region" />
@@ -444,20 +526,20 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
               <FormField
                 control={form.control}
-                name="contact_owner"
+                name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Lead Owner</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={usersLoading}>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "New"}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={usersLoading ? "Loading users..." : "Select owner"} />
+                          <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.display_name}
+                        {statuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
                           </SelectItem>
                         ))}
                       </SelectContent>

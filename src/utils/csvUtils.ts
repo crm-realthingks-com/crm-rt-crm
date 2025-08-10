@@ -57,6 +57,7 @@ export const exportContactsToCSV = (contacts: any[], userDisplayNames: Record<st
     'Website',
     'Contact Source',
     'Industry',
+    'Region',
     'Description',
     'Contact Owner'
   ];
@@ -72,6 +73,7 @@ export const exportContactsToCSV = (contacts: any[], userDisplayNames: Record<st
     contact.website || '',
     contact.contact_source || '',
     contact.industry || '',
+    contact.region || '',
     contact.description || '',
     userDisplayNames[contact.contact_owner] || contact.contact_owner || ''
   ]);
@@ -117,7 +119,7 @@ export const exportLeadsToCSV = (leads: any[], userDisplayNames: Record<string, 
     'Lead Status',
     'Industry',
     'Region',
-    'City',
+    'Country',
     'Status',
     'Description',
     'Lead Owner'
@@ -135,8 +137,8 @@ export const exportLeadsToCSV = (leads: any[], userDisplayNames: Record<string, 
     lead.lead_source || '',
     lead.lead_status || '',
     lead.industry || '',
+    lead.region || '',
     lead.country || '',
-    lead.city || '',
     lead.status || '',
     lead.description || '',
     userDisplayNames[lead.contact_owner] || lead.contact_owner || ''
@@ -279,7 +281,7 @@ export const parseContactsCSVFile = async (file: File): Promise<ContactCSVRow[]>
             'Website': contact['Website'] || contact['website'] || '',
             'Contact Source': contact['Contact Source'] || contact['contact_source'] || contact['source'] || '',
             'Industry': contact['Industry'] || contact['industry'] || '',
-            'Region': contact['Region'] || contact['country'] || contact['region'] || '',
+            'Region': contact['Region'] || contact['region'] || '',
             'City': contact['City'] || contact['city'] || '',
             'State': contact['State'] || contact['state'] || '',
             'Description': contact['Description'] || contact['description'] || '',

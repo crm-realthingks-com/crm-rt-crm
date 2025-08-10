@@ -22,6 +22,7 @@ const contactSchema = z.object({
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
   contact_source: z.string().optional(),
   industry: z.string().optional(),
+  region: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -38,6 +39,7 @@ interface Contact {
   website?: string;
   contact_source?: string;
   industry?: string;
+  region?: string;
   description?: string;
   contact_owner?: string;
   created_by?: string;
@@ -74,6 +76,13 @@ const industries = [
   "Other"
 ];
 
+const regions = [
+  "EU",
+  "US",
+  "Asia",
+  "Other"
+];
+
 export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: ContactModalProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -90,6 +99,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       website: "",
       contact_source: "",
       industry: "Automotive",
+      region: "EU",
       description: "",
     },
   });
@@ -107,6 +117,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: contact.website || "",
         contact_source: contact.contact_source || "",
         industry: contact.industry || "Automotive",
+        region: contact.region || "EU",
         description: contact.description || "",
       });
     } else {
@@ -120,6 +131,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: "",
         contact_source: "",
         industry: "Automotive",
+        region: "EU",
         description: "",
       });
     }
@@ -153,6 +165,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: data.website?.trim() || null,
         contact_source: data.contact_source?.trim() || null,
         industry: data.industry?.trim() || null,
+        region: data.region?.trim() || "EU",
         description: data.description?.trim() || null,
         modified_by: user.data.user.id,
       };
@@ -400,6 +413,31 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                         {industries.map((industry) => (
                           <SelectItem key={industry} value={industry}>
                             {industry}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="region"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Region</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "EU"}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select region" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {regions.map((region) => (
+                          <SelectItem key={region} value={region}>
+                            {region}
                           </SelectItem>
                         ))}
                       </SelectContent>

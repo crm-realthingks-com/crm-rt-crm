@@ -20,6 +20,7 @@ export interface ImportedLeadData {
   contact_source?: string;
   industry?: string;
   country?: string;
+  region?: string;
   status?: string;
   description?: string;
   contact_owner: string;
@@ -30,7 +31,7 @@ export interface ImportedLeadData {
 // Valid dropdown values that match the database
 const VALID_SOURCES = ['Website', 'LinkedIn', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Event', 'Partner', 'Advertisement', 'Other'];
 const VALID_INDUSTRIES = ['Automotive', 'Technology', 'Healthcare', 'Finance', 'Manufacturing', 'Retail', 'Education', 'Real Estate', 'Other'];
-const VALID_REGIONS = ['North America', 'South America', 'Europe', 'Asia', 'Africa', 'Australia', 'Other'];
+const VALID_REGIONS = ['EU', 'US', 'Asia', 'Other'];
 const VALID_STATUSES = ['New', 'Contacted', 'Qualified'];
 
 export class LeadsImporter {
@@ -93,7 +94,8 @@ export class LeadsImporter {
       'Website': 'website',
       'Lead Source': 'contact_source',
       'Industry': 'industry',
-      'Region': 'country',
+      'Region': 'region',
+      'Country': 'country',
       'Status': 'status',
       'Description': 'description',
       'Lead Owner': 'contact_owner'
@@ -178,7 +180,8 @@ export class LeadsImporter {
       website: rowData.website?.trim() || null,
       contact_source: this.validateDropdownValue(rowData.contact_source || '', VALID_SOURCES) || null,
       industry: this.validateDropdownValue(rowData.industry || '', VALID_INDUSTRIES) || null,
-      country: this.validateDropdownValue(rowData.country || '', VALID_REGIONS) || null,
+      country: rowData.country?.trim() || null,
+      region: this.validateDropdownValue(rowData.region || 'EU', VALID_REGIONS) || 'EU',
       status: this.validateDropdownValue(rowData.status || 'New', VALID_STATUSES) || 'New',
       description: rowData.description?.trim() || null,
       contact_owner: this.resolveOwnerId(rowData.contact_owner || ''),

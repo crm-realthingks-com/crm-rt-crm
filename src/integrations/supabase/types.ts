@@ -29,6 +29,7 @@ export type Database = {
           modified_by: string | null
           phone_no: string | null
           position: string | null
+          region: string | null
           website: string | null
         }
         Insert: {
@@ -45,6 +46,7 @@ export type Database = {
           modified_by?: string | null
           phone_no?: string | null
           position?: string | null
+          region?: string | null
           website?: string | null
         }
         Update: {
@@ -61,6 +63,7 @@ export type Database = {
           modified_by?: string | null
           phone_no?: string | null
           position?: string | null
+          region?: string | null
           website?: string | null
         }
         Relationships: []
@@ -368,6 +371,7 @@ export type Database = {
           modified_time: string | null
           phone_no: string | null
           position: string | null
+          region: string | null
           status: string | null
           website: string | null
         }
@@ -389,6 +393,7 @@ export type Database = {
           modified_time?: string | null
           phone_no?: string | null
           position?: string | null
+          region?: string | null
           status?: string | null
           website?: string | null
         }
@@ -410,6 +415,7 @@ export type Database = {
           modified_time?: string | null
           phone_no?: string | null
           position?: string | null
+          region?: string | null
           status?: string | null
           website?: string | null
         }
