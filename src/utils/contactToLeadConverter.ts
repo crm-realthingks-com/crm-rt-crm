@@ -62,7 +62,7 @@ export const convertContactToLead = async (
       };
     }
 
-    // Convert contact data to lead data
+    // Convert contact data to lead data with proper field mapping
     const leadData: LeadData = {
       lead_name: contactData.contact_name,
       company_name: contactData.company_name || null,
@@ -71,9 +71,9 @@ export const convertContactToLead = async (
       phone_no: contactData.phone_no || null,
       linkedin: contactData.linkedin || null,
       website: contactData.website || null,
-      lead_source: contactData.contact_source || null,
+      lead_source: contactData.contact_source || null, // Map contact_source to lead_source
       industry: contactData.industry || null,
-      region: contactData.region || 'EU',
+      region: contactData.region || 'EU', // Ensure region is mapped properly
       description: contactData.description || null,
       contact_owner: contactData.contact_owner || userId,
       created_by: userId,
@@ -82,7 +82,7 @@ export const convertContactToLead = async (
       modified_time: new Date().toISOString()
     };
 
-    console.log('Lead data to insert:', leadData);
+    console.log('Lead data to insert with source and region:', leadData);
 
     // Insert the new lead
     const { data: insertedLead, error: insertError } = await supabase
@@ -96,7 +96,7 @@ export const convertContactToLead = async (
       return { success: false, error: insertError.message };
     }
 
-    console.log('Lead created successfully:', insertedLead);
+    console.log('Lead created successfully with source and region:', insertedLead);
     return { success: true, leadId: insertedLead.id };
 
   } catch (error: any) {

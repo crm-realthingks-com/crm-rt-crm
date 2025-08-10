@@ -82,6 +82,7 @@ export const LeadTable = ({
         return;
       }
 
+      console.log('Loaded leads with source and region data:', data);
       setLeads(data || []);
       onLeadsChange?.(data || []);
     } catch (error) {
@@ -226,13 +227,13 @@ export const LeadTable = ({
                 onSort={handleSort}
               />
               <SortableTableHead
-                field="contact_source"
+                field="lead_source"
                 label="Source"
                 sortConfig={sortConfig}
                 onSort={handleSort}
               />
               <SortableTableHead
-                field="country"
+                field="region"
                 label="Region"
                 sortConfig={sortConfig}
                 onSort={handleSort}
@@ -266,8 +267,8 @@ export const LeadTable = ({
                       {displayStatus}
                     </span>
                   </TableCell>
-                  <TableCell>{lead.contact_source}</TableCell>
-                  <TableCell>{lead.country}</TableCell>
+                  <TableCell>{lead.lead_source || '-'}</TableCell>
+                  <TableCell>{lead.region || '-'}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
