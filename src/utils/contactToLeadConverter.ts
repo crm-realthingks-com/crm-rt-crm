@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface ContactToLeadData {
   contact_name: string;
-  company_name: string;
+  company_name?: string;
   position?: string;
   email?: string;
   phone_no?: string;
@@ -18,7 +18,7 @@ export interface ContactToLeadData {
 
 export interface LeadData {
   lead_name: string;
-  company_name: string;
+  company_name?: string;
   position?: string;
   email?: string;
   phone_no?: string;
@@ -27,7 +27,6 @@ export interface LeadData {
   lead_source?: string;
   industry?: string;
   region?: string;
-  status: string;
   description?: string;
   contact_owner?: string;
   created_by: string;
@@ -66,7 +65,7 @@ export const convertContactToLead = async (
     // Convert contact data to lead data
     const leadData: LeadData = {
       lead_name: contactData.contact_name,
-      company_name: contactData.company_name || '',
+      company_name: contactData.company_name || null,
       position: contactData.position || null,
       email: contactData.email || null,
       phone_no: contactData.phone_no || null,
@@ -75,7 +74,6 @@ export const convertContactToLead = async (
       lead_source: contactData.contact_source || null,
       industry: contactData.industry || null,
       region: contactData.region || 'EU',
-      status: 'New',
       description: contactData.description || null,
       contact_owner: contactData.contact_owner || userId,
       created_by: userId,

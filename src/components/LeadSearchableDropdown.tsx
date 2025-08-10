@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +13,6 @@ interface Lead {
   id: string;
   lead_name: string;
   company_name?: string;
-  country?: string;
   created_by?: string;
 }
 
@@ -53,7 +53,7 @@ export const LeadSearchableDropdown = ({
       setLoading(true);
       const { data, error } = await supabase
         .from('leads')
-        .select('id, lead_name, company_name, country, created_by')
+        .select('id, lead_name, company_name, created_by')
         .order('lead_name', { ascending: true });
 
       if (error) throw error;
@@ -77,8 +77,7 @@ export const LeadSearchableDropdown = ({
     const searchLower = searchValue.toLowerCase();
     return leads.filter(lead => 
       lead.lead_name?.toLowerCase().includes(searchLower) ||
-      lead.company_name?.toLowerCase().includes(searchLower) ||
-      lead.country?.toLowerCase().includes(searchLower)
+      lead.company_name?.toLowerCase().includes(searchLower)
     );
   }, [leads, searchValue]);
 
@@ -145,10 +144,6 @@ export const LeadSearchableDropdown = ({
                         <div className="text-sm text-muted-foreground truncate">
                           {lead.company_name && (
                             <span>{lead.company_name}</span>
-                          )}
-                          {lead.company_name && lead.country && <span> • </span>}
-                          {lead.country && (
-                            <span>{lead.country}</span>
                           )}
                           {lead.created_by && (
                             <>
