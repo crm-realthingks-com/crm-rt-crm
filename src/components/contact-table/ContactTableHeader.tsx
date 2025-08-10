@@ -1,7 +1,6 @@
 
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface Contact {
   id: string;
@@ -25,15 +24,6 @@ export const ContactTableHeader = ({
   setSelectedContacts,
   pageContacts
 }: ContactTableHeaderProps) => {
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const pageContactIds = pageContacts.slice(0, 50).map(c => c.id);
-      setSelectedContacts(pageContactIds);
-    } else {
-      setSelectedContacts([]);
-    }
-  };
-
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -46,11 +36,6 @@ export const ContactTableHeader = ({
             className="pl-10 w-80"
           />
         </div>
-        <Checkbox
-          checked={selectedContacts.length > 0 && selectedContacts.length === Math.min(pageContacts.length, 50)}
-          onCheckedChange={handleSelectAll}
-        />
-        <span className="text-sm text-muted-foreground">Select all</span>
       </div>
     </div>
   );

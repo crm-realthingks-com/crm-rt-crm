@@ -11,6 +11,8 @@ import { ContactColumnCustomizer, ContactColumnConfig } from "./ContactColumnCus
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useSorting } from "@/hooks/useSorting";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { useAuth } from "@/hooks/useAuth";
+import { convertContactToLead } from "@/utils/contactToLeadConverter";
 
 interface Contact {
   id: string;
@@ -63,6 +65,7 @@ export const ContactTable = ({
   refreshTrigger
 }: ContactTableProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,6 +192,43 @@ export const ContactTable = ({
     setShowModal(true);
   };
 
+  const handleConvertToLead = async (contact: Contact) => {
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to convert contacts to leads.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('Converting contact to lead:', contact.id, contact.contact_name);
+
+    try {
+      const result = await convertContactToLead(contact, user.id);
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Contact "${contact.contact_name}" has been successfully converted to a lead.`,
+        });
+      } else {
+        toast({
+          title: "Conversion Failed",
+          description: result.error || "Failed to convert contact to lead. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error converting contact to lead:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred during conversion.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const visibleColumns = columns.filter(col => col.visible);
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -229,6 +269,7 @@ export const ContactTable = ({
             setContactToDelete(id);
             setShowDeleteDialog(true);
           }}
+          onConvertToLead={handleConvertToLead}
           searchTerm={searchTerm}
           onRefresh={fetchContacts}
           sortConfig={sortConfig}

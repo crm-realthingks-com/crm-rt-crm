@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Edit, Trash2, MoreVertical, RefreshCw } from "lucide-react";
+import { Edit, Trash2, RefreshCw, UserPlus } from "lucide-react";
 import { ContactColumnConfig } from "../ContactColumnCustomizer";
 import { SortableTableHead } from "../SortableTableHead";
 import { SortConfig } from "@/hooks/useSorting";
@@ -33,6 +33,7 @@ interface ContactTableBodyProps {
   setSelectedContacts: React.Dispatch<React.SetStateAction<string[]>>;
   onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
+  onConvertToLead: (contact: Contact) => void;
   searchTerm: string;
   onRefresh: () => void;
   sortConfig: SortConfig;
@@ -48,20 +49,13 @@ export const ContactTableBody = ({
   setSelectedContacts,
   onEdit,
   onDelete,
+  onConvertToLead,
   searchTerm,
   onRefresh,
   sortConfig,
   onSort,
   displayNames
 }: ContactTableBodyProps) => {
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedContacts(pageContacts.map(contact => contact.id));
-    } else {
-      setSelectedContacts([]);
-    }
-  };
-
   const handleSelectContact = (contactId: string, checked: boolean) => {
     if (checked) {
       setSelectedContacts(prev => [...prev, contactId]);
@@ -69,8 +63,6 @@ export const ContactTableBody = ({
       setSelectedContacts(prev => prev.filter(id => id !== contactId));
     }
   };
-
-  const isAllSelected = pageContacts.length > 0 && selectedContacts.length === pageContacts.length;
 
   const formatFieldValue = (contact: Contact, field: string): string => {
     if (field === 'contact_owner') {
@@ -122,9 +114,10 @@ export const ContactTableBody = ({
               <TableRow>
                 <TableHead className="w-[50px]">
                   <Checkbox
-                    checked={isAllSelected}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="Select all contacts"
+                    checked={false}
+                    disabled
+                    aria-label="Select contacts"
+                    className="opacity-0"
                   />
                 </TableHead>
                 {visibleColumns.map(column => (
@@ -159,6 +152,14 @@ export const ContactTableBody = ({
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => onConvertToLead(contact)}
+                        title="Convert to Lead"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => onEdit(contact)}
                         title="Edit contact"
                       >
@@ -171,9 +172,6 @@ export const ContactTableBody = ({
                         title="Delete contact"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" title="More actions">
-                        <MoreVertical className="w-4 h-4" />
                       </Button>
                     </div>
                   </TableCell>

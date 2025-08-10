@@ -1,3 +1,4 @@
+
 // CSV utility functions for import/export
 
 export interface ContactCSVRow {
@@ -52,18 +53,12 @@ export const exportContactsToCSV = (contacts: any[], userDisplayNames: Record<st
     'Position',
     'Email',
     'Phone',
-    'Mobile',
     'LinkedIn',
     'Website',
     'Contact Source',
     'Industry',
-    'Region',
-    'City',
-    'State',
     'Description',
-    'Contact Owner',
-    'Annual Revenue',
-    'No Of Employees'
+    'Contact Owner'
   ];
 
   // Convert contacts to CSV rows
@@ -73,18 +68,12 @@ export const exportContactsToCSV = (contacts: any[], userDisplayNames: Record<st
     contact.position || '',
     contact.email || '',
     contact.phone_no || '',
-    contact.mobile_no || '',
     contact.linkedin || '',
     contact.website || '',
     contact.contact_source || '',
     contact.industry || '',
-    contact.country || '',
-    contact.city || '',
-    contact.state || '',
     contact.description || '',
-    userDisplayNames[contact.contact_owner] || contact.contact_owner || '',
-    contact.annual_revenue ? String(contact.annual_revenue) : '',
-    contact.no_of_employees ? String(contact.no_of_employees) : ''
+    userDisplayNames[contact.contact_owner] || contact.contact_owner || ''
   ]);
 
   // Combine headers and data
@@ -122,7 +111,6 @@ export const exportLeadsToCSV = (leads: any[], userDisplayNames: Record<string, 
     'Position', 
     'Email',
     'Phone',
-    'Mobile',
     'LinkedIn',
     'Website',
     'Lead Source',
@@ -130,6 +118,7 @@ export const exportLeadsToCSV = (leads: any[], userDisplayNames: Record<string, 
     'Industry',
     'Region',
     'City',
+    'Status',
     'Description',
     'Lead Owner'
   ];
@@ -141,14 +130,14 @@ export const exportLeadsToCSV = (leads: any[], userDisplayNames: Record<string, 
     lead.position || '',
     lead.email || '',
     lead.phone_no || '',
-    lead.mobile_no || '',
     lead.linkedin || '',
     lead.website || '',
-    lead.contact_source || '',
+    lead.lead_source || '',
     lead.lead_status || '',
     lead.industry || '',
     lead.country || '',
     lead.city || '',
+    lead.status || '',
     lead.description || '',
     userDisplayNames[lead.contact_owner] || lead.contact_owner || ''
   ]);
@@ -220,7 +209,9 @@ export const downloadCSV = (csvContent: string, filename: string) => {
     
     // Small delay before cleanup to ensure download starts
     setTimeout(() => {
-      document.body.removeChild(link);
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
       window.URL.revokeObjectURL(url);
       console.log('Cleanup completed');
     }, 100);
@@ -245,7 +236,6 @@ export const parseContactsCSVFile = async (file: File): Promise<ContactCSVRow[]>
         console.log('FileReader onload triggered');
         const text = e.target?.result as string;
         console.log('File content length:', text.length);
-        console.log('First 200 chars of file:', text?.substring(0, 200));
         
         // Split lines and clean them
         const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line);
@@ -269,7 +259,6 @@ export const parseContactsCSVFile = async (file: File): Promise<ContactCSVRow[]>
           if (!line) continue;
 
           const values = parseCSVLine(line);
-          console.log(`Row ${i} values:`, values);
 
           // Create contact object mapping headers to values
           const contact: any = {};
@@ -299,99 +288,12 @@ export const parseContactsCSVFile = async (file: File): Promise<ContactCSVRow[]>
             'No Of Employees': contact['No Of Employees'] || contact['no_of_employees'] || contact['employees'] || ''
           };
 
-          console.log('Mapped contact:', mappedContact);
-
           if (mappedContact['Contact Name']) {
             rows.push(mappedContact);
           }
         }
 
         console.log('Successfully parsed', rows.length, 'contacts from CSV');
-        resolve(rows);
-      } catch (error) {
-        console.error('CSV parsing error:', error);
-        reject(error);
-      }
-    };
-
-    reader.onerror = () => {
-      console.error('File reading error');
-      reject(new Error('Failed to read file'));
-    };
-
-    reader.readAsText(file, 'utf-8');
-  });
-};
-
-export const parseLeadsCSVFile = async (file: File): Promise<LeadCSVRow[]> => {
-  console.log('parseLeadsCSVFile called with file:', file.name);
-  
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        console.log('File content length:', text.length);
-        
-        // Split lines and clean them
-        const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line);
-        console.log('Total lines:', lines.length);
-        
-        if (lines.length < 2) {
-          reject(new Error('CSV file must have at least a header and one data row'));
-          return;
-        }
-
-        // Parse header - handle quoted headers
-        const headerLine = lines[0];
-        const headers = parseCSVLine(headerLine);
-        console.log('CSV headers:', headers);
-
-        // Parse data rows
-        const rows: LeadCSVRow[] = [];
-        
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i];
-          if (!line) continue;
-
-          const values = parseCSVLine(line);
-          console.log(`Row ${i} values:`, values);
-
-          // Create lead object mapping headers to values
-          const lead: any = {};
-          headers.forEach((header, index) => {
-            const value = values[index] || '';
-            lead[header] = value;
-          });
-
-          // Map to our expected format with flexible field matching
-          const mappedLead: LeadCSVRow = {
-            'Lead Name': lead['Lead Name'] || lead['lead_name'] || lead['name'] || '',
-            'Company Name': lead['Company Name'] || lead['company_name'] || lead['company'] || '',
-            'Position': lead['Position'] || lead['position'] || lead['title'] || '',
-            'Email': lead['Email'] || lead['email'] || '',
-            'Phone': lead['Phone'] || lead['phone_no'] || lead['phone'] || '',
-            'Mobile': lead['Mobile'] || lead['mobile_no'] || lead['mobile'] || '',
-            'LinkedIn': lead['LinkedIn'] || lead['linkedin'] || '',
-            'Website': lead['Website'] || lead['website'] || '',
-            'Lead Source': lead['Lead Source'] || lead['contact_source'] || lead['source'] || '',
-            'Lead Status': lead['Lead Status'] || lead['lead_status'] || lead['status'] || '',
-            'Industry': lead['Industry'] || lead['industry'] || '',
-            'Region': lead['Region'] || lead['country'] || lead['region'] || '',
-            'City': lead['City'] || lead['city'] || '',
-            'Description': lead['Description'] || lead['description'] || '',
-            'Lead Owner': lead['Lead Owner'] || lead['contact_owner'] || lead['owner'] || ''
-          };
-
-          console.log('Mapped lead:', mappedLead);
-
-          if (mappedLead['Lead Name']) {
-            rows.push(mappedLead);
-          }
-        }
-
-        console.log('Successfully parsed', rows.length, 'leads from CSV');
         resolve(rows);
       } catch (error) {
         console.error('CSV parsing error:', error);

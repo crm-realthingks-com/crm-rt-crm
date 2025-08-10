@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Settings, Download, Upload, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CSVImportExport } from "@/utils/csvImportExport";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
 import { useAuth } from "@/hooks/useAuth";
+import { parseContactsCSVFile, exportContactsToCSV, downloadCSV } from "@/utils/csvUtils";
 
 const Contacts = () => {
   const { toast } = useToast();
@@ -22,9 +21,9 @@ const Contacts = () => {
 
   console.log('Contacts page: Rendering');
 
-  // Get user display names for owner fields
-  const ownerIds = contacts.map(contact => contact.contact_owner).filter(Boolean);
-  const { displayNames } = useUserDisplayNames(ownerIds);
+  // Get all unique user IDs for display names from contacts
+  const userIds = contacts.map(contact => contact.contact_owner || contact.created_by).filter(Boolean);
+  const { displayNames } = useUserDisplayNames(userIds);
 
   const handleImportFile = async (file: File) => {
     console.log('handleImportFile called with file:', file);
@@ -42,19 +41,73 @@ const Contacts = () => {
     console.log('Contacts page: Starting CSV import with file:', file.name, 'User ID:', user.id);
     
     try {
-      const result = await CSVImportExport.importContacts(file, user.id);
+      const csvData = await parseContactsCSVFile(file);
+      console.log('Parsed CSV data:', csvData);
+
+      let successCount = 0;
+      let errorCount = 0;
+      let duplicateCount = 0;
+
+      for (const row of csvData) {
+        try {
+          // Check for duplicates based on contact name and email
+          const { data: existing } = await supabase
+            .from('contacts')
+            .select('id')
+            .or(`contact_name.eq.${row['Contact Name']},email.eq.${row['Email']}`)
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            duplicateCount++;
+            continue;
+          }
+
+          // Insert contact with user as owner
+          const contactData = {
+            contact_name: row['Contact Name'] || '',
+            company_name: row['Company Name'] || '',
+            position: row['Position'] || '',
+            email: row['Email'] || '',
+            phone_no: row['Phone'] || '',
+            linkedin: row['LinkedIn'] || '',
+            website: row['Website'] || '',
+            contact_source: row['Contact Source'] || '',
+            industry: row['Industry'] || '',
+            description: row['Description'] || '',
+            created_by: user.id,
+            modified_by: user.id,
+            contact_owner: user.id
+          };
+
+          const { error } = await supabase
+            .from('contacts')
+            .insert([contactData]);
+
+          if (error) {
+            console.error('Insert error:', error);
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        } catch (rowError) {
+          console.error('Row processing error:', rowError);
+          errorCount++;
+        }
+      }
+
+      const message = `Import completed: ${successCount} imported, ${duplicateCount} duplicates skipped, ${errorCount} errors`;
       
-      if (result.success > 0) {
+      if (successCount > 0) {
         toast({
           title: "Import Successful",
-          description: `Imported ${result.success} contacts successfully. ${result.duplicates} duplicates skipped, ${result.errors} errors.`,
+          description: message,
         });
         setRefreshTrigger(prev => prev + 1);
-      } else if (result.errors > 0) {
+      } else {
         toast({
-          title: "Import Failed",
-          description: `${result.errors} errors occurred. Check the console for details.`,
-          variant: "destructive",
+          title: "Import Completed",
+          description: message,
+          variant: errorCount > 0 ? "destructive" : "default",
         });
       }
     } catch (error) {
@@ -67,26 +120,15 @@ const Contacts = () => {
     }
   };
 
-  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleImportCSV triggered, event:', event);
-    const file = event.target.files?.[0];
-    console.log('Selected file:', file);
-    
-    if (!file) {
-      console.log('No file selected, returning');
-      return;
-    }
-
-    await handleImportFile(file);
-    event.target.value = '';
-  };
-
   const handleExportContacts = async () => {
     try {
+      console.log('Starting contact export...');
+      
+      // Fixed: Use contact_name for ordering instead of non-existent created_at
       const { data: contactsData, error } = await supabase
         .from('contacts')
         .select('*')
-        .order('created_time', { ascending: false });
+        .order('contact_name', { ascending: true });
 
       if (error) {
         console.error('Database fetch error:', error);
@@ -102,15 +144,25 @@ const Contacts = () => {
         return;
       }
 
-      await CSVImportExport.exportContacts(contactsData, {
-        includeOwnerNames: true,
-        userDisplayNames: displayNames
-      });
-
-      toast({
-        title: "Export Successful",
-        description: `Exported ${contactsData.length} contacts successfully.`,
-      });
+      console.log('Exporting contacts:', contactsData.length);
+      
+      // Update contacts state for display names hook
+      setContacts(contactsData);
+      
+      // Use the display names from the hook
+      const csvContent = exportContactsToCSV(contactsData, displayNames);
+      const filename = `contacts_export_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      const success = downloadCSV(csvContent, filename);
+      
+      if (success) {
+        toast({
+          title: "Export Successful",
+          description: `Exported ${contactsData.length} contacts successfully.`,
+        });
+      } else {
+        throw new Error('Download failed');
+      }
 
     } catch (error) {
       console.error('Export error:', error);
@@ -155,7 +207,6 @@ const Contacts = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Contacts</h1>
-          <p className="text-muted-foreground">Manage your contact database</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
