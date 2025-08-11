@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useSorting } from "@/hooks/useSorting";
 import { SortableTableHead } from "./SortableTableHead";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
 
 interface LeadTableProps {
   showColumnCustomizer: boolean;
@@ -59,6 +60,14 @@ export const LeadTable = ({
 
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Get unique contact_owner IDs for fetching display names
+  const contactOwnerIds = leads
+    .map(lead => lead.contact_owner)
+    .filter(Boolean)
+    .filter((id, index, arr) => arr.indexOf(id) === index); // Remove duplicates
+
+  const { displayNames } = useUserDisplayNames(contactOwnerIds);
 
   // Load column preferences from localStorage on mount
   useEffect(() => {
@@ -233,7 +242,7 @@ export const LeadTable = ({
       case 'region':
         return lead.region || '-';
       case 'contact_owner':
-        return lead.contact_owner;
+        return lead.contact_owner ? (displayNames[lead.contact_owner] || 'Loading...') : '-';
       case 'industry':
         return lead.industry || '-';
       case 'lead_source':
