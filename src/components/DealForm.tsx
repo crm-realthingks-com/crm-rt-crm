@@ -96,7 +96,16 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   const handleLeadSelect = (lead: any) => {
     console.log("Selected lead:", lead);
     setSelectedLeadId(lead.id);
-    // The lead selection is handled in the FormFieldRenderer component
+    
+    // Update form data with lead information and store the lead ID for tracking
+    setFormData(prev => ({
+      ...prev,
+      related_lead_id: lead.id, // Store the original lead ID
+      customer_name: lead.customer_name,
+      region: lead.region,
+      lead_owner: lead.lead_owner,
+      lead_name: lead.lead_name
+    }));
   };
 
   const deleteLead = async (leadId: string) => {
@@ -187,7 +196,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       console.log("Save successful");
       
       // If this is a new deal created from a lead, delete the original lead
-      if (isCreating && selectedLeadId && formData.related_lead_id) {
+      if (isCreating && selectedLeadId) {
         console.log("Deleting original lead with ID:", selectedLeadId);
         await deleteLead(selectedLeadId);
       }

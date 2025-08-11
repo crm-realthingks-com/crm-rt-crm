@@ -12,6 +12,9 @@ export interface Deal {
   deal_name: string;
   stage: DealStage;
   
+  // Historical tracking
+  related_lead_id?: string; // Store original lead ID for tracking
+  
   // Lead stage fields
   project_name?: string;
   customer_name?: string;
