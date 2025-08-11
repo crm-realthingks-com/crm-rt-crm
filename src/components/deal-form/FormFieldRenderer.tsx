@@ -16,17 +16,22 @@ interface FormFieldRendererProps {
 
 export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error }: FormFieldRendererProps) => {
   const handleLeadSelect = (lead: any) => {
+    console.log("FormFieldRenderer - Lead selected:", lead);
+    
     // Update the lead name field
     onChange('lead_name', lead.lead_name);
     
     // Auto-populate other fields from the selected lead
     if (lead.company_name) {
+      console.log("Auto-populating customer_name:", lead.company_name);
       onChange('customer_name', lead.company_name);
     }
     if (lead.region) {
+      console.log("Auto-populating region:", lead.region);
       onChange('region', lead.region);
     }
     if (lead.contact_owner) {
+      console.log("Auto-populating lead_owner:", lead.contact_owner);
       onChange('lead_owner', lead.contact_owner);
     }
     

@@ -94,18 +94,11 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   };
 
   const handleLeadSelect = (lead: any) => {
-    console.log("Selected lead:", lead);
+    console.log("DealForm - Lead selected:", lead);
     setSelectedLeadId(lead.id);
     
-    // Update form data with lead information and store the lead ID for tracking
-    setFormData(prev => ({
-      ...prev,
-      related_lead_id: lead.id, // Store the original lead ID
-      customer_name: lead.customer_name,
-      region: lead.region,
-      lead_owner: lead.lead_owner,
-      lead_name: lead.lead_name
-    }));
+    // The auto-population is now handled entirely in FormFieldRenderer
+    // Just store the selected lead ID for deletion after successful save
   };
 
   const deleteLead = async (leadId: string) => {
