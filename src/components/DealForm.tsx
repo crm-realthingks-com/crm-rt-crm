@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Deal, DealStage, getNextStage, getFinalStageOptions, getStageIndex } fr
 import { useToast } from "@/hooks/use-toast";
 import { validateRequiredFields, getFieldErrors, validateDateLogic, validateRevenueSum } from "./deal-form/validation";
 import { DealStageForm } from "./deal-form/DealStageForm";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DealFormProps {
   deal: Deal | null;
@@ -25,6 +25,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   const [showPreviousStages, setShowPreviousStages] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -94,7 +95,30 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
 
   const handleLeadSelect = (lead: any) => {
     console.log("Selected lead:", lead);
+    setSelectedLeadId(lead.id);
     // The lead selection is handled in the FormFieldRenderer component
+  };
+
+  const deleteLead = async (leadId: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', leadId);
+
+      if (error) {
+        console.error('Error deleting lead:', error);
+        toast({
+          title: "Warning",
+          description: "Deal was created but lead could not be removed from leads module",
+          variant: "destructive",
+        });
+      } else {
+        console.log('Lead successfully deleted from leads table');
+      }
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,6 +129,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       console.log("=== DEAL FORM SUBMIT DEBUG ===");
       console.log("Current stage:", currentStage);
       console.log("Form data before save:", formData);
+      console.log("Selected lead ID:", selectedLeadId);
       
       // Show validation errors when Save is clicked
       setShowValidationErrors(true);
@@ -160,6 +185,13 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       await onSave(saveData);
       
       console.log("Save successful");
+      
+      // If this is a new deal created from a lead, delete the original lead
+      if (isCreating && selectedLeadId && formData.related_lead_id) {
+        console.log("Deleting original lead with ID:", selectedLeadId);
+        await deleteLead(selectedLeadId);
+      }
+      
       toast({
         title: "Success",
         description: isCreating ? "Deal created successfully" : "Deal updated successfully",

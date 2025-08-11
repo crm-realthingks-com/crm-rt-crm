@@ -14,6 +14,8 @@ interface Lead {
   lead_name: string;
   company_name?: string;
   created_by?: string;
+  contact_owner?: string;
+  region?: string;
 }
 
 interface LeadSearchableDropdownProps {
@@ -37,12 +39,12 @@ export const LeadSearchableDropdown = ({
   const [searchValue, setSearchValue] = useState("");
   const { toast } = useToast();
 
-  // Get unique created_by IDs for fetching display names
-  const createdByIds = useMemo(() => {
-    return [...new Set(leads.map(l => l.created_by).filter(Boolean))];
+  // Get unique contact_owner IDs for fetching display names
+  const contactOwnerIds = useMemo(() => {
+    return [...new Set(leads.map(l => l.contact_owner).filter(Boolean))];
   }, [leads]);
   
-  const { displayNames } = useUserDisplayNames(createdByIds);
+  const { displayNames } = useUserDisplayNames(contactOwnerIds);
 
   useEffect(() => {
     fetchLeads();
@@ -53,7 +55,7 @@ export const LeadSearchableDropdown = ({
       setLoading(true);
       const { data, error } = await supabase
         .from('leads')
-        .select('id, lead_name, company_name, created_by')
+        .select('id, lead_name, company_name, created_by, contact_owner, region')
         .order('lead_name', { ascending: true });
 
       if (error) throw error;
@@ -145,10 +147,16 @@ export const LeadSearchableDropdown = ({
                           {lead.company_name && (
                             <span>{lead.company_name}</span>
                           )}
-                          {lead.created_by && (
+                          {lead.contact_owner && (
                             <>
                               <span> • Owner: </span>
-                              <span>{displayNames[lead.created_by] || "Unknown"}</span>
+                              <span>{displayNames[lead.contact_owner] || "Loading..."}</span>
+                            </>
+                          )}
+                          {lead.region && (
+                            <>
+                              <span> • </span>
+                              <span>{lead.region}</span>
                             </>
                           )}
                         </div>
