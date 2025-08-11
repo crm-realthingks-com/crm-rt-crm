@@ -66,7 +66,9 @@ export const LeadTable = ({
     if (savedColumns) {
       try {
         const parsedColumns = JSON.parse(savedColumns);
+        console.log('Loading saved columns:', parsedColumns);
         setColumns(parsedColumns);
+        setTableKey(prev => prev + 1);
       } catch (error) {
         console.error('Error parsing saved columns:', error);
         setColumns(defaultColumns);
@@ -74,13 +76,15 @@ export const LeadTable = ({
     }
   }, []);
 
-  // Listen for column updates event
+  // Listen for column updates event with more robust handling
   useEffect(() => {
     const handleColumnUpdate = () => {
+      console.log('Column update event received');
       const savedColumns = localStorage.getItem('leadTableColumns');
       if (savedColumns) {
         try {
           const parsedColumns = JSON.parse(savedColumns);
+          console.log('Applying updated columns:', parsedColumns);
           setColumns(parsedColumns);
           setTableKey(prev => prev + 1); // Force table re-render
         } catch (error) {
@@ -95,6 +99,7 @@ export const LeadTable = ({
 
   // Save column preferences to localStorage and force re-render
   const handleColumnsChange = (newColumns: LeadColumnConfig[]) => {
+    console.log('Updating columns:', newColumns);
     setColumns(newColumns);
     localStorage.setItem('leadTableColumns', JSON.stringify(newColumns));
     setTableKey(prev => prev + 1); // Force table re-render
@@ -104,6 +109,8 @@ export const LeadTable = ({
   const visibleColumns = columns
     .filter(col => col.visible)
     .sort((a, b) => a.order - b.order);
+
+  console.log('Current visible columns:', visibleColumns.map(col => col.field));
 
   // Filter leads first
   const filteredLeads = leads.filter(lead => {

@@ -37,6 +37,15 @@ export const LeadColumnCustomizer = ({
       col.field === field ? { ...col, visible } : col
     );
     setLocalColumns(updatedColumns);
+    
+    // Apply changes immediately for real-time updates
+    onColumnsChange(updatedColumns);
+    localStorage.setItem('leadTableColumns', JSON.stringify(updatedColumns));
+    
+    // Trigger table re-render event
+    setTimeout(() => {
+      window.dispatchEvent(new Event('leadColumnsUpdated'));
+    }, 50);
   };
 
   const handleApplyChanges = () => {
@@ -47,7 +56,7 @@ export const LeadColumnCustomizer = ({
     // Close the modal
     onOpenChange(false);
     
-    // Force a small delay to ensure state updates are processed
+    // Force table update
     setTimeout(() => {
       window.dispatchEvent(new Event('leadColumnsUpdated'));
     }, 100);
@@ -67,6 +76,13 @@ export const LeadColumnCustomizer = ({
       { field: 'status', label: 'Status', visible: false, order: 9 },
     ];
     setLocalColumns(defaultColumns);
+    onColumnsChange(defaultColumns);
+    localStorage.setItem('leadTableColumns', JSON.stringify(defaultColumns));
+    
+    // Trigger table re-render
+    setTimeout(() => {
+      window.dispatchEvent(new Event('leadColumnsUpdated'));
+    }, 50);
   };
 
   const handleCancel = () => {
@@ -84,7 +100,7 @@ export const LeadColumnCustomizer = ({
         
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-            <strong>Tip:</strong> Check/uncheck to show/hide columns in the lead table. Click "Apply Changes" to save your preferences.
+            <strong>Tip:</strong> Check/uncheck to show/hide columns in the lead table. Changes are applied instantly!
           </div>
           
           <div className="space-y-2 max-h-[400px] overflow-y-auto p-1">
