@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadModal } from "./LeadModal";
-import { LeadColumnCustomizer } from "./LeadColumnCustomizer";
+import { LeadColumnCustomizer, LeadColumnConfig } from "./LeadColumnCustomizer";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +25,19 @@ interface LeadTableProps {
   onLeadsChange?: (leads: any[]) => void;
 }
 
+const defaultColumns: LeadColumnConfig[] = [
+  { field: 'lead_name', label: 'Lead Name', visible: true, order: 0 },
+  { field: 'company_name', label: 'Company Name', visible: true, order: 1 },
+  { field: 'position', label: 'Position', visible: true, order: 2 },
+  { field: 'email', label: 'Email', visible: true, order: 3 },
+  { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
+  { field: 'region', label: 'Region', visible: true, order: 5 },
+  { field: 'contact_owner', label: 'Lead Owner', visible: true, order: 6 },
+  { field: 'industry', label: 'Industry', visible: false, order: 7 },
+  { field: 'lead_source', label: 'Source', visible: false, order: 8 },
+  { field: 'status', label: 'Status', visible: false, order: 9 },
+];
+
 export const LeadTable = ({
   showColumnCustomizer,
   setShowColumnCustomizer,
@@ -41,9 +55,35 @@ export const LeadTable = ({
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
+  const [columns, setColumns] = useState<LeadColumnConfig[]>(defaultColumns);
 
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Load column preferences from localStorage on mount
+  useEffect(() => {
+    const savedColumns = localStorage.getItem('leadTableColumns');
+    if (savedColumns) {
+      try {
+        const parsedColumns = JSON.parse(savedColumns);
+        setColumns(parsedColumns);
+      } catch (error) {
+        console.error('Error parsing saved columns:', error);
+        setColumns(defaultColumns);
+      }
+    }
+  }, []);
+
+  // Save column preferences to localStorage whenever columns change
+  const handleColumnsChange = (newColumns: LeadColumnConfig[]) => {
+    setColumns(newColumns);
+    localStorage.setItem('leadTableColumns', JSON.stringify(newColumns));
+  };
+
+  // Get visible columns in the correct order
+  const visibleColumns = columns
+    .filter(col => col.visible)
+    .sort((a, b) => a.order - b.order);
 
   // Filter leads first
   const filteredLeads = leads.filter(lead => {
@@ -52,7 +92,6 @@ export const LeadTable = ({
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Use the correct status field and handle null/undefined values
     const leadStatus = lead.status || lead.lead_status || 'New';
     const matchesStatus = filterStatus === 'all' || 
       (leadStatus === filterStatus) ||
@@ -152,6 +191,42 @@ export const LeadTable = ({
     loadLeads();
   };
 
+  const renderCellValue = (lead: any, field: string) => {
+    switch (field) {
+      case 'lead_name':
+        return <span className="font-medium">{lead.lead_name}</span>;
+      case 'company_name':
+        return lead.company_name;
+      case 'position':
+        return lead.position;
+      case 'email':
+        return lead.email;
+      case 'phone_no':
+        return lead.phone_no;
+      case 'region':
+        return lead.region || '-';
+      case 'contact_owner':
+        return lead.contact_owner;
+      case 'industry':
+        return lead.industry || '-';
+      case 'lead_source':
+        return lead.lead_source || '-';
+      case 'status':
+        const displayStatus = lead.status || lead.lead_status || 'New';
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs ${
+            displayStatus === 'Qualified' ? 'bg-blue-100 text-blue-800' :
+            displayStatus === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            {displayStatus}
+          </span>
+        );
+      default:
+        return lead[field] || '-';
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Loading leads...</div>;
   }
@@ -196,101 +271,53 @@ export const LeadTable = ({
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
-              <SortableTableHead
-                field="lead_name"
-                label="Lead Name"
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-              <SortableTableHead
-                field="company_name"
-                label="Company"
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-              <SortableTableHead
-                field="email"
-                label="Email"
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-              <SortableTableHead
-                field="phone_no"
-                label="Phone"
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-              <SortableTableHead
-                field="status"
-                label="Status"
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-              <SortableTableHead
-                field="lead_source"
-                label="Source"
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
-              <SortableTableHead
-                field="region"
-                label="Region"
-                sortConfig={sortConfig}
-                onSort={handleSort}
-              />
+              {visibleColumns.map((column) => (
+                <SortableTableHead
+                  key={column.field}
+                  field={column.field}
+                  label={column.label}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+              ))}
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedLeads.map((lead) => {
-              // Use the correct status field, prioritizing 'status' over 'lead_status'
-              const displayStatus = lead.status || lead.lead_status || 'New';
-              
-              return (
-                <TableRow key={lead.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedLeads.includes(lead.id)}
-                      onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
-                    />
+            {paginatedLeads.map((lead) => (
+              <TableRow key={lead.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedLeads.includes(lead.id)}
+                    onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
+                  />
+                </TableCell>
+                {visibleColumns.map((column) => (
+                  <TableCell key={`${lead.id}-${column.field}`}>
+                    {renderCellValue(lead, column.field)}
                   </TableCell>
-                  <TableCell className="font-medium">{lead.lead_name}</TableCell>
-                  <TableCell>{lead.company_name}</TableCell>
-                  <TableCell>{lead.email}</TableCell>
-                  <TableCell>{lead.phone_no}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      displayStatus === 'Qualified' ? 'bg-blue-100 text-blue-800' :
-                      displayStatus === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {displayStatus}
-                    </span>
-                  </TableCell>
-                  <TableCell>{lead.lead_source || '-'}</TableCell>
-                  <TableCell>{lead.region || '-'}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(lead)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(lead.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                ))}
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(lead)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(lead.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>
@@ -332,8 +359,8 @@ export const LeadTable = ({
         <LeadColumnCustomizer
           open={showColumnCustomizer}
           onOpenChange={setShowColumnCustomizer}
-          columns={[]}
-          onColumnsChange={() => {}}
+          columns={columns}
+          onColumnsChange={handleColumnsChange}
         />
       )}
     </div>
