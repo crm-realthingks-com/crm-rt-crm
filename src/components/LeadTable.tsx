@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -56,6 +55,7 @@ export const LeadTable = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
   const [columns, setColumns] = useState<LeadColumnConfig[]>(defaultColumns);
+  const [tableKey, setTableKey] = useState(0); // Force re-render key
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -74,10 +74,30 @@ export const LeadTable = ({
     }
   }, []);
 
-  // Save column preferences to localStorage whenever columns change
+  // Listen for column updates event
+  useEffect(() => {
+    const handleColumnUpdate = () => {
+      const savedColumns = localStorage.getItem('leadTableColumns');
+      if (savedColumns) {
+        try {
+          const parsedColumns = JSON.parse(savedColumns);
+          setColumns(parsedColumns);
+          setTableKey(prev => prev + 1); // Force table re-render
+        } catch (error) {
+          console.error('Error parsing updated columns:', error);
+        }
+      }
+    };
+
+    window.addEventListener('leadColumnsUpdated', handleColumnUpdate);
+    return () => window.removeEventListener('leadColumnsUpdated', handleColumnUpdate);
+  }, []);
+
+  // Save column preferences to localStorage and force re-render
   const handleColumnsChange = (newColumns: LeadColumnConfig[]) => {
     setColumns(newColumns);
     localStorage.setItem('leadTableColumns', JSON.stringify(newColumns));
+    setTableKey(prev => prev + 1); // Force table re-render
   };
 
   // Get visible columns in the correct order
@@ -262,7 +282,7 @@ export const LeadTable = ({
 
       {/* Table */}
       <div className="border rounded-lg">
-        <Table>
+        <Table key={tableKey}>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">

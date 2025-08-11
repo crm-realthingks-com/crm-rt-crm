@@ -37,14 +37,20 @@ export const LeadColumnCustomizer = ({
       col.field === field ? { ...col, visible } : col
     );
     setLocalColumns(updatedColumns);
-    
-    // Apply changes immediately for real-time updates
-    onColumnsChange(updatedColumns);
   };
 
-  const handleSave = () => {
+  const handleApplyChanges = () => {
+    // Ensure all changes are applied and persist to localStorage
     onColumnsChange(localColumns);
+    localStorage.setItem('leadTableColumns', JSON.stringify(localColumns));
+    
+    // Close the modal
     onOpenChange(false);
+    
+    // Force a small delay to ensure state updates are processed
+    setTimeout(() => {
+      window.dispatchEvent(new Event('leadColumnsUpdated'));
+    }, 100);
   };
 
   const handleReset = () => {
@@ -61,7 +67,6 @@ export const LeadColumnCustomizer = ({
       { field: 'status', label: 'Status', visible: false, order: 9 },
     ];
     setLocalColumns(defaultColumns);
-    onColumnsChange(defaultColumns);
   };
 
   const handleCancel = () => {
@@ -79,7 +84,7 @@ export const LeadColumnCustomizer = ({
         
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-            <strong>Tip:</strong> Check/uncheck to show/hide columns in the lead table. Changes are applied instantly!
+            <strong>Tip:</strong> Check/uncheck to show/hide columns in the lead table. Click "Apply Changes" to save your preferences.
           </div>
           
           <div className="space-y-2 max-h-[400px] overflow-y-auto p-1">
@@ -118,10 +123,10 @@ export const LeadColumnCustomizer = ({
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleCancel}>
-                Close
+                Cancel
               </Button>
-              <Button onClick={handleSave}>
-                Save & Close
+              <Button onClick={handleApplyChanges}>
+                Apply Changes
               </Button>
             </div>
           </div>
