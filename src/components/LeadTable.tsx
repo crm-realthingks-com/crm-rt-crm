@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { LeadColumnCustomizer, LeadColumnConfig } from "./LeadColumnCustomizer";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Settings, Trash } from 'lucide-react';
 import { useSorting } from "@/hooks/useSorting";
 import { SortableTableHead } from "./SortableTableHead";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
@@ -56,7 +57,7 @@ export const LeadTable = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
   const [columns, setColumns] = useState<LeadColumnConfig[]>(defaultColumns);
-  const [tableKey, setTableKey] = useState(0); // Force re-render key
+  const [tableKey, setTableKey] = useState(0);
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -65,7 +66,7 @@ export const LeadTable = ({
   const contactOwnerIds = leads
     .map(lead => lead.contact_owner)
     .filter(Boolean)
-    .filter((id, index, arr) => arr.indexOf(id) === index); // Remove duplicates
+    .filter((id, index, arr) => arr.indexOf(id) === index);
 
   const { displayNames } = useUserDisplayNames(contactOwnerIds);
 
@@ -85,7 +86,7 @@ export const LeadTable = ({
     }
   }, []);
 
-  // Listen for column updates event with more robust handling
+  // Listen for column updates event
   useEffect(() => {
     const handleColumnUpdate = () => {
       console.log('Column update event received');
@@ -95,7 +96,7 @@ export const LeadTable = ({
           const parsedColumns = JSON.parse(savedColumns);
           console.log('Applying updated columns:', parsedColumns);
           setColumns(parsedColumns);
-          setTableKey(prev => prev + 1); // Force table re-render
+          setTableKey(prev => prev + 1);
         } catch (error) {
           console.error('Error parsing updated columns:', error);
         }
@@ -111,7 +112,7 @@ export const LeadTable = ({
     console.log('Updating columns:', newColumns);
     setColumns(newColumns);
     localStorage.setItem('leadTableColumns', JSON.stringify(newColumns));
-    setTableKey(prev => prev + 1); // Force table re-render
+    setTableKey(prev => prev + 1);
   };
 
   // Get visible columns in the correct order
@@ -221,6 +222,37 @@ export const LeadTable = ({
     }
   };
 
+  const handleDeleteSelected = async () => {
+    if (selectedLeads.length === 0) return;
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedLeads.length} selected lead(s)?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .in('id', selectedLeads);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `${selectedLeads.length} lead(s) deleted successfully`,
+      });
+
+      setSelectedLeads([]);
+      loadLeads();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete selected leads",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleModalClose = () => {
     setShowModal(false);
     setEditingLead(null);
@@ -269,25 +301,48 @@ export const LeadTable = ({
 
   return (
     <div className="space-y-4">
-      {/* Search and Filter Controls */}
-      <div className="flex gap-4 items-center">
-        <Input
-          placeholder="Search leads..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="New">New</SelectItem>
-            <SelectItem value="Contacted">Contacted</SelectItem>
-            <SelectItem value="Qualified">Qualified</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Header with actions */}
+      <div className="flex justify-between items-center">
+        <div className="flex gap-4 items-center">
+          <Input
+            placeholder="Search leads..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="New">New</SelectItem>
+              <SelectItem value="Contacted">Contacted</SelectItem>
+              <SelectItem value="Qualified">Qualified</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex gap-2">
+          {selectedLeads.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+            >
+              <Trash className="w-4 h-4 mr-2" />
+              Delete Selected ({selectedLeads.length})
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowColumnCustomizer(true)}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Customize Columns
+          </Button>
+        </div>
       </div>
 
       {/* Results Info */}
