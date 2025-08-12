@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -330,7 +329,7 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
                   <TableHead>Region</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Lead Owner</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
