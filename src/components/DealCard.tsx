@@ -3,10 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Deal, STAGE_COLORS } from "@/types/deal";
-import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { useLeadOwnerDisplayName } from "@/hooks/useLeadOwnerDisplayName";
 import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
-import { useMemo } from "react";
 
 interface DealCardProps {
   deal: Deal;
@@ -18,14 +17,7 @@ interface DealCardProps {
 }
 
 export const DealCard = ({ deal, onClick, isDragging, isSelected, selectionMode, onDelete }: DealCardProps) => {
-  // Get user IDs for display name lookup
-  const userIds = useMemo(() => {
-    const ids = [];
-    if (deal.lead_owner) ids.push(deal.lead_owner);
-    return ids;
-  }, [deal.lead_owner]);
-
-  const { displayNames } = useUserDisplayNames(userIds);
+  const { displayName: leadOwnerDisplayName } = useLeadOwnerDisplayName(deal.lead_owner);
 
   const formatCurrency = (amount: number, currency: string = 'EUR') => {
     const symbols = { USD: '$', EUR: '€', INR: '₹' };
@@ -91,7 +83,7 @@ export const DealCard = ({ deal, onClick, isDragging, isSelected, selectionMode,
           <div className="flex items-center">
             <span className="text-xs text-muted-foreground w-16 shrink-0">Owner:</span>
             <p className="text-sm text-muted-foreground truncate">
-              {displayNames[deal.lead_owner] || 'Loading...'}
+              {leadOwnerDisplayName}
             </p>
           </div>
         )}

@@ -3,8 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LeadSearchableDropdown } from "@/components/LeadSearchableDropdown";
-import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
-import { useMemo } from "react";
+import { useLeadOwnerDisplayName } from "@/hooks/useLeadOwnerDisplayName";
 
 interface FormFieldRendererProps {
   field: string;
@@ -384,13 +383,12 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error,
 
 // Separate component for Lead Owner field to handle display names
 const LeadOwnerField = ({ value, onChange, field }: { value: any, onChange: (field: string, value: any) => void, field: string }) => {
-  const userIds = useMemo(() => value ? [value] : [], [value]);
-  const { displayNames } = useUserDisplayNames(userIds);
+  const { displayName } = useLeadOwnerDisplayName(value);
 
   return (
     <Input
       type="text"
-      value={value ? (displayNames[value] || 'Loading...') : ''}
+      value={value ? displayName : ''}
       readOnly
       placeholder="Will be auto-filled when lead is selected"
       className="bg-gray-50"
