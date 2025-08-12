@@ -1,18 +1,19 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search, Filter, Download, Upload, Plus, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Search, Filter, Download, Upload, Plus, Edit, Trash2, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { LeadModal } from './LeadModal';
 import { useUserDisplayNames } from '@/hooks/useUserDisplayNames';
+import { convertLeadToDeal } from '@/utils/leadToDealConverter';
 
 interface LeadsTableProps {
   onLeadEdit?: (lead: any) => void;
@@ -106,6 +107,42 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
     } else {
       setSelectedLead(lead);
       setIsModalOpen(true);
+    }
+  };
+
+  const handleConvertToDeal = async (lead: any) => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await convertLeadToDeal(lead, user.id);
+      
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Lead converted to deal successfully",
+        });
+        fetchLeads(); // Refresh the leads list
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to convert lead to deal",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error converting lead to deal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to convert lead to deal",
+        variant: "destructive",
+      });
     }
   };
 
@@ -271,26 +308,32 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
                     {lead.contact_owner ? (displayNames[lead.contact_owner] || 'Loading...') : '-'}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(lead)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleDelete(lead.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(lead)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleConvertToDeal(lead)}
+                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(lead.id)}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
