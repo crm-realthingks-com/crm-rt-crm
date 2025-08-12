@@ -28,7 +28,7 @@ const Leads = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleDealSave = async (dealData: Partial<Deal>) => {
+  const handleDealSave = async (dealData: Partial<Deal>): Promise<void> => {
     if (!user) {
       throw new Error('User not authenticated');
     }
@@ -36,8 +36,10 @@ const Leads = () => {
     try {
       console.log('Creating deal with data:', dealData);
       
+      // Ensure deal_name is always provided
       const dealToInsert = {
         ...dealData,
+        deal_name: dealData.deal_name || dealData.project_name || 'Untitled Deal',
         created_by: user.id,
         modified_by: user.id,
         created_at: new Date().toISOString(),
@@ -46,7 +48,7 @@ const Leads = () => {
 
       const { data, error } = await supabase
         .from('deals')
-        .insert([dealToInsert])
+        .insert(dealToInsert)
         .select()
         .single();
 
@@ -64,8 +66,6 @@ const Leads = () => {
 
       // Trigger refresh of the leads table
       setRefreshTrigger(prev => prev + 1);
-      
-      return data;
     } catch (error: any) {
       console.error('Error in handleDealSave:', error);
       throw error;
