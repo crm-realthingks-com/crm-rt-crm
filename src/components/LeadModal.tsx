@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface LeadModalProps {
   open: boolean;
@@ -20,6 +21,7 @@ interface LeadModalProps {
 export const LeadModal = ({ open, onOpenChange, lead, onSuccess, onConvertToDeal }: LeadModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     lead_name: '',
@@ -131,13 +133,30 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess, onConvertToDeal
   };
 
   const handleConvertToDeal = () => {
-    if (!lead || !onConvertToDeal) return;
+    if (!lead) return;
     
-    // Pass the lead data to the parent component to open deal form
-    onConvertToDeal({
+    const leadData = {
       ...lead,
       ...formData // Include any unsaved changes from the form
-    });
+    };
+
+    if (onConvertToDeal) {
+      // Use external handler if provided
+      onConvertToDeal(leadData);
+    } else {
+      // Navigate to deals page with lead data if no external handler
+      navigate('/deals', { 
+        state: { 
+          convertFromLead: true, 
+          leadData: leadData 
+        } 
+      });
+      
+      toast({
+        title: "Converting Lead",
+        description: "Redirecting to create deal from this lead",
+      });
+    }
     
     // Close the lead modal
     onOpenChange(false);
@@ -279,7 +298,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess, onConvertToDeal
 
           <div className="flex justify-between pt-4">
             <div>
-              {lead && onConvertToDeal && (
+              {lead && (
                 <Button
                   type="button"
                   onClick={handleConvertToDeal}
