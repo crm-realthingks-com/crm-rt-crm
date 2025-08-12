@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { Deal } from "@/types/deal";
 import { ColumnConfig } from "@/components/ColumnCustomizer";
@@ -11,6 +10,7 @@ import { Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { InlineEditCell } from "./InlineEditCell";
 
 interface ListViewProps {
   deals: Deal[];
@@ -83,6 +83,83 @@ export const ListView = ({
     });
   };
 
+  const handleInlineEdit = async (dealId: string, field: string, value: any) => {
+    try {
+      await onUpdateDeal(dealId, { [field]: value });
+      toast({
+        title: "Success",
+        description: "Deal updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating deal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update deal",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getFieldType = (field: string) => {
+    switch (field) {
+      case 'total_contract_value':
+      case 'budget':
+        return 'currency';
+      case 'priority':
+        return 'priority';
+      case 'stage':
+        return 'stage';
+      case 'expected_closing_date':
+      case 'created_at':
+      case 'modified_at':
+      case 'start_date':
+      case 'end_date':
+      case 'rfq_received_date':
+      case 'proposal_due_date':
+        return 'date';
+      case 'is_recurring':
+        return 'boolean';
+      case 'probability':
+        return 'number';
+      case 'internal_comment':
+      case 'customer_need':
+      case 'customer_challenges':
+      case 'action_items':
+      case 'current_status':
+      case 'closing':
+      case 'won_reason':
+      case 'lost_reason':
+      case 'need_improvement':
+      case 'drop_reason':
+        return 'textarea';
+      case 'region':
+      case 'relationship_strength':
+      case 'decision_maker_level':
+      case 'rfq_status':
+      case 'currency_type':
+        return 'select';
+      default:
+        return 'text';
+    }
+  };
+
+  const getSelectOptions = (field: string) => {
+    switch (field) {
+      case 'region':
+        return ['North America', 'Europe', 'Asia', 'South America', 'Africa', 'Oceania'];
+      case 'relationship_strength':
+        return ['Weak', 'Moderate', 'Strong', 'Very Strong'];
+      case 'decision_maker_level':
+        return ['Low', 'Medium', 'High', 'Executive'];
+      case 'rfq_status':
+        return ['Pending', 'Received', 'In Review', 'Responded', 'Closed'];
+      case 'currency_type':
+        return ['USD', 'EUR', 'INR'];
+      default:
+        return [];
+    }
+  };
+
   const formatCellValue = (deal: Deal, field: string) => {
     const value = deal[field as keyof Deal];
     
@@ -124,6 +201,41 @@ export const ListView = ({
       default:
         return value || '';
     }
+  };
+
+  const renderCell = (deal: Deal, field: string) => {
+    // Special handling for lead_owner - show display name but keep UUID as value
+    if (field === 'lead_owner') {
+      const displayValue = deal.lead_owner ? (displayNames[deal.lead_owner] || 'Loading...') : '';
+      return (
+        <InlineEditCell
+          value={displayValue}
+          field={field}
+          dealId={deal.id}
+          onSave={handleInlineEdit}
+          type="text"
+        />
+      );
+    }
+
+    // Non-editable fields that should remain as display-only
+    if (['created_at', 'modified_at'].includes(field)) {
+      return <span className="text-sm">{formatCellValue(deal, field)}</span>;
+    }
+
+    const fieldType = getFieldType(field);
+    const options = fieldType === 'select' ? getSelectOptions(field) : [];
+
+    return (
+      <InlineEditCell
+        value={deal[field as keyof Deal]}
+        field={field}
+        dealId={deal.id}
+        onSave={handleInlineEdit}
+        type={fieldType}
+        options={options}
+      />
+    );
   };
 
   return (
@@ -180,10 +292,9 @@ export const ListView = ({
             {deals.map((deal) => (
               <TableRow 
                 key={deal.id}
-                className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                className={`hover:bg-muted/50 transition-colors ${
                   selectedDeals.has(deal.id) ? 'bg-primary/10' : ''
                 }`}
-                onClick={() => !selectionMode && onDealClick(deal)}
               >
                 {selectionMode && (
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -194,8 +305,8 @@ export const ListView = ({
                   </TableCell>
                 )}
                 {visibleColumns.map((column) => (
-                  <TableCell key={`${deal.id}-${column.field}`} className="text-sm">
-                    {formatCellValue(deal, column.field)}
+                  <TableCell key={`${deal.id}-${column.field}`} className="text-sm p-2">
+                    {renderCell(deal, column.field)}
                   </TableCell>
                 ))}
                 <TableCell onClick={(e) => e.stopPropagation()}>
