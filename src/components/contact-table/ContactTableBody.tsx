@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Edit, Trash2, RefreshCw, UserPlus } from "lucide-react";
 import { ContactColumnConfig } from "../ContactColumnCustomizer";
 import { SortableTableHead } from "../SortableTableHead";
@@ -58,6 +59,9 @@ export const ContactTableBody = ({
 }: ContactTableBodyProps) => {
   const handleSelectContact = (contactId: string, checked: boolean) => {
     if (checked) {
+      if (selectedContacts.length >= 50) {
+        return; // Don't allow more than 50 selections
+      }
       setSelectedContacts(prev => [...prev, contactId]);
     } else {
       setSelectedContacts(prev => prev.filter(id => id !== contactId));
@@ -107,78 +111,86 @@ export const ContactTableBody = ({
         </div>
       )}
 
+      {selectedContacts.length >= 50 && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            Maximum of 50 records can be selected at a time. ({selectedContacts.length}/50)
+          </p>
+        </div>
+      )}
+
       {pageContacts.length > 0 && (
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">
-                  <Checkbox
-                    checked={false}
-                    disabled
-                    aria-label="Select contacts"
-                    className="opacity-0"
-                  />
-                </TableHead>
-                {visibleColumns.map(column => (
-                  <SortableTableHead
-                    key={column.field}
-                    field={column.field}
-                    label={column.label}
-                    sortConfig={sortConfig}
-                    onSort={onSort}
-                  />
-                ))}
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageContacts.map(contact => (
-                <TableRow key={contact.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedContacts.includes(contact.id)}
-                      onCheckedChange={(checked) => handleSelectContact(contact.id, Boolean(checked))}
-                      aria-label={`Select ${contact.contact_name}`}
-                    />
-                  </TableCell>
+          <RadioGroup>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">Select</TableHead>
                   {visibleColumns.map(column => (
-                    <TableCell key={`${contact.id}-${column.field}`}>
-                      {formatFieldValue(contact, column.field)}
-                    </TableCell>
+                    <SortableTableHead
+                      key={column.field}
+                      field={column.field}
+                      label={column.label}
+                      sortConfig={sortConfig}
+                      onSort={onSort}
+                    />
                   ))}
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onConvertToLead(contact)}
-                        title="Convert to Lead"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit(contact)}
-                        title="Edit contact"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDelete(contact.id)}
-                        title="Delete contact"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {pageContacts.map(contact => (
+                  <TableRow key={contact.id}>
+                    <TableCell>
+                      <div className="flex items-center justify-center">
+                        <RadioGroupItem
+                          value={contact.id}
+                          id={contact.id}
+                          checked={selectedContacts.includes(contact.id)}
+                          onClick={() => handleSelectContact(contact.id, !selectedContacts.includes(contact.id))}
+                          disabled={!selectedContacts.includes(contact.id) && selectedContacts.length >= 50}
+                          className="cursor-pointer"
+                        />
+                      </div>
+                    </TableCell>
+                    {visibleColumns.map(column => (
+                      <TableCell key={`${contact.id}-${column.field}`}>
+                        {formatFieldValue(contact, column.field)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onConvertToLead(contact)}
+                          title="Convert to Lead"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit(contact)}
+                          title="Edit contact"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(contact.id)}
+                          title="Delete contact"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </RadioGroup>
         </div>
       )}
     </div>

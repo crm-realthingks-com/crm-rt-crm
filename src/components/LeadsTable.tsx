@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Filter, Download, Upload, Plus, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,7 +26,7 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [regionFilter, setRegionFilter] = useState('All');
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -36,6 +37,17 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
     .filter((id, index, arr) => arr.indexOf(id) === index); // Remove duplicates
 
   const { displayNames } = useUserDisplayNames(contactOwnerIds);
+
+  const handleSelectLead = (leadId: string, checked: boolean) => {
+    if (checked) {
+      if (selectedLeads.length >= 50) {
+        return; // Don't allow more than 50 selections
+      }
+      setSelectedLeads(prev => [...prev, leadId]);
+    } else {
+      setSelectedLeads(prev => prev.filter(id => id !== leadId));
+    }
+  };
 
   const fetchLeads = async () => {
     try {
@@ -80,12 +92,13 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
       filtered = filtered.filter(lead => lead.status === statusFilter);
     }
 
+    const regionFilter = 'All'; // Remove region filter
     if (regionFilter !== 'All') {
       filtered = filtered.filter(lead => lead.region === regionFilter);
     }
 
     setFilteredLeads(filtered);
-  }, [leads, searchTerm, statusFilter, regionFilter]);
+  }, [leads, searchTerm, statusFilter]);
 
   const handleEdit = (lead: any) => {
     if (onLeadEdit) {
@@ -195,6 +208,16 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
         </Select>
       </div>
 
+      {/* Selection Status */}
+      {selectedLeads.length > 0 && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            {selectedLeads.length} of {filteredLeads.length} leads selected 
+            {selectedLeads.length >= 50 && " (Maximum 50 records)"}
+          </p>
+        </div>
+      )}
+
       {/* Results Summary */}
       <div className="text-sm text-gray-600">
         Showing {filteredLeads.length} of {leads.length} leads
@@ -202,63 +225,78 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
 
       {/* Table */}
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Lead Name</TableHead>
-              <TableHead>Company Name</TableHead>
-              <TableHead>Position</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Region</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Lead Owner</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredLeads.map((lead) => (
-              <TableRow key={lead.id}>
-                <TableCell className="font-medium">{lead.lead_name}</TableCell>
-                <TableCell>{lead.company_name || '-'}</TableCell>
-                <TableCell>{lead.position || '-'}</TableCell>
-                <TableCell>{lead.email || '-'}</TableCell>
-                <TableCell>{lead.phone_no || '-'}</TableCell>
-                <TableCell>{lead.region}</TableCell>
-                <TableCell>
-                  <Badge className={getStatusBadgeColor(lead.status)}>
-                    {lead.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {lead.contact_owner ? (displayNames[lead.contact_owner] || 'Loading...') : '-'}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(lead)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleDelete(lead.id)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+        <RadioGroup>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">Select</TableHead>
+                <TableHead>Lead Name</TableHead>
+                <TableHead>Company Name</TableHead>
+                <TableHead>Position</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Region</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Lead Owner</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredLeads.map((lead) => (
+                <TableRow key={lead.id}>
+                  <TableCell>
+                    <div className="flex items-center justify-center">
+                      <RadioGroupItem
+                        value={lead.id}
+                        id={lead.id}
+                        checked={selectedLeads.includes(lead.id)}
+                        onClick={() => handleSelectLead(lead.id, !selectedLeads.includes(lead.id))}
+                        disabled={!selectedLeads.includes(lead.id) && selectedLeads.length >= 50}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{lead.lead_name}</TableCell>
+                  <TableCell>{lead.company_name || '-'}</TableCell>
+                  <TableCell>{lead.position || '-'}</TableCell>
+                  <TableCell>{lead.email || '-'}</TableCell>
+                  <TableCell>{lead.phone_no || '-'}</TableCell>
+                  <TableCell>{lead.region}</TableCell>
+                  <TableCell>
+                    <Badge className={getStatusBadgeColor(lead.status)}>
+                      {lead.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {lead.contact_owner ? (displayNames[lead.contact_owner] || 'Loading...') : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(lead)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(lead.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </RadioGroup>
       </Card>
 
       {/* Modal for direct editing (fallback) */}
