@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { convertLeadToDeal, LeadToDealData } from '@/utils/leadToDealConverter';
 
 interface LeadModalProps {
   open: boolean;
@@ -21,8 +22,8 @@ interface LeadModalProps {
 export const LeadModal = ({ open, onOpenChange, lead, onSuccess, onConvertToDeal }: LeadModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [formData, setFormData] = useState({
     lead_name: '',
     company_name: '',
@@ -132,34 +133,58 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess, onConvertToDeal
     }
   };
 
-  const handleConvertToDeal = () => {
-    if (!lead) return;
+  const handleConvertToDeal = async () => {
+    if (!lead || !user) return;
     
-    const leadData = {
-      ...lead,
-      ...formData // Include any unsaved changes from the form
-    };
+    setIsConverting(true);
+    
+    try {
+      // Prepare lead data for conversion using the current form data (including any unsaved changes)
+      const leadDataForConversion: LeadToDealData = {
+        lead_id: lead.id,
+        lead_name: formData.lead_name || lead.lead_name,
+        company_name: formData.company_name || lead.company_name,
+        position: formData.position || lead.position,
+        email: formData.email || lead.email,
+        phone_no: formData.phone_no || lead.phone_no,
+        linkedin: formData.linkedin || lead.linkedin,
+        website: formData.website || lead.website,
+        lead_source: formData.lead_source || lead.lead_source,
+        industry: formData.industry || lead.industry,
+        region: formData.region || lead.region,
+        description: formData.description || lead.description,
+        contact_owner: lead.contact_owner
+      };
 
-    if (onConvertToDeal) {
-      // Use external handler if provided
-      onConvertToDeal(leadData);
-    } else {
-      // Navigate to deals page with lead data if no external handler
-      navigate('/deals', { 
-        state: { 
-          convertFromLead: true, 
-          leadData: leadData 
-        } 
-      });
-      
+      console.log('Converting lead to deal with data:', leadDataForConversion);
+
+      // Convert the lead to deal
+      const result = await convertLeadToDeal(leadDataForConversion, user.id);
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Lead successfully converted to deal",
+        });
+
+        // Close the lead modal
+        onOpenChange(false);
+        
+        // Refresh the leads list if callback provided
+        onSuccess?.();
+      } else {
+        throw new Error(result.error || 'Failed to convert lead to deal');
+      }
+    } catch (error: any) {
+      console.error('Error converting lead to deal:', error);
       toast({
-        title: "Converting Lead",
-        description: "Redirecting to create deal from this lead",
+        title: "Error",
+        description: error.message || "Failed to convert lead to deal",
+        variant: "destructive",
       });
+    } finally {
+      setIsConverting(false);
     }
-    
-    // Close the lead modal
-    onOpenChange(false);
   };
 
   return (
@@ -302,9 +327,10 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess, onConvertToDeal
                 <Button
                   type="button"
                   onClick={handleConvertToDeal}
+                  disabled={isConverting}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  Convert to Deal
+                  {isConverting ? 'Converting...' : 'Convert to Deal'}
                 </Button>
               )}
             </div>
