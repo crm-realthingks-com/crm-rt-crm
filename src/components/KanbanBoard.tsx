@@ -71,6 +71,16 @@ export const KanbanBoard = ({
     return filteredDeals.filter(deal => deal.stage === stage);
   };
 
+  // Filter stages to hide Lost and Dropped if they have no records
+  const getVisibleStages = () => {
+    return DEAL_STAGES.filter(stage => {
+      if (stage === 'Lost' || stage === 'Dropped') {
+        return getDealsByStage(stage).length > 0;
+      }
+      return true;
+    });
+  };
+
   const onDragStart = (start: any) => {
     setDraggedDeal(start.draggableId);
   };
@@ -219,6 +229,8 @@ export const KanbanBoard = ({
     }
   };
 
+  const visibleStages = getVisibleStages();
+
   return (
     <div className="w-full h-full flex flex-col">
       {/* Fixed Search and Selection Controls */}
@@ -260,7 +272,7 @@ export const KanbanBoard = ({
       <div className="flex-1 p-4 overflow-hidden">
         <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <div className="flex items-start gap-3 h-full w-full" style={{ flexWrap: 'nowrap' }}>
-            {DEAL_STAGES.map((stage) => {
+            {visibleStages.map((stage) => {
               const stageDeals = getDealsByStage(stage);
               const selectedInStage = stageDeals.filter(deal => selectedDeals.has(deal.id)).length;
               const allSelected = selectedInStage === stageDeals.length && stageDeals.length > 0;
