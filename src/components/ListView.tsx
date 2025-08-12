@@ -1,11 +1,11 @@
+
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Deal, DealStage, DEAL_STAGES, STAGE_COLORS } from "@/types/deal";
-import { Search, Edit, Trash2, Filter, Columns } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { InlineEditCell } from "./InlineEditCell";
 import { ColumnCustomizer, ColumnConfig } from "./ColumnCustomizer";
@@ -31,9 +31,7 @@ export const ListView = ({
   columns,
   onColumnsChange
 }: ListViewProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
-  const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
 
   const formatCurrency = (amount: number | undefined, currency: string = 'EUR') => {
@@ -53,7 +51,7 @@ export const ListView = ({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedDeals(new Set(filteredDeals.map(deal => deal.id)));
+      setSelectedDeals(new Set(deals.map(deal => deal.id)));
     } else {
       setSelectedDeals(new Set());
     }
@@ -132,43 +130,8 @@ export const ListView = ({
     .filter(col => col.visible)
     .sort((a, b) => a.order - b.order);
 
-  const filteredDeals = deals.filter(deal => {
-    const searchValue = searchTerm.toLowerCase();
-    const matchesSearch = !searchTerm || 
-      deal.project_name?.toLowerCase().includes(searchValue) ||
-      deal.customer_name?.toLowerCase().includes(searchValue) ||
-      deal.lead_name?.toLowerCase().includes(searchValue) ||
-      deal.lead_owner?.toLowerCase().includes(searchValue) ||
-      deal.stage?.toLowerCase().includes(searchValue);
-    
-    return matchesSearch;
-  });
-
   return (
     <div className="w-full p-4 space-y-3">
-      {/* Compact Single-Row Search Bar */}
-      <div className="flex items-center gap-3 bg-card rounded-lg px-4 py-2 border border-border/50 shadow-sm">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search deals..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-8 text-sm border-input"
-          />
-        </div>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowFilters(!showFilters)}
-          className="h-8 px-3 text-sm"
-        >
-          <Filter className="w-4 h-4 mr-2" />
-          Search Filters
-        </Button>
-      </div>
-
       {/* Table */}
       <div className="border rounded-lg overflow-hidden shadow-sm bg-card">
         <div className="overflow-x-auto">
@@ -177,7 +140,7 @@ export const ListView = ({
               <TableRow className="border-b border-border/50 bg-muted/30">
                 <TableHead className="w-10 p-2">
                   <Checkbox
-                    checked={selectedDeals.size === filteredDeals.length && filteredDeals.length > 0}
+                    checked={selectedDeals.size === deals.length && deals.length > 0}
                     onCheckedChange={handleSelectAll}
                     className="transition-all hover:scale-105"
                   />
@@ -196,14 +159,14 @@ export const ListView = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredDeals.length === 0 ? (
+              {deals.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={visibleColumns.length + 2} className="text-center py-6 text-muted-foreground text-sm">
                     No deals found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredDeals.map((deal) => (
+                deals.map((deal) => (
                   <TableRow 
                     key={deal.id} 
                     className={`border-b border-border/30 hover:bg-muted/20 transition-colors duration-150 ${

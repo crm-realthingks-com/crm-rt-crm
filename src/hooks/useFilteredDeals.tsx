@@ -10,6 +10,20 @@ export const useFilteredDeals = (deals: Deal[], filters: DealFilters) => {
     }
 
     return deals.filter(deal => {
+      // Search term filter
+      if (filters.searchTerm) {
+        const searchValue = filters.searchTerm.toLowerCase();
+        const matchesSearch = 
+          deal.project_name?.toLowerCase().includes(searchValue) ||
+          deal.customer_name?.toLowerCase().includes(searchValue) ||
+          deal.lead_name?.toLowerCase().includes(searchValue) ||
+          deal.lead_owner?.toLowerCase().includes(searchValue) ||
+          deal.stage?.toLowerCase().includes(searchValue) ||
+          deal.deal_name?.toLowerCase().includes(searchValue);
+        
+        if (!matchesSearch) return false;
+      }
+
       // Stage filter
       if (filters.stages?.length && !filters.stages.includes(deal.stage)) {
         return false;
