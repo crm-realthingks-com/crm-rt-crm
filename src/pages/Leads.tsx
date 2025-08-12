@@ -6,6 +6,7 @@ import { Deal } from '@/types/deal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { convertLeadToDeal } from '@/utils/leadToDealConverter';
 
 const Leads = () => {
   const { user } = useAuth();
@@ -59,10 +60,40 @@ const Leads = () => {
 
       console.log('Deal created successfully:', data);
 
-      toast({
-        title: "Success",
-        description: "Deal created successfully from lead conversion",
-      });
+      // Update the related lead status to "Qualified" if there's a related_lead_id
+      if (dealData.related_lead_id) {
+        console.log('Updating lead status to Qualified for lead:', dealData.related_lead_id);
+        
+        const { error: updateError } = await supabase
+          .from('leads')
+          .update({ 
+            status: 'Qualified',
+            modified_by: user.id,
+            modified_time: new Date().toISOString()
+          })
+          .eq('id', dealData.related_lead_id);
+
+        if (updateError) {
+          console.error('Error updating lead status:', updateError);
+          // Still show success for deal creation, but warn about lead update
+          toast({
+            title: "Deal Created",
+            description: "Deal created successfully, but failed to update lead status",
+            variant: "destructive",
+          });
+        } else {
+          console.log('Lead status updated to Qualified successfully');
+          toast({
+            title: "Success",
+            description: "Deal created successfully and lead status updated to Qualified",
+          });
+        }
+      } else {
+        toast({
+          title: "Success",
+          description: "Deal created successfully",
+        });
+      }
 
       // Trigger refresh of the leads table
       setRefreshTrigger(prev => prev + 1);

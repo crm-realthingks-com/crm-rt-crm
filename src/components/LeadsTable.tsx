@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { LeadModal } from './LeadModal';
+import { useUserDisplayNames } from '@/hooks/useUserDisplayNames';
 
 interface LeadsTableProps {
   onLeadEdit?: (lead: any) => void;
@@ -28,6 +29,14 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
   const [regionFilter, setRegionFilter] = useState('All');
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Get unique contact_owner IDs for fetching display names
+  const contactOwnerIds = leads
+    .map(lead => lead.contact_owner)
+    .filter(Boolean)
+    .filter((id, index, arr) => arr.indexOf(id) === index); // Remove duplicates
+
+  const { displayNames } = useUserDisplayNames(contactOwnerIds);
 
   const fetchLeads = async () => {
     try {
@@ -238,7 +247,9 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
                     {lead.status}
                   </Badge>
                 </TableCell>
-                <TableCell>{lead.contact_owner || '-'}</TableCell>
+                <TableCell>
+                  {lead.contact_owner ? (displayNames[lead.contact_owner] || 'Loading...') : '-'}
+                </TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
