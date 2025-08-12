@@ -1,208 +1,279 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Search, Edit, Trash2, Phone, Mail, Calendar, MapPin, Building, User } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { BulkActionsBar } from "@/components/BulkActionsBar";
-import { LeadColumn } from "@/types/columns";
-
-interface Lead {
-  id: string;
-  name: string;
-  company: string;
-  stage: string;
-  contact: string;
-  value: number;
-  expectedCloseDate: string;
-}
-
-const sampleLeads: Lead[] = [
-  {
-    id: "1",
-    name: "Acme Corp - New ERP System",
-    company: "Acme Corp",
-    stage: "Qualified",
-    contact: "John Doe",
-    value: 50000,
-    expectedCloseDate: "2024-03-15",
-  },
-  {
-    id: "2",
-    name: "Beta Inc - Marketing Automation",
-    company: "Beta Inc",
-    stage: "Contacted",
-    contact: "Jane Smith",
-    value: 25000,
-    expectedCloseDate: "2024-04-01",
-  },
-  {
-    id: "3",
-    name: "Gamma Ltd - CRM Implementation",
-    company: "Gamma Ltd",
-    stage: "Proposal Sent",
-    contact: "Alice Johnson",
-    value: 75000,
-    expectedCloseDate: "2024-03-22",
-  },
-  {
-    id: "4",
-    name: "Delta Co - Cloud Migration",
-    company: "Delta Co",
-    stage: "Negotiation",
-    contact: "Bob Williams",
-    value: 120000,
-    expectedCloseDate: "2024-04-15",
-  },
-];
+import { Search, Filter, Download, Upload, Plus, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { LeadModal } from './LeadModal';
 
 interface LeadsTableProps {
-  columns: LeadColumn[];
-  onColumnsChange: (columns: LeadColumn[]) => void;
+  onLeadEdit?: (lead: any) => void;
 }
 
-const LeadsTable = ({ columns, onColumnsChange }: LeadsTableProps) => {
-  const [leads, setLeads] = useState(sampleLeads);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [leads, setLeads] = useState<any[]>([]);
+  const [filteredLeads, setFilteredLeads] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [regionFilter, setRegionFilter] = useState('All');
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const filteredLeads = leads.filter(lead =>
-    Object.values(lead).some(value =>
-      String(value).toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .order('created_time', { ascending: false });
 
-  const toggleLeadSelection = (leadId: string) => {
-    setSelectedLeads(prev => {
-      if (prev.includes(leadId)) {
-        return prev.filter(id => id !== leadId);
-      } else {
-        return [...prev, leadId];
-      }
-    });
-  };
+      if (error) throw error;
 
-  const toggleSelectAllLeads = () => {
-    if (selectedLeads.length === filteredLeads.length) {
-      setSelectedLeads([]);
-    } else {
-      setSelectedLeads(filteredLeads.map(lead => lead.id));
+      setLeads(data || []);
+      setFilteredLeads(data || []);
+    } catch (error: any) {
+      console.error('Error fetching leads:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch leads",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const isAllSelected = selectedLeads.length === filteredLeads.length && filteredLeads.length > 0;
+  useEffect(() => {
+    fetchLeads();
+  }, []);
 
-  const handleDeleteSelected = () => {
-    setLeads(prev => prev.filter(lead => !selectedLeads.includes(lead.id)));
-    setSelectedLeads([]);
+  useEffect(() => {
+    let filtered = leads;
+
+    if (searchTerm) {
+      filtered = filtered.filter(lead =>
+        lead.lead_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (statusFilter !== 'All') {
+      filtered = filtered.filter(lead => lead.status === statusFilter);
+    }
+
+    if (regionFilter !== 'All') {
+      filtered = filtered.filter(lead => lead.region === regionFilter);
+    }
+
+    setFilteredLeads(filtered);
+  }, [leads, searchTerm, statusFilter, regionFilter]);
+
+  const handleEdit = (lead: any) => {
+    if (onLeadEdit) {
+      onLeadEdit(lead);
+    } else {
+      setSelectedLead(lead);
+      setIsModalOpen(true);
+    }
   };
 
-  const handleClearSelection = () => {
-    setSelectedLeads([]);
+  const handleDelete = async (leadId: string) => {
+    if (!window.confirm('Are you sure you want to delete this lead?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Lead deleted successfully",
+      });
+
+      fetchLeads();
+    } catch (error: any) {
+      console.error('Error deleting lead:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete lead",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleExportSelected = () => {
-    const selectedData = leads.filter(lead => selectedLeads.includes(lead.id));
-    console.log('Exporting selected leads:', selectedData);
-    // Export logic would go here
+  const handleAddNew = () => {
+    setSelectedLead(null);
+    setIsModalOpen(true);
   };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'New':
+        return 'bg-blue-100 text-blue-800';
+      case 'Contacted':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Qualified':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Leads</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4">
-          <Input
-            type="text"
-            placeholder="Search leads..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Leads</h1>
+          <p className="text-gray-600">Manage your leads database</p>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button variant="outline" size="sm">
+            <Upload className="w-4 h-4 mr-2" />
+            Import
+          </Button>
+          <Button onClick={handleAddNew} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Lead
+          </Button>
+        </div>
+      </div>
 
-        {selectedLeads.length > 0 && (
-          <BulkActionsBar
-            selectedCount={selectedLeads.length}
-            onDelete={handleDeleteSelected}
-            onExport={handleExportSelected}
-            onClearSelection={handleClearSelection}
-          />
-        )}
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search leads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Statuses</SelectItem>
+                <SelectItem value="New">New</SelectItem>
+                <SelectItem value="Contacted">Contacted</SelectItem>
+                <SelectItem value="Qualified">Qualified</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={regionFilter} onValueChange={setRegionFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Regions</SelectItem>
+                <SelectItem value="EU">EU</SelectItem>
+                <SelectItem value="NA">NA</SelectItem>
+                <SelectItem value="APAC">APAC</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">
-                  <Checkbox
-                    checked={isAllSelected}
-                    onCheckedChange={toggleSelectAllLeads}
-                    aria-label="Select all"
-                  />
-                </TableHead>
-                {columns.filter(column => column.visible).map(column => (
-                  <TableHead key={column.key}>{column.label}</TableHead>
-                ))}
-                <TableHead className="text-right">Actions</TableHead>
+      {/* Results Summary */}
+      <div className="text-sm text-gray-600">
+        Showing {filteredLeads.length} of {leads.length} leads
+      </div>
+
+      {/* Table */}
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Lead Name</TableHead>
+              <TableHead>Company Name</TableHead>
+              <TableHead>Position</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Region</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Lead Owner</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredLeads.map((lead) => (
+              <TableRow key={lead.id}>
+                <TableCell className="font-medium">{lead.lead_name}</TableCell>
+                <TableCell>{lead.company_name || '-'}</TableCell>
+                <TableCell>{lead.position || '-'}</TableCell>
+                <TableCell>{lead.email || '-'}</TableCell>
+                <TableCell>{lead.phone_no || '-'}</TableCell>
+                <TableCell>{lead.region}</TableCell>
+                <TableCell>
+                  <Badge className={getStatusBadgeColor(lead.status)}>
+                    {lead.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{lead.contact_owner || '-'}</TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEdit(lead)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleDelete(lead.id)}
+                        className="text-red-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLeads.map(lead => (
-                <TableRow key={lead.id}>
-                  <TableCell className="font-medium">
-                    <Checkbox
-                      checked={selectedLeads.includes(lead.id)}
-                      onCheckedChange={() => toggleLeadSelection(lead.id)}
-                      aria-label={`Select ${lead.name}`}
-                    />
-                  </TableCell>
-                  {columns.filter(column => column.visible).map(column => (
-                    <TableCell key={`${lead.id}-${column.key}`}>
-                      {column.key === 'name' && lead.name}
-                      {column.key === 'company' && lead.company}
-                      {column.key === 'stage' && lead.stage}
-                      {column.key === 'contact' && lead.contact}
-                      {column.key === 'value' && lead.value}
-                      {column.key === 'expectedCloseDate' && lead.expectedCloseDate}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right font-medium">
-                    <div className="flex justify-end gap-2">
-                      <Button size="icon" variant="ghost">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredLeads.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={columns.filter(column => column.visible).length + 2} className="text-center">
-                    No leads found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      {/* Modal for direct editing (fallback) */}
+      <LeadModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        lead={selectedLead}
+        onSuccess={fetchLeads}
+      />
+    </div>
   );
 };
-
-export default LeadsTable;
