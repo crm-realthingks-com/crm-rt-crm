@@ -10,10 +10,10 @@ export const validateField = (field: string, value: any, stage: DealStage, formD
   
   console.log(`Validating field ${field} with value:`, value, `(type: ${typeof value})`);
   
-  // Handle dropdown/enum fields
-  if (field === 'customer_need' || field === 'relationship_strength' || 
-      field === 'customer_challenges' || field === 'is_recurring' || field === 'currency_type' ||
-      field === 'business_value' || field === 'decision_maker_level' || field === 'rfq_status' ||
+  // Handle dropdown/enum fields - including relationship_strength as numeric
+  if (field === 'customer_need' || field === 'customer_challenges' || 
+      field === 'is_recurring' || field === 'currency_type' ||
+      field === 'business_value' || field === 'rfq_status' ||
       field === 'handoff_status') {
     const isValid = value !== undefined && 
                    value !== null && 
@@ -21,6 +21,17 @@ export const validateField = (field: string, value: any, stage: DealStage, formD
                    typeof value === 'string' &&
                    value.trim() !== '';
     console.log(`Dropdown field ${field} validation result: ${isValid}`);
+    return isValid;
+  }
+  
+  // Handle numeric dropdown fields (relationship_strength, decision_maker_level)
+  if (field === 'relationship_strength' || field === 'decision_maker_level') {
+    const isValid = value !== undefined && 
+                   value !== null && 
+                   value !== '' &&
+                   typeof value === 'number' &&
+                   value >= 1;
+    console.log(`Numeric dropdown field ${field} validation result: ${isValid}`);
     return isValid;
   }
   

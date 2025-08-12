@@ -205,9 +205,6 @@ export const DealForm = ({
       console.log("Lead data:", leadData);
       console.log("Is creating:", isCreating);
       
-      // Show validation errors when Save is clicked
-      setShowValidationErrors(true);
-
       // For lead conversion, validate that project_name and priority are filled
       if (leadData && isCreating && !validateLeadConversionRequiredFields(formData)) {
         console.error("Lead conversion validation failed: Missing project_name or priority");
@@ -219,7 +216,7 @@ export const DealForm = ({
         return;
       }
       
-      // Validate date logic first
+      // Only validate date logic for saving - no required field validation for saving
       const dateValidation = validateDateLogic(formData);
       if (!dateValidation.isValid) {
         console.error("Date validation failed:", dateValidation.error);
@@ -231,7 +228,7 @@ export const DealForm = ({
         return;
       }
       
-      // Validate revenue sum for Won stage
+      // Only validate revenue sum for Won stage when saving
       if (currentStage === 'Won') {
         const revenueValidation = validateRevenueSum(formData);
         if (!revenueValidation.isValid) {
@@ -245,18 +242,8 @@ export const DealForm = ({
         }
       }
       
-      const validationResult = validateRequiredFields(formData, currentStage);
-      console.log("Validation result:", validationResult);
-      
-      if (!validationResult) {
-        console.error("Required fields validation failed");
-        toast({
-          title: "Validation Error",
-          description: "Please fill in all required fields before saving.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // NO REQUIRED FIELD VALIDATION FOR SAVING - only for stage progression
+      console.log("Skipping required field validation for save operation");
       
       const saveData = {
         ...formData,
@@ -503,8 +490,8 @@ export const DealForm = ({
     validateRequiredFields(formData, currentStage) &&
     validateDateLogic(formData).isValid;
 
-  const canSave = validateRequiredFields(formData, currentStage) && 
-    validateDateLogic(formData).isValid &&
+  // Remove validation requirements for saving - allow saving with incomplete data
+  const canSave = validateDateLogic(formData).isValid &&
     (currentStage !== 'Won' || validateRevenueSum(formData).isValid) &&
     validateLeadConversionRequiredFields(formData);
 
@@ -595,7 +582,7 @@ export const DealForm = ({
                 </div>
               )}
               
-              {/* Validation Message */}
+              {/* Validation Message - Only for stage progression */}
               {!isCreating && (!validateRequiredFields(formData, currentStage) || 
                 !validateDateLogic(formData).isValid || 
                 (currentStage === 'Won' && !validateRevenueSum(formData).isValid)) && (
