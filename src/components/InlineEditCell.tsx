@@ -7,13 +7,14 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Check, X, Edit3 } from "lucide-react";
 import { Deal, DealStage, DEAL_STAGES } from "@/types/deal";
+import { UserSelect } from "./UserSelect";
 
 interface InlineEditCellProps {
   value: any;
   field: string;
   dealId: string;
   onSave: (dealId: string, field: string, value: any) => void;
-  type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'boolean' | 'stage' | 'priority' | 'currency';
+  type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'boolean' | 'stage' | 'priority' | 'currency' | 'user_select';
   options?: string[];
 }
 
@@ -110,6 +111,21 @@ export const InlineEditCell = ({
 
   const renderEditControl = () => {
     switch (type) {
+      case 'user_select':
+        return (
+          <UserSelect
+            value={editValue || ''}
+            onValueChange={(userId) => {
+              setEditValue(userId);
+              // Auto-save for user select
+              onSave(dealId, field, userId);
+              setIsEditing(false);
+            }}
+            placeholder="Select user..."
+            className="w-full"
+          />
+        );
+
       case 'textarea':
         return (
           <Textarea
@@ -235,6 +251,15 @@ export const InlineEditCell = ({
         );
     }
   };
+
+  // For user_select, we don't show save/cancel buttons since it auto-saves
+  if (type === 'user_select') {
+    return (
+      <div className="flex-1" onClick={(e) => e.stopPropagation()}>
+        {renderEditControl()}
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-1 animate-fade-in" onClick={(e) => e.stopPropagation()}>
