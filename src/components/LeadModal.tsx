@@ -1,526 +1,304 @@
-
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-
-const leadSchema = z.object({
-  lead_name: z.string().min(1, "Lead name is required").trim(),
-  company_name: z.string().min(1, "Company name is required").trim(),
-  position: z.string().optional(),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  phone_no: z.string().optional(),
-  linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
-  website: z.string().url("Invalid website URL").optional().or(z.literal("")),
-  lead_source: z.string().optional(),
-  industry: z.string().optional(),
-  region: z.string().optional(),
-  status: z.string().optional(),
-  description: z.string().optional(),
-});
-
-type LeadFormData = z.infer<typeof leadSchema>;
-
-interface Lead {
-  id: string;
-  lead_name: string;
-  company_name?: string;
-  position?: string;
-  email?: string;
-  phone_no?: string;
-  linkedin?: string;
-  website?: string;
-  lead_source?: string;
-  industry?: string;
-  region?: string;
-  status?: string;
-  description?: string;
-  contact_owner?: string;
-  created_by?: string;
-  modified_by?: string;
-}
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LeadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lead?: Lead | null;
-  onSuccess: () => void;
+  lead?: any;
+  onSuccess?: () => void;
+  onConvertToDeal?: (leadData: any) => void;
 }
 
-const leadSources = [
-  "Website",
-  "LinkedIn",
-  "Referral",
-  "Cold Call",
-  "Email",
-  "Social Media",
-  "Event",
-  "Partner",
-  "Advertisement",
-  "Other"
-];
-
-const industries = [
-  "Automotive",
-  "Technology",
-  "Healthcare",
-  "Finance",
-  "Manufacturing",
-  "Retail",
-  "Education",
-  "Real Estate",
-  "Other"
-];
-
-const regions = [
-  "EU",
-  "US", 
-  "Asia",
-  "Other"
-];
-
-const statuses = [
-  "New",
-  "Contacted",
-  "Qualified"
-];
-
-export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProps) => {
+export const LeadModal = ({ open, onOpenChange, lead, onSuccess, onConvertToDeal }: LeadModalProps) => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-
-  const form = useForm<LeadFormData>({
-    resolver: zodResolver(leadSchema),
-    defaultValues: {
-      lead_name: "",
-      company_name: "",
-      position: "",
-      email: "",
-      phone_no: "",
-      linkedin: "",
-      website: "",
-      lead_source: "",
-      industry: "Automotive",
-      region: "EU",
-      status: "New",
-      description: "",
-    },
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    lead_name: '',
+    company_name: '',
+    position: '',
+    email: '',
+    phone_no: '',
+    linkedin: '',
+    website: '',
+    lead_source: '',
+    industry: '',
+    region: 'EU',
+    description: '',
+    status: 'New'
   });
 
   useEffect(() => {
     if (lead) {
-      console.log('LeadModal: Setting form values for lead:', lead);
-      form.reset({
-        lead_name: lead.lead_name || "",
-        company_name: lead.company_name || "",
-        position: lead.position || "",
-        email: lead.email || "",
-        phone_no: lead.phone_no || "",
-        linkedin: lead.linkedin || "",
-        website: lead.website || "",
-        lead_source: lead.lead_source || "",
-        industry: lead.industry || "Automotive",
-        region: lead.region || "EU",
-        status: lead.status || "New",
-        description: lead.description || "",
+      setFormData({
+        lead_name: lead.lead_name || '',
+        company_name: lead.company_name || '',
+        position: lead.position || '',
+        email: lead.email || '',
+        phone_no: lead.phone_no || '',
+        linkedin: lead.linkedin || '',
+        website: lead.website || '',
+        lead_source: lead.lead_source || '',
+        industry: lead.industry || '',
+        region: lead.region || 'EU',
+        description: lead.description || '',
+        status: lead.status || 'New'
       });
     } else {
-      form.reset({
-        lead_name: "",
-        company_name: "",
-        position: "",
-        email: "",
-        phone_no: "",
-        linkedin: "",
-        website: "",
-        lead_source: "",
-        industry: "Automotive",
-        region: "EU",
-        status: "New",
-        description: "",
+      setFormData({
+        lead_name: '',
+        company_name: '',
+        position: '',
+        email: '',
+        phone_no: '',
+        linkedin: '',
+        website: '',
+        lead_source: '',
+        industry: '',
+        region: 'EU',
+        description: '',
+        status: 'New'
       });
     }
-  }, [lead, form]);
+  }, [lead, open]);
 
-  const onSubmit = async (data: LeadFormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsSubmitting(true);
     try {
-      setLoading(true);
-      console.log('LeadModal: Submitting form data:', data);
-      console.log('LeadModal: Lead being edited:', lead);
-      
-      const user = await supabase.auth.getUser();
-      
-      if (!user.data.user) {
-        toast({
-          title: "Error",
-          description: "You must be logged in to perform this action",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Prepare the lead data with proper validation and trimming
       const leadData = {
-        lead_name: data.lead_name.trim(),
-        company_name: data.company_name.trim(),
-        position: data.position?.trim() || null,
-        email: data.email?.trim() || null,
-        phone_no: data.phone_no?.trim() || null,
-        linkedin: data.linkedin?.trim() || null,
-        website: data.website?.trim() || null,
-        lead_source: data.lead_source?.trim() || null,
-        industry: data.industry?.trim() || null,
-        region: data.region?.trim() || "EU",
-        status: data.status?.trim() || "New",
-        description: data.description?.trim() || null,
-        modified_by: user.data.user.id,
-        modified_time: new Date().toISOString(),
+        ...formData,
+        contact_owner: user.id,
+        created_by: user.id,
+        modified_by: user.id,
+        created_time: new Date().toISOString(),
+        modified_time: new Date().toISOString()
       };
 
-      // Additional validation for URLs if provided
-      if (leadData.linkedin && leadData.linkedin !== '' && !leadData.linkedin.startsWith('http')) {
-        leadData.linkedin = `https://${leadData.linkedin}`;
-      }
-      
-      if (leadData.website && leadData.website !== '' && !leadData.website.startsWith('http')) {
-        leadData.website = `https://${leadData.website}`;
-      }
-
-      console.log('LeadModal: Prepared lead data:', leadData);
-
-      if (lead?.id) {
+      if (lead) {
         // Update existing lead
-        console.log('LeadModal: Updating lead with ID:', lead.id);
-        
-        const { data: updatedData, error } = await supabase
+        const { error } = await supabase
           .from('leads')
-          .update(leadData)
-          .eq('id', lead.id)
-          .select();
+          .update({
+            ...formData,
+            modified_by: user.id,
+            modified_time: new Date().toISOString()
+          })
+          .eq('id', lead.id);
 
-        if (error) {
-          console.error('LeadModal: Update error:', error);
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log('LeadModal: Lead updated successfully:', updatedData);
         toast({
           title: "Success",
           description: "Lead updated successfully",
         });
       } else {
         // Create new lead
-        console.log('LeadModal: Creating new lead');
-        const newLeadData = {
-          ...leadData,
-          created_by: user.data.user.id,
-          contact_owner: user.data.user.id,
-          created_time: new Date().toISOString(),
-        };
-        
-        const { data: newData, error } = await supabase
+        const { error } = await supabase
           .from('leads')
-          .insert(newLeadData)
-          .select();
+          .insert([leadData]);
 
-        if (error) {
-          console.error('LeadModal: Insert error:', error);
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log('LeadModal: Lead created successfully:', newData);
         toast({
           title: "Success",
           description: "Lead created successfully",
         });
       }
 
-      onSuccess();
+      onSuccess?.();
       onOpenChange(false);
     } catch (error: any) {
-      console.error('LeadModal: Submit error:', error);
-      
-      // Provide more specific error messages
-      let errorMessage = "An unexpected error occurred";
-      if (error.message?.includes('lead_name')) {
-        errorMessage = "Lead name is required and cannot be empty";
-      } else if (error.message?.includes('company_name')) {
-        errorMessage = "Company name is required and cannot be empty";
-      } else if (error.message?.includes('email')) {
-        errorMessage = "Please provide a valid email address";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
+      console.error('Error saving lead:', error);
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error.message || "Failed to save lead",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
+  };
+
+  const handleConvertToDeal = () => {
+    if (!lead || !onConvertToDeal) return;
+    
+    // Pass the lead data to the parent component to open deal form
+    onConvertToDeal({
+      ...lead,
+      ...formData // Include any unsaved changes from the form
+    });
+    
+    // Close the lead modal
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {lead ? "Edit Lead" : "Add New Lead"}
-          </DialogTitle>
+          <DialogTitle>{lead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="lead_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lead Name *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="John Doe" 
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="company_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company Name *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Acme Corp" 
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="position"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Position</FormLabel>
-                    <FormControl>
-                      <Input placeholder="CEO" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="john@acme.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="phone_no"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="+1 234 567 8900" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="linkedin"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>LinkedIn Profile</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://linkedin.com/in/johndoe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="website"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Website</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://acme.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="lead_source"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lead Source</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select lead source" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {leadSources.map((source) => (
-                          <SelectItem key={source} value={source}>
-                            {source}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="industry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Industry</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select industry" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {industries.map((industry) => (
-                          <SelectItem key={industry} value={industry}>
-                            {industry}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="region"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Region</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "EU"}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select region" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {regions.map((region) => (
-                          <SelectItem key={region} value={region}>
-                            {region}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "New"}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {statuses.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="lead_name">Lead Name *</Label>
+              <Input
+                id="lead_name"
+                value={formData.lead_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, lead_name: e.target.value }))}
+                required
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Additional notes about the lead..."
-                      className="min-h-20"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="company_name">Company Name</Label>
+              <Input
+                id="company_name"
+                value={formData.company_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, company_name: e.target.value }))}
+              />
+            </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+            <div className="space-y-2">
+              <Label htmlFor="position">Position</Label>
+              <Input
+                id="position"
+                value={formData.position}
+                onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone_no">Phone</Label>
+              <Input
+                id="phone_no"
+                value={formData.phone_no}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone_no: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="region">Region</Label>
+              <Select value={formData.region} onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EU">EU</SelectItem>
+                  <SelectItem value="NA">NA</SelectItem>
+                  <SelectItem value="APAC">APAC</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="industry">Industry</Label>
+              <Input
+                id="industry"
+                value={formData.industry}
+                onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lead_source">Lead Source</Label>
+              <Input
+                id="lead_source"
+                value={formData.lead_source}
+                onChange={(e) => setFormData(prev => ({ ...prev, lead_source: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="linkedin">LinkedIn</Label>
+              <Input
+                id="linkedin"
+                value={formData.linkedin}
+                onChange={(e) => setFormData(prev => ({ ...prev, linkedin: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+              <Input
+                id="website"
+                value={formData.website}
+                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+              />
+            </div>
+
+            {lead && (
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="New">New</SelectItem>
+                    <SelectItem value="Contacted">Contacted</SelectItem>
+                    <SelectItem value="Qualified">Qualified</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              rows={3}
+            />
+          </div>
+
+          <div className="flex justify-between pt-4">
+            <div>
+              {lead && onConvertToDeal && (
+                <Button
+                  type="button"
+                  onClick={handleConvertToDeal}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Convert to Deal
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : lead ? "Save Changes" : "Add Lead"}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : lead ? 'Update Lead' : 'Create Lead'}
               </Button>
             </div>
-          </form>
-        </Form>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

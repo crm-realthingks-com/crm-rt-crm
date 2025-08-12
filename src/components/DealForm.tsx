@@ -17,9 +17,19 @@ interface DealFormProps {
   onRefresh?: () => Promise<void>;
   isCreating?: boolean;
   initialStage?: DealStage;
+  leadData?: any; // Add leadData prop for conversion
 }
 
-export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, initialStage, onRefresh }: DealFormProps) => {
+export const DealForm = ({ 
+  deal, 
+  isOpen, 
+  onClose, 
+  onSave, 
+  isCreating = false, 
+  initialStage, 
+  onRefresh,
+  leadData 
+}: DealFormProps) => {
   const [formData, setFormData] = useState<Partial<Deal>>({});
   const [loading, setLoading] = useState(false);
   const [showPreviousStages, setShowPreviousStages] = useState(false);
@@ -29,6 +39,13 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log("=== DEAL FORM USEEFFECT DEBUG ===");
+    console.log("Deal:", deal);
+    console.log("isCreating:", isCreating);
+    console.log("initialStage:", initialStage);
+    console.log("isOpen:", isOpen);
+    console.log("leadData:", leadData);
+    
     if (deal) {
       console.log("Setting form data from deal:", deal);
       // Initialize revenue fields with 0 if they are null
@@ -52,12 +69,32 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
         quarterly_revenue_q3: 0,
         quarterly_revenue_q4: 0,
       };
+
+      // If leadData is provided, pre-fill the form with lead information
+      // but leave project_name and priority empty for manual input
+      if (leadData) {
+        console.log("Pre-filling form with lead data:", leadData);
+        defaultData.lead_name = leadData.lead_name;
+        defaultData.customer_name = leadData.company_name || leadData.lead_name;
+        defaultData.region = leadData.region || 'EU';
+        defaultData.lead_owner = leadData.contact_owner;
+        defaultData.related_lead_id = leadData.id;
+        // Don't pre-fill project_name and priority - user must fill these manually
+      }
+
+      console.log("Setting default form data for new deal:", defaultData);
       setFormData(defaultData);
       // Hide validation errors for new deals initially
       setShowValidationErrors(false);
     }
     setShowPreviousStages(false);
-  }, [deal, isCreating, initialStage, isOpen]);
+    
+    // Reset selected lead ID when dialog closes or opens
+    if (!isOpen) {
+      console.log("Dialog closed - Reset selected lead ID to null");
+      setSelectedLeadId(null);
+    }
+  }, [deal, isCreating, initialStage, isOpen, leadData]);
 
   const currentStage = formData.stage || 'Lead';
 
@@ -81,6 +118,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       const updated = { ...prev };
       // Use type assertion to bypass strict type checking for dynamic assignment
       (updated as any)[field] = value;
+      console.log(`Updated formData:`, updated);
       return updated;
     });
     
@@ -94,33 +132,65 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   };
 
   const handleLeadSelect = (lead: any) => {
-    console.log("DealForm - Lead selected:", lead);
-    setSelectedLeadId(lead.id);
+    console.log("=== LEAD SELECT DEBUG ===");
+    console.log("DealForm - Lead selected for conversion:", lead);
+    console.log("Lead ID:", lead.id);
+    console.log("Lead data:", lead);
     
-    // The auto-population is now handled entirely in FormFieldRenderer
-    // Just store the selected lead ID for deletion after successful save
+    if (lead && lead.id) {
+      console.log("Setting selected lead ID to:", lead.id);
+      setSelectedLeadId(lead.id);
+      
+      // Auto-populate form fields from the selected lead
+      console.log("Auto-populating form fields from lead data");
+      setFormData(prev => {
+        const updated = {
+          ...prev,
+          lead_name: lead.lead_name || '',
+          customer_name: lead.company_name || '',
+          region: lead.region || 'EU',
+          lead_owner: lead.contact_owner || '',
+          related_lead_id: lead.id
+        };
+        console.log("Form data after lead selection:", updated);
+        return updated;
+      });
+    } else {
+      console.error("Invalid lead data provided:", lead);
+    }
   };
 
-  const deleteLead = async (leadId: string) => {
+  const updateLeadStatus = async (leadId: string): Promise<boolean> => {
     try {
+      console.log("Updating lead status to Qualified for lead ID:", leadId);
+      
       const { error } = await supabase
         .from('leads')
-        .delete()
+        .update({ 
+          status: 'Qualified',
+          modified_time: new Date().toISOString()
+        })
         .eq('id', leadId);
 
       if (error) {
-        console.error('Error deleting lead:', error);
-        toast({
-          title: "Warning",
-          description: "Deal was created but lead could not be removed from leads module",
-          variant: "destructive",
-        });
-      } else {
-        console.log('Lead successfully deleted from leads table');
+        console.error('Error updating lead status:', error);
+        return false;
       }
-    } catch (error) {
-      console.error('Error deleting lead:', error);
+
+      console.log('Lead status updated to Qualified successfully');
+      return true;
+    } catch (error: any) {
+      console.error('Unexpected error updating lead status:', error);
+      return false;
     }
+  };
+
+  const validateLeadConversionRequiredFields = (data: Partial<Deal>): boolean => {
+    // For lead conversion, ensure project_name and priority are filled
+    if (leadData && isCreating) {
+      return !!(data.project_name && data.priority);
+    }
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,10 +201,23 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       console.log("=== DEAL FORM SUBMIT DEBUG ===");
       console.log("Current stage:", currentStage);
       console.log("Form data before save:", formData);
-      console.log("Selected lead ID:", selectedLeadId);
+      console.log("Selected lead ID for status update:", selectedLeadId);
+      console.log("Lead data:", leadData);
+      console.log("Is creating:", isCreating);
       
       // Show validation errors when Save is clicked
       setShowValidationErrors(true);
+
+      // For lead conversion, validate that project_name and priority are filled
+      if (leadData && isCreating && !validateLeadConversionRequiredFields(formData)) {
+        console.error("Lead conversion validation failed: Missing project_name or priority");
+        toast({
+          title: "Validation Error",
+          description: "Project Name and Priority are required when converting a lead to deal.",
+          variant: "destructive",
+        });
+        return;
+      }
       
       // Validate date logic first
       const dateValidation = validateDateLogic(formData);
@@ -186,25 +269,63 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       
       await onSave(saveData);
       
-      console.log("Save successful");
+      console.log("Deal save successful");
       
-      // If this is a new deal created from a lead, delete the original lead
-      if (isCreating && selectedLeadId) {
-        console.log("Deleting original lead with ID:", selectedLeadId);
-        await deleteLead(selectedLeadId);
+      // If this is a new deal created from a lead, update the original lead's status
+      if (isCreating && leadData?.id) {
+        console.log("=== LEAD CONVERSION STATUS UPDATE START ===");
+        console.log("Deal created successfully, now updating lead status to Qualified for lead ID:", leadData.id);
+        
+        try {
+          const statusUpdateSuccess = await updateLeadStatus(leadData.id);
+          
+          if (statusUpdateSuccess) {
+            console.log("Lead status update successful");
+            toast({
+              title: "Success",
+              description: "Deal created and lead status updated to Qualified",
+            });
+          } else {
+            console.log("Lead status update failed, but deal was created");
+            toast({
+              title: "Warning",
+              description: "Deal was created but lead status could not be updated",
+              variant: "destructive",
+            });
+          }
+        } catch (statusUpdateError) {
+          console.error("Error during lead status update:", statusUpdateError);
+          toast({
+            title: "Warning",
+            description: "Deal was created but there was an error updating the lead status",
+            variant: "destructive",
+          });
+        }
+        
+        // Force refresh of both modules
+        if (onRefresh) {
+          console.log("Triggering refresh after lead conversion");
+          setTimeout(() => {
+            console.log("Executing refresh callback");
+            onRefresh();
+          }, 1000);
+        }
+        
+        console.log("=== LEAD CONVERSION STATUS UPDATE END ===");
+      } else {
+        // Show success message for regular saves (not conversions from lead)
+        toast({
+          title: "Success",
+          description: isCreating ? "Deal created successfully" : "Deal updated successfully",
+        });
       }
-      
-      toast({
-        title: "Success",
-        description: isCreating ? "Deal created successfully" : "Deal updated successfully",
-      });
       
       onClose();
       
-      if (onRefresh) {
+      if (onRefresh && !leadData?.id) {
         setTimeout(onRefresh, 100);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("=== DEAL FORM SAVE ERROR ===");
       console.error("Error details:", error);
       
@@ -384,7 +505,8 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
 
   const canSave = validateRequiredFields(formData, currentStage) && 
     validateDateLogic(formData).isValid &&
-    (currentStage !== 'Won' || validateRevenueSum(formData).isValid);
+    (currentStage !== 'Won' || validateRevenueSum(formData).isValid) &&
+    validateLeadConversionRequiredFields(formData);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -393,7 +515,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-2xl font-bold">
-                {isCreating ? 'Create New Deal' : formData.project_name || 'Edit Deal'}
+                {isCreating ? (leadData ? 'Convert Lead to Deal' : 'Create New Deal') : formData.project_name || 'Edit Deal'}
               </DialogTitle>
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant="outline" className="text-sm px-3 py-1">
@@ -413,6 +535,11 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
                   </Button>
                 )}
               </div>
+              {leadData && isCreating && (
+                <div className="mt-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-200">
+                  Converting lead "{leadData.lead_name}" to deal. Please fill in Project Name and Priority.
+                </div>
+              )}
             </div>
           </div>
         </DialogHeader>
@@ -425,6 +552,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
             fieldErrors={fieldErrors}
             stage={currentStage}
             showPreviousStages={showPreviousStages}
+            isLeadConversion={!!leadData && isCreating}
           />
 
           {/* Action Buttons */}
@@ -433,7 +561,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading} className="btn-primary">
+              <Button type="submit" disabled={loading || !canSave} className="btn-primary">
                 {loading ? "Saving..." : "Save"}
               </Button>
             </div>
@@ -478,6 +606,13 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
                       validateRevenueSum(formData).error :
                       "Complete all required fields to enable stage progression"
                   }
+                </div>
+              )}
+
+              {/* Lead Conversion Validation Message */}
+              {leadData && isCreating && !validateLeadConversionRequiredFields(formData) && (
+                <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md border border-red-200">
+                  Project Name and Priority are required for lead conversion
                 </div>
               )}
             </div>

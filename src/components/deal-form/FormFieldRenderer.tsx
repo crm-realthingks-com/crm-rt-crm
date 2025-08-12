@@ -12,34 +12,25 @@ interface FormFieldRendererProps {
   onChange: (field: string, value: any) => void;
   onLeadSelect?: (lead: any) => void;
   error?: string;
+  isLeadConversion?: boolean;
 }
 
-export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error }: FormFieldRendererProps) => {
+export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error, isLeadConversion }: FormFieldRendererProps) => {
   const handleLeadSelect = (lead: any) => {
     console.log("FormFieldRenderer - Lead selected:", lead);
+    console.log("Lead data received:", lead);
     
-    // Update the lead name field
-    onChange('lead_name', lead.lead_name);
-    
-    // Auto-populate other fields from the selected lead
-    if (lead.company_name) {
-      console.log("Auto-populating customer_name:", lead.company_name);
-      onChange('customer_name', lead.company_name);
-    }
-    if (lead.region) {
-      console.log("Auto-populating region:", lead.region);
-      onChange('region', lead.region);
-    }
-    if (lead.contact_owner) {
-      console.log("Auto-populating lead_owner:", lead.contact_owner);
-      onChange('lead_owner', lead.contact_owner);
+    if (!lead || !lead.id) {
+      console.error("Invalid lead data in FormFieldRenderer:", lead);
+      return;
     }
     
-    // Store the original lead ID for historical tracking
-    onChange('related_lead_id', lead.id);
+    // Update the lead name field immediately
+    onChange('lead_name', lead.lead_name || '');
     
-    // Call the parent's onLeadSelect if provided
+    // Call the parent's onLeadSelect to handle auto-population and tracking
     if (onLeadSelect) {
+      console.log("Calling parent onLeadSelect with lead:", lead);
       onLeadSelect(lead);
     }
   };
@@ -50,7 +41,10 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error 
         return (
           <LeadSearchableDropdown
             value={value || ''}
-            onValueChange={(leadName) => onChange(field, leadName)}
+            onValueChange={(leadName) => {
+              console.log("Lead name changed to:", leadName);
+              onChange(field, leadName);
+            }}
             onLeadSelect={handleLeadSelect}
             placeholder="Search and select a lead..."
           />
@@ -68,6 +62,7 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error 
             value={value || ''}
             onChange={(e) => onChange(field, e.target.value)}
             placeholder={`Enter ${field.replace('_', ' ')}`}
+            className={isLeadConversion && field === 'project_name' ? 'border-orange-300 focus:border-orange-500' : ''}
           />
         );
 
@@ -89,13 +84,15 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error 
       case 'priority':
         return (
           <Select value={value?.toString() || ''} onValueChange={(newValue) => onChange(field, parseInt(newValue))}>
-            <SelectTrigger>
+            <SelectTrigger className={isLeadConversion ? 'border-orange-300 focus:border-orange-500' : ''}>
               <SelectValue placeholder="Select priority" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1">High (1)</SelectItem>
-              <SelectItem value="2">Medium (2)</SelectItem>
-              <SelectItem value="3">Low (3)</SelectItem>
+              <SelectItem value="1">Priority 1 (Highest)</SelectItem>
+              <SelectItem value="2">Priority 2 (High)</SelectItem>
+              <SelectItem value="3">Priority 3 (Medium)</SelectItem>
+              <SelectItem value="4">Priority 4 (Low)</SelectItem>
+              <SelectItem value="5">Priority 5 (Lowest)</SelectItem>
             </SelectContent>
           </Select>
         );
@@ -372,6 +369,9 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error 
         {getFieldLabel(field)}
         {['project_name', 'lead_name', 'customer_name'].includes(field) && (
           <span className="text-red-500 ml-1">*</span>
+        )}
+        {isLeadConversion && ['project_name', 'priority'].includes(field) && (
+          <span className="text-orange-500 ml-1 text-xs">(Required for conversion)</span>
         )}
       </label>
       {renderField()}
