@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +14,7 @@ import { ImportExportBar } from "@/components/ImportExportBar";
 import { ColumnCustomizer, ColumnConfig } from "@/components/ColumnCustomizer";
 import { useToast } from "@/hooks/use-toast";
 import { useFilteredDeals } from "@/hooks/useFilteredDeals";
-import { Plus, Columns } from "lucide-react";
+import { Plus } from "lucide-react";
 
 const DealsPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -86,8 +87,10 @@ const DealsPage = () => {
         return;
       }
 
+      console.log('Fetched deals:', data);
       setDeals((data || []) as unknown as Deal[]);
     } catch (error) {
+      console.error('Error fetching deals:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred",
@@ -98,8 +101,11 @@ const DealsPage = () => {
     }
   };
 
+  // Centralized update function that both views will use
   const handleUpdateDeal = async (dealId: string, updates: Partial<Deal>) => {
     try {
+      console.log('Updating deal:', dealId, updates);
+      
       const { error } = await supabase
         .from('deals')
         .update({ ...updates, modified_at: new Date().toISOString() })
@@ -107,45 +113,66 @@ const DealsPage = () => {
 
       if (error) throw error;
 
+      // Update local state immediately for instant UI feedback
       setDeals(prev => prev.map(deal => 
-        deal.id === dealId ? { ...deal, ...updates } : deal
+        deal.id === dealId ? { ...deal, ...updates, modified_at: new Date().toISOString() } : deal
       ));
+
+      console.log('Deal updated successfully');
     } catch (error) {
+      console.error('Error updating deal:', error);
       toast({
         title: "Error",
         description: "Failed to update deal",
         variant: "destructive",
       });
+      throw error; // Re-throw to let calling component handle it
     }
   };
 
+  // Centralized save function for both creating and updating deals
   const handleSaveDeal = async (dealData: Partial<Deal>) => {
     try {
+      console.log('Saving deal:', { isCreating, dealData });
+      
       if (isCreating) {
+        const newDealData = { 
+          ...dealData, 
+          deal_name: dealData.project_name || 'Untitled Deal',
+          created_by: user?.id,
+          modified_by: user?.id,
+          created_at: new Date().toISOString(),
+          modified_at: new Date().toISOString()
+        };
+
         const { data, error } = await supabase
           .from('deals')
-          .insert([{ 
-            ...dealData, 
-            deal_name: dealData.project_name || 'Untitled Deal',
-            created_by: user?.id,
-            modified_by: user?.id 
-          }])
+          .insert([newDealData])
           .select()
           .single();
 
         if (error) throw error;
 
+        // Add to local state immediately
         setDeals(prev => [data as unknown as Deal, ...prev]);
+        
+        toast({
+          title: "Success",
+          description: "Deal created successfully",
+        });
       } else if (selectedDeal) {
         const updateData = {
           ...dealData,
           deal_name: dealData.project_name || selectedDeal.project_name || 'Untitled Deal',
-          modified_at: new Date().toISOString(),
           modified_by: user?.id
         };
         
         await handleUpdateDeal(selectedDeal.id, updateData);
-        await fetchDeals();
+        
+        toast({
+          title: "Success",
+          description: "Deal updated successfully",
+        });
       }
     } catch (error) {
       console.error("Error in handleSaveDeal:", error);
@@ -153,8 +180,11 @@ const DealsPage = () => {
     }
   };
 
+  // Centralized delete function that both views will use
   const handleDeleteDeals = async (dealIds: string[]) => {
     try {
+      console.log('Deleting deals:', dealIds);
+      
       const { error } = await supabase
         .from('deals')
         .delete()
@@ -162,6 +192,7 @@ const DealsPage = () => {
 
       if (error) throw error;
 
+      // Update local state immediately
       setDeals(prev => prev.filter(deal => !dealIds.includes(deal.id)));
       
       toast({
@@ -169,16 +200,20 @@ const DealsPage = () => {
         description: `Deleted ${dealIds.length} deal(s)`,
       });
     } catch (error) {
+      console.error('Error deleting deals:', error);
       toast({
         title: "Error",
         description: "Failed to delete deals",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
+  // Centralized import function
   const handleImportDeals = async (importedDeals: (Partial<Deal> & { shouldUpdate?: boolean })[]) => {
     try {
+      console.log('Importing deals:', importedDeals);
       let createdCount = 0;
       let updatedCount = 0;
 
@@ -191,18 +226,14 @@ const DealsPage = () => {
         );
 
         if (existingDeal) {
-          const { data, error } = await supabase
-            .from('deals')
-            .update({
-              ...dealData,
-              modified_by: user?.id,
-              deal_name: dealData.project_name || existingDeal.deal_name
-            })
-            .eq('id', existingDeal.id)
-            .select()
-            .single();
+          const updateData = {
+            ...dealData,
+            modified_by: user?.id,
+            deal_name: dealData.project_name || existingDeal.deal_name,
+            modified_at: new Date().toISOString()
+          };
 
-          if (error) throw error;
+          await handleUpdateDeal(existingDeal.id, updateData);
           updatedCount++;
         } else {
           const newDealData = {
@@ -210,7 +241,9 @@ const DealsPage = () => {
             stage: dealData.stage || 'Lead' as const,
             created_by: user?.id,
             modified_by: user?.id,
-            deal_name: dealData.project_name || `Imported Deal ${Date.now()}`
+            deal_name: dealData.project_name || `Imported Deal ${Date.now()}`,
+            created_at: new Date().toISOString(),
+            modified_at: new Date().toISOString()
           };
 
           const { data, error } = await supabase
@@ -220,11 +253,12 @@ const DealsPage = () => {
             .single();
 
           if (error) throw error;
+          
+          // Add to local state
+          setDeals(prev => [data as unknown as Deal, ...prev]);
           createdCount++;
         }
       }
-
-      await fetchDeals();
       
       toast({
         title: "Import successful",
