@@ -177,6 +177,45 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedLeads.length === 0) {
+      toast({
+        title: "Error",
+        description: "No leads selected",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedLeads.length} lead(s)?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .in('id', selectedLeads);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `${selectedLeads.length} lead(s) deleted successfully`,
+      });
+
+      setSelectedLeads([]);
+      fetchLeads();
+    } catch (error: any) {
+      console.error('Error deleting leads:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete leads",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAddNew = () => {
     setSelectedLead(null);
     setIsModalOpen(true);
@@ -248,13 +287,26 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
           </Select>
         </div>
 
-        {/* Selection Status */}
+        {/* Selection Status - Reduced size */}
         {selectedLeads.length > 0 && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              {selectedLeads.length} of {filteredLeads.length} leads selected 
-              {selectedLeads.length >= 50 && " (Maximum 50 records)"}
-            </p>
+          <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-blue-800">
+                {selectedLeads.length} of {filteredLeads.length} leads selected 
+                {selectedLeads.length >= 50 && " (Maximum 50 records)"}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  className="h-8"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete Selected
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
