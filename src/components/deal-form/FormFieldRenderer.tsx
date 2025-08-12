@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LeadSearchableDropdown } from "@/components/LeadSearchableDropdown";
 import { useLeadOwnerDisplayName } from "@/hooks/useLeadOwnerDisplayName";
+import { UserSelect } from "@/components/UserSelect";
 
 interface FormFieldRendererProps {
   field: string;
@@ -50,8 +51,13 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error,
         );
 
       case 'lead_owner':
-        // For lead_owner field, we need to display the user's display name
-        return <LeadOwnerField value={value} onChange={onChange} field={field} />;
+        return (
+          <UserSelect
+            value={value || ''}
+            onValueChange={(userId) => onChange(field, userId)}
+            placeholder="Select lead owner..."
+          />
+        );
 
       case 'customer_name':
       case 'project_name':
@@ -378,20 +384,5 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error,
         <p className="text-sm text-red-600">{error}</p>
       )}
     </div>
-  );
-};
-
-// Separate component for Lead Owner field to handle display names
-const LeadOwnerField = ({ value, onChange, field }: { value: any, onChange: (field: string, value: any) => void, field: string }) => {
-  const { displayName } = useLeadOwnerDisplayName(value);
-
-  return (
-    <Input
-      type="text"
-      value={value ? displayName : ''}
-      readOnly
-      placeholder="Will be auto-filled when lead is selected"
-      className="bg-gray-50"
-    />
   );
 };

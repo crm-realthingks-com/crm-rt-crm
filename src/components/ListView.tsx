@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { Deal } from "@/types/deal";
 import { ColumnConfig } from "@/components/ColumnCustomizer";
@@ -11,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
 import { InlineEditCell } from "./InlineEditCell";
+import { UserSelect } from "./UserSelect";
 
 interface ListViewProps {
   deals: Deal[];
@@ -33,6 +35,7 @@ export const ListView = ({
 }: ListViewProps) => {
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
+  const [editingCell, setEditingCell] = useState<{ dealId: string; field: string } | null>(null);
   const { toast } = useToast();
 
   // Get all unique lead owner IDs for display name lookup
@@ -86,6 +89,7 @@ export const ListView = ({
   const handleInlineEdit = async (dealId: string, field: string, value: any) => {
     try {
       await onUpdateDeal(dealId, { [field]: value });
+      setEditingCell(null);
       toast({
         title: "Success",
         description: "Deal updated successfully",
@@ -138,6 +142,8 @@ export const ListView = ({
       case 'rfq_status':
       case 'currency_type':
         return 'select';
+      case 'lead_owner':
+        return 'user_select';
       default:
         return 'text';
     }
@@ -204,17 +210,31 @@ export const ListView = ({
   };
 
   const renderCell = (deal: Deal, field: string) => {
-    // Special handling for lead_owner - show display name but keep UUID as value
+    const isEditing = editingCell?.dealId === deal.id && editingCell?.field === field;
+
+    // Special handling for lead_owner field with UserSelect
     if (field === 'lead_owner') {
+      if (isEditing) {
+        return (
+          <UserSelect
+            value={deal.lead_owner || ''}
+            onValueChange={(userId) => {
+              handleInlineEdit(deal.id, field, userId);
+            }}
+            placeholder="Select owner..."
+            className="w-full"
+          />
+        );
+      }
+
       const displayValue = deal.lead_owner ? (displayNames[deal.lead_owner] || 'Loading...') : '';
       return (
-        <InlineEditCell
-          value={displayValue}
-          field={field}
-          dealId={deal.id}
-          onSave={handleInlineEdit}
-          type="text"
-        />
+        <div
+          className="cursor-pointer hover:bg-muted/50 p-1 rounded min-h-[32px] flex items-center"
+          onClick={() => setEditingCell({ dealId: deal.id, field })}
+        >
+          <span className="text-sm">{displayValue || 'Select owner...'}</span>
+        </div>
       );
     }
 
