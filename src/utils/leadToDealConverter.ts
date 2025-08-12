@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface LeadToDealData {
-  lead_id: string;
+  id: string;
   lead_name: string;
   company_name?: string;
   position?: string;
@@ -47,7 +47,7 @@ export const convertLeadToDeal = async (
         modified_by: userId,
         modified_time: new Date().toISOString()
       })
-      .eq('id', leadData.lead_id);
+      .eq('id', leadData.id);
 
     if (updateError) {
       console.error('Error updating lead status:', updateError);
@@ -63,7 +63,7 @@ export const convertLeadToDeal = async (
       region: leadData.region || 'EU',
       lead_owner: leadData.contact_owner || userId,
       stage: 'Lead',
-      related_lead_id: leadData.lead_id,
+      related_lead_id: leadData.id,
       created_by: userId,
       modified_by: userId,
       created_at: new Date().toISOString(),
@@ -89,7 +89,7 @@ export const convertLeadToDeal = async (
           modified_by: userId,
           modified_time: new Date().toISOString()
         })
-        .eq('id', leadData.lead_id);
+        .eq('id', leadData.id);
       
       return { success: false, error: insertError.message };
     }

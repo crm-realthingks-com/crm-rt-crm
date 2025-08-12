@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Filter, Download, Upload, Plus, Edit, Trash2, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -121,6 +122,7 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
     }
 
     try {
+      console.log('Converting lead to deal:', lead);
       const result = await convertLeadToDeal(lead, user.id);
       
       if (result.success) {
@@ -198,157 +200,182 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Leads</h1>
-          <p className="text-gray-600">Manage your leads database</p>
+    <TooltipProvider>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Leads</h1>
+            <p className="text-gray-600">Manage your leads database</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <Button variant="outline" size="sm">
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+            <Button onClick={handleAddNew} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Lead
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <Upload className="w-4 h-4 mr-2" />
-            Import
-          </Button>
-          <Button onClick={handleAddNew} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Lead
-          </Button>
+
+        {/* Search and Filters */}
+        <div className="flex gap-4 items-center">
+          <div className="relative w-80">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search leads..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All Statuses</SelectItem>
+              <SelectItem value="New">New</SelectItem>
+              <SelectItem value="Contacted">Contacted</SelectItem>
+              <SelectItem value="Qualified">Qualified</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </div>
 
-      {/* Search and Filters */}
-      <div className="flex gap-4 items-center">
-        <div className="relative w-80">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search leads..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        {/* Selection Status */}
+        {selectedLeads.length > 0 && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              {selectedLeads.length} of {filteredLeads.length} leads selected 
+              {selectedLeads.length >= 50 && " (Maximum 50 records)"}
+            </p>
+          </div>
+        )}
+
+        {/* Results Summary */}
+        <div className="text-sm text-gray-600">
+          Showing {filteredLeads.length} of {leads.length} leads
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All Statuses</SelectItem>
-            <SelectItem value="New">New</SelectItem>
-            <SelectItem value="Contacted">Contacted</SelectItem>
-            <SelectItem value="Qualified">Qualified</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Selection Status */}
-      {selectedLeads.length > 0 && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            {selectedLeads.length} of {filteredLeads.length} leads selected 
-            {selectedLeads.length >= 50 && " (Maximum 50 records)"}
-          </p>
-        </div>
-      )}
-
-      {/* Results Summary */}
-      <div className="text-sm text-gray-600">
-        Showing {filteredLeads.length} of {leads.length} leads
-      </div>
-
-      {/* Table */}
-      <Card>
-        <RadioGroup>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">Select</TableHead>
-                <TableHead>Lead Name</TableHead>
-                <TableHead>Company Name</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Region</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Lead Owner</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLeads.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell>
-                    <div className="flex items-center justify-center">
-                      <RadioGroupItem
-                        value={lead.id}
-                        id={lead.id}
-                        checked={selectedLeads.includes(lead.id)}
-                        onClick={() => handleSelectLead(lead.id, !selectedLeads.includes(lead.id))}
-                        disabled={!selectedLeads.includes(lead.id) && selectedLeads.length >= 50}
-                        className="cursor-pointer"
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{lead.lead_name}</TableCell>
-                  <TableCell>{lead.company_name || '-'}</TableCell>
-                  <TableCell>{lead.position || '-'}</TableCell>
-                  <TableCell>{lead.email || '-'}</TableCell>
-                  <TableCell>{lead.phone_no || '-'}</TableCell>
-                  <TableCell>{lead.region}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusBadgeColor(lead.status)}>
-                      {lead.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {lead.contact_owner ? (displayNames[lead.contact_owner] || 'Loading...') : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(lead)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleConvertToDeal(lead)}
-                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(lead.id)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        {/* Table */}
+        <Card>
+          <RadioGroup>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">Select</TableHead>
+                  <TableHead>Lead Name</TableHead>
+                  <TableHead>Company Name</TableHead>
+                  <TableHead>Position</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Region</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Lead Owner</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </RadioGroup>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {filteredLeads.map((lead) => (
+                  <TableRow key={lead.id}>
+                    <TableCell>
+                      <div className="flex items-center justify-center">
+                        <RadioGroupItem
+                          value={lead.id}
+                          id={lead.id}
+                          checked={selectedLeads.includes(lead.id)}
+                          onClick={() => handleSelectLead(lead.id, !selectedLeads.includes(lead.id))}
+                          disabled={!selectedLeads.includes(lead.id) && selectedLeads.length >= 50}
+                          className="cursor-pointer"
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{lead.lead_name}</TableCell>
+                    <TableCell>{lead.company_name || '-'}</TableCell>
+                    <TableCell>{lead.position || '-'}</TableCell>
+                    <TableCell>{lead.email || '-'}</TableCell>
+                    <TableCell>{lead.phone_no || '-'}</TableCell>
+                    <TableCell>{lead.region}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusBadgeColor(lead.status)}>
+                        {lead.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {lead.contact_owner ? (displayNames[lead.contact_owner] || 'Loading...') : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(lead)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Edit Lead</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleConvertToDeal(lead)}
+                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                            >
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Convert to Deal</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(lead.id)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delete Lead</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </RadioGroup>
+        </Card>
 
-      {/* Modal for direct editing (fallback) */}
-      <LeadModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        lead={selectedLead}
-        onSuccess={fetchLeads}
-      />
-    </div>
+        {/* Modal for direct editing (fallback) */}
+        <LeadModal
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          lead={selectedLead}
+          onSuccess={fetchLeads}
+        />
+      </div>
+    </TooltipProvider>
   );
 };
