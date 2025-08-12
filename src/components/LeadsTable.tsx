@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Search, Filter, Download, Upload, Plus, MoreHorizontal, Edit, Trash2, ArrowRightLeft } from "lucide-react";
+import { Search, Filter, Download, Upload, Plus, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -13,7 +13,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { LeadModal } from './LeadModal';
 import { useUserDisplayNames } from '@/hooks/useUserDisplayNames';
-import { convertLeadToDeal } from '@/utils/leadToDealConverter';
 
 interface LeadsTableProps {
   onLeadEdit?: (lead: any) => void;
@@ -47,49 +46,6 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
       setSelectedLeads(prev => [...prev, leadId]);
     } else {
       setSelectedLeads(prev => prev.filter(id => id !== leadId));
-    }
-  };
-
-  const handleConvertToDeal = async (lead: any) => {
-    if (!user) return;
-
-    try {
-      const result = await convertLeadToDeal({
-        lead_id: lead.id,
-        lead_name: lead.lead_name,
-        company_name: lead.company_name,
-        position: lead.position,
-        email: lead.email,
-        phone_no: lead.phone_no,
-        linkedin: lead.linkedin,
-        website: lead.website,
-        lead_source: lead.lead_source,
-        industry: lead.industry,
-        region: lead.region,
-        description: lead.description,
-        contact_owner: lead.contact_owner,
-      }, user.id);
-
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: "Lead converted to deal successfully",
-        });
-        fetchLeads(); // Refresh the leads list
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to convert lead to deal",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error('Error converting lead to deal:', error);
-      toast({
-        title: "Error",
-        description: "Failed to convert lead to deal",
-        variant: "destructive",
-      });
     }
   };
 
@@ -325,10 +281,6 @@ export const LeadsTable = ({ onLeadEdit }: LeadsTableProps) => {
                         <DropdownMenuItem onClick={() => handleEdit(lead)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleConvertToDeal(lead)}>
-                          <ArrowRightLeft className="mr-2 h-4 w-4" />
-                          Convert to Deal
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDelete(lead.id)}
