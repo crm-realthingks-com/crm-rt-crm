@@ -1,4 +1,3 @@
-
 export type DealStage = 'Lead' | 'Discussions' | 'Qualified' | 'RFQ' | 'Offered' | 'Won' | 'Lost' | 'Dropped';
 
 export interface Deal {
@@ -11,9 +10,6 @@ export interface Deal {
   // Basic deal info
   deal_name: string;
   stage: DealStage;
-  
-  // Historical tracking
-  related_lead_id?: string; // Store original lead ID for tracking
   
   // Lead stage fields
   project_name?: string;

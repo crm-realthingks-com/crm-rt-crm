@@ -12,11 +12,10 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Search, Edit, Trash2, Phone, Mail, Calendar, MapPin, Building, User, MoreVertical, Plus } from "lucide-react";
+import { Search, Edit, Trash2, Phone, Mail, Calendar, MapPin, Building, User } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
 import { ContactColumn } from "@/types/columns";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Contact {
   id: string;
@@ -145,25 +144,17 @@ const ContactsTable = ({ columns, contacts, onEditContact, onDeleteContact }: Co
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-table-header">Contacts List</CardTitle>
-        <Button className="btn-add">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Contact
-        </Button>
+      <CardHeader>
+        <CardTitle>Contacts List</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              type="text"
-              placeholder="Search contacts..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-10 input-focus"
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder="Search contacts..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
         </div>
 
         {selectedContacts.length > 0 && (
@@ -175,7 +166,7 @@ const ContactsTable = ({ columns, contacts, onEditContact, onDeleteContact }: Co
           />
         )}
 
-        <div className="table-container">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -206,47 +197,28 @@ const ContactsTable = ({ columns, contacts, onEditContact, onDeleteContact }: Co
                         <Badge variant={contact.status === 'active' ? 'default' : 'secondary'}>
                           {contact.status}
                         </Badge>
-                      ) : column.key === 'name' ? (
-                        <button 
-                          className="link-primary font-medium"
-                          onClick={() => onEditContact(contact.id)}
-                        >
-                          {contact[column.key as keyof Contact]?.toString() || ''}
-                        </button>
                       ) : (
                         contact[column.key as keyof Contact]?.toString() || ''
                       )}
                     </TableCell>
                   ))}
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onEditContact(contact.id)}
-                            className="btn-action"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Edit contact</TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="p-2"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>More actions</TooltipContent>
-                      </Tooltip>
-                    </div>
+                  <TableCell className="text-right font-medium">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEditContact(contact.id)}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeleteContact(contact.id)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

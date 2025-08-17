@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,13 @@ const EditUserModal = ({ open, onClose, user, onSuccess }: EditUserModalProps) =
     setLoading(true);
 
     try {
-      const { error } = await supabase.functions.invoke('admin-update-user', {
+      toast({
+        title: "Updating",
+        description: "Updating user display name...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('user-admin', {
+        method: 'PUT',
         body: {
           userId: user.id,
           displayName
@@ -49,18 +56,22 @@ const EditUserModal = ({ open, onClose, user, onSuccess }: EditUserModalProps) =
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "User updated successfully",
-      });
-      
-      onSuccess();
-      onClose();
-    } catch (error) {
+      if (data?.success) {
+        toast({
+          title: "Success",
+          description: "User display name updated successfully",
+        });
+        
+        onSuccess();
+        onClose();
+      } else {
+        throw new Error(data?.error || "Failed to update user display name");
+      }
+    } catch (error: any) {
       console.error('Error updating user:', error);
       toast({
         title: "Error",
-        description: "Failed to update user",
+        description: error.message || "Failed to update user display name",
         variant: "destructive",
       });
     } finally {
@@ -68,13 +79,20 @@ const EditUserModal = ({ open, onClose, user, onSuccess }: EditUserModalProps) =
     }
   };
 
+  const handleClose = () => {
+    if (!loading) {
+      onClose();
+      setDisplayName('');
+    }
+  };
+
   if (!user) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
+          <DialogTitle>Edit User Display Name</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -93,17 +111,18 @@ const EditUserModal = ({ open, onClose, user, onSuccess }: EditUserModalProps) =
               id="displayName"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Full Name"
+              placeholder="Enter full name"
               required
+              disabled={loading}
             />
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update User'}
+              {loading ? 'Updating...' : 'Update Display Name'}
             </Button>
           </div>
         </form>

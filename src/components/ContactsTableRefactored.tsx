@@ -12,7 +12,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Search, Edit, Trash2, Phone, Mail, Calendar, MapPin, Building, User, Plus, MoreVertical } from "lucide-react";
+import { Search, Edit, Trash2, Phone, Mail, Calendar, MapPin, Building, User } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
 import { ContactColumn } from "@/types/columns";
@@ -147,12 +147,8 @@ const ContactsTableRefactored = ({ columns, contacts = sampleContacts }: Contact
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-table-header">Contacts</CardTitle>
-        <Button className="btn-add">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Contact
-        </Button>
+      <CardHeader>
+        <CardTitle>Contacts</CardTitle>
       </CardHeader>
       <CardContent>
         {selectedContacts.length > 0 && (
@@ -173,7 +169,7 @@ const ContactsTableRefactored = ({ columns, contacts = sampleContacts }: Contact
               className="pl-10"
             />
           </div>
-          <div className="table-container">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -198,31 +194,27 @@ const ContactsTableRefactored = ({ columns, contacts = sampleContacts }: Contact
                         onCheckedChange={() => handleCheckboxChange(contact.id)}
                       />
                     </TableCell>
-                     {columns.filter(column => column.visible).map(column => (
-                       <TableCell key={`${contact.id}-${column.key}`}>
-                         {column.key === 'status' ? (
-                           <Badge variant={contact.status === 'active' ? 'default' : contact.status === 'inactive' ? 'secondary' : 'outline'}>
-                             {contact.status}
-                           </Badge>
-                         ) : column.key === 'name' ? (
-                           <button className="link-primary font-medium">
-                             {contact[column.key as keyof Contact]?.toString() || ''}
-                           </button>
-                         ) : (
-                           contact[column.key as keyof Contact]?.toString() || ''
-                         )}
-                       </TableCell>
-                     ))}
-                     <TableCell className="text-right">
-                       <div className="flex items-center justify-end gap-2">
-                         <Button variant="outline" size="sm" className="btn-action">
-                           <Edit className="w-4 h-4" />
-                         </Button>
-                         <Button variant="ghost" size="sm" className="p-2">
-                           <MoreVertical className="w-4 h-4" />
-                         </Button>
-                       </div>
-                     </TableCell>
+                    {columns.filter(column => column.visible).map(column => (
+                      <TableCell key={`${contact.id}-${column.key}`}>
+                        {column.key === 'status' ? (
+                          <Badge variant={contact.status === 'active' ? 'default' : contact.status === 'inactive' ? 'secondary' : 'outline'}>
+                            {contact.status}
+                          </Badge>
+                        ) : (
+                          contact[column.key as keyof Contact]?.toString() || ''
+                        )}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right font-medium">
+                      <Button variant="ghost" size="sm">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button variant="ghost" size="sm">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {filteredContacts.length === 0 && (

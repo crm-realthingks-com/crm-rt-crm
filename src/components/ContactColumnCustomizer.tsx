@@ -45,12 +45,12 @@ export const ContactColumnCustomizer = ({
       { field: 'company_name', label: 'Company Name', visible: true, order: 1 },
       { field: 'position', label: 'Position', visible: true, order: 2 },
       { field: 'email', label: 'Email', visible: true, order: 3 },
-      { field: 'phone_no', label: 'Phone Number', visible: true, order: 4 },
-      { field: 'linkedin', label: 'LinkedIn Profile', visible: false, order: 5 },
-      { field: 'website', label: 'Website', visible: false, order: 6 },
-      { field: 'contact_source', label: 'Contact Source', visible: false, order: 7 },
-      { field: 'industry', label: 'Industry', visible: true, order: 8 },
-      { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 9 },
+      { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
+      { field: 'region', label: 'Region', visible: true, order: 5 }, // Changed from country to region
+      { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 6 },
+      { field: 'industry', label: 'Industry', visible: false, order: 7 },
+      { field: 'contact_source', label: 'Source', visible: false, order: 8 },
+      { field: 'lead_status', label: 'Status', visible: false, order: 9 },
     ];
     setLocalColumns(defaultColumns);
   };

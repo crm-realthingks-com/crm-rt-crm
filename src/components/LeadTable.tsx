@@ -1,29 +1,50 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Search, 
+  Edit, 
+  Trash2, 
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw
+} from "lucide-react";
 import { LeadModal } from "./LeadModal";
 import { LeadColumnCustomizer, LeadColumnConfig } from "./LeadColumnCustomizer";
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2, Settings, Trash } from 'lucide-react';
-import { useSorting } from "@/hooks/useSorting";
-import { SortableTableHead } from "./SortableTableHead";
-import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { LeadStatusFilter } from "./LeadStatusFilter";
+import { ConvertToDealModal } from "./ConvertToDealModal";
 
-interface LeadTableProps {
-  showColumnCustomizer: boolean;
-  setShowColumnCustomizer: (show: boolean) => void;
-  showModal: boolean;
-  setShowModal: (show: boolean) => void;
-  selectedLeads: string[];
-  setSelectedLeads: (leads: string[]) => void;
-  refreshTrigger?: number;
-  onLeadsChange?: (leads: any[]) => void;
+interface Lead {
+  id: string;
+  lead_name: string;
+  company_name?: string;
+  position?: string;
+  email?: string;
+  phone_no?: string;
+  country?: string;
+  contact_owner?: string;
+  created_time?: string;
+  modified_time?: string;
+  lead_status?: string;
+  industry?: string;
+  contact_source?: string;
+  linkedin?: string;
+  website?: string;
+  description?: string;
+  created_by?: string;
+  modified_by?: string;
 }
 
 const defaultColumns: LeadColumnConfig[] = [
@@ -32,115 +53,94 @@ const defaultColumns: LeadColumnConfig[] = [
   { field: 'position', label: 'Position', visible: true, order: 2 },
   { field: 'email', label: 'Email', visible: true, order: 3 },
   { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
-  { field: 'region', label: 'Region', visible: true, order: 5 },
+  { field: 'country', label: 'Region', visible: true, order: 5 },
   { field: 'contact_owner', label: 'Lead Owner', visible: true, order: 6 },
-  { field: 'industry', label: 'Industry', visible: false, order: 7 },
-  { field: 'lead_source', label: 'Source', visible: false, order: 8 },
-  { field: 'status', label: 'Status', visible: false, order: 9 },
+  { field: 'lead_status', label: 'Lead Status', visible: true, order: 7 },
+  { field: 'industry', label: 'Industry', visible: false, order: 8 },
+  { field: 'contact_source', label: 'Source', visible: false, order: 9 },
 ];
 
-export const LeadTable = ({
-  showColumnCustomizer,
-  setShowColumnCustomizer,
-  showModal,
+interface LeadTableProps {
+  showColumnCustomizer: boolean;
+  setShowColumnCustomizer: (show: boolean) => void;
+  showModal: boolean;
+  setShowModal: (show: boolean) => void;
+  selectedLeads: string[];
+  setSelectedLeads: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+export const LeadTable = ({ 
+  showColumnCustomizer, 
+  setShowColumnCustomizer, 
+  showModal, 
   setShowModal,
   selectedLeads,
-  setSelectedLeads,
-  refreshTrigger = 0,
-  onLeadsChange
+  setSelectedLeads
 }: LeadTableProps) => {
-  const [leads, setLeads] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingLead, setEditingLead] = useState<any>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(25);
-  const [columns, setColumns] = useState<LeadColumnConfig[]>(defaultColumns);
-  const [tableKey, setTableKey] = useState(0);
-
-  const { user } = useAuth();
   const { toast } = useToast();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("New");
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
+  const [columns, setColumns] = useState(defaultColumns);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50); // Changed from 10 to 50
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [leadToConvert, setLeadToConvert] = useState<Lead | null>(null);
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Get unique contact_owner IDs for fetching display names
-  const contactOwnerIds = leads
-    .map(lead => lead.contact_owner)
-    .filter(Boolean)
-    .filter((id, index, arr) => arr.indexOf(id) === index);
-
-  const { displayNames } = useUserDisplayNames(contactOwnerIds);
-
-  // Load column preferences from localStorage on mount
   useEffect(() => {
-    const savedColumns = localStorage.getItem('leadTableColumns');
-    if (savedColumns) {
-      try {
-        const parsedColumns = JSON.parse(savedColumns);
-        console.log('Loading saved columns:', parsedColumns);
-        setColumns(parsedColumns);
-        setTableKey(prev => prev + 1);
-      } catch (error) {
-        console.error('Error parsing saved columns:', error);
-        setColumns(defaultColumns);
-      }
-    }
+    fetchLeads();
   }, []);
 
-  // Listen for column updates event
   useEffect(() => {
-    const handleColumnUpdate = () => {
-      console.log('Column update event received');
-      const savedColumns = localStorage.getItem('leadTableColumns');
-      if (savedColumns) {
-        try {
-          const parsedColumns = JSON.parse(savedColumns);
-          console.log('Applying updated columns:', parsedColumns);
-          setColumns(parsedColumns);
-          setTableKey(prev => prev + 1);
-        } catch (error) {
-          console.error('Error parsing updated columns:', error);
-        }
-      }
-    };
-
-    window.addEventListener('leadColumnsUpdated', handleColumnUpdate);
-    return () => window.removeEventListener('leadColumnsUpdated', handleColumnUpdate);
-  }, []);
-
-  // Save column preferences to localStorage and force re-render
-  const handleColumnsChange = (newColumns: LeadColumnConfig[]) => {
-    console.log('Updating columns:', newColumns);
-    setColumns(newColumns);
-    localStorage.setItem('leadTableColumns', JSON.stringify(newColumns));
-    setTableKey(prev => prev + 1);
-  };
-
-  // Get visible columns in the correct order
-  const visibleColumns = columns
-    .filter(col => col.visible)
-    .sort((a, b) => a.order - b.order);
-
-  console.log('Current visible columns:', visibleColumns.map(col => col.field));
-
-  // Filter leads first
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = !searchTerm || 
+    let filtered = leads.filter(lead =>
       lead.lead_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const leadStatus = lead.status || lead.lead_status || 'New';
-    const matchesStatus = filterStatus === 'all' || 
-      (leadStatus === filterStatus) ||
-      (filterStatus === 'New' && (!lead.status && !lead.lead_status));
-    
-    return matchesSearch && matchesStatus;
-  });
+      lead.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  // Apply sorting to filtered leads
-  const { sortedData, sortConfig, handleSort } = useSorting(filteredLeads);
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(lead => lead.lead_status === statusFilter);
+    }
 
-  const loadLeads = async () => {
+    // Apply sorting
+    if (sortField) {
+      filtered.sort((a, b) => {
+        const aValue = a[sortField as keyof Lead] || '';
+        const bValue = b[sortField as keyof Lead] || '';
+        
+        const comparison = aValue.toString().localeCompare(bValue.toString());
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    setFilteredLeads(filtered);
+    setCurrentPage(1);
+  }, [leads, searchTerm, statusFilter, sortField, sortDirection]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
+  };
+
+  const fetchLeads = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -148,62 +148,25 @@ export const LeadTable = ({
         .select('*')
         .order('created_time', { ascending: false });
 
-      if (error) {
-        console.error('Error loading leads:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load leads",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Loaded leads with source and region data:', data);
+      if (error) throw error;
       setLeads(data || []);
-      onLeadsChange?.(data || []);
     } catch (error) {
-      console.error('Error in loadLeads:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch leads",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadLeads();
-  }, [refreshTrigger]);
-
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedLeads = sortedData.slice(startIndex, endIndex);
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedLeads(paginatedLeads.map(lead => lead.id));
-    } else {
-      setSelectedLeads([]);
-    }
-  };
-
-  const handleSelectLead = (leadId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedLeads([...selectedLeads, leadId]);
-    } else {
-      setSelectedLeads(selectedLeads.filter(id => id !== leadId));
-    }
-  };
-
-  const handleEdit = (lead: any) => {
-    setEditingLead(lead);
-    setShowModal(true);
-  };
-
-  const handleDelete = async (leadId: string) => {
+  const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase
         .from('leads')
         .delete()
-        .eq('id', leadId);
+        .eq('id', id);
 
       if (error) throw error;
 
@@ -211,8 +174,8 @@ export const LeadTable = ({
         title: "Success",
         description: "Lead deleted successfully",
       });
-
-      loadLeads();
+      
+      fetchLeads();
     } catch (error) {
       toast({
         title: "Error",
@@ -222,238 +185,323 @@ export const LeadTable = ({
     }
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedLeads.length === 0) return;
-
-    if (!window.confirm(`Are you sure you want to delete ${selectedLeads.length} selected lead(s)?`)) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('leads')
-        .delete()
-        .in('id', selectedLeads);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: `${selectedLeads.length} lead(s) deleted successfully`,
-      });
-
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const pageLeads = getCurrentPageLeads().slice(0, 50);
+      setSelectedLeads(pageLeads.map(l => l.id));
+    } else {
       setSelectedLeads([]);
-      loadLeads();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete selected leads",
-        variant: "destructive",
-      });
     }
   };
 
-  const handleModalClose = () => {
-    setShowModal(false);
-    setEditingLead(null);
-    loadLeads();
-  };
-
-  const renderCellValue = (lead: any, field: string) => {
-    switch (field) {
-      case 'lead_name':
-        return <span className="font-medium">{lead.lead_name}</span>;
-      case 'company_name':
-        return lead.company_name;
-      case 'position':
-        return lead.position;
-      case 'email':
-        return lead.email;
-      case 'phone_no':
-        return lead.phone_no;
-      case 'region':
-        return lead.region || '-';
-      case 'contact_owner':
-        return lead.contact_owner ? (displayNames[lead.contact_owner] || 'Loading...') : '-';
-      case 'industry':
-        return lead.industry || '-';
-      case 'lead_source':
-        return lead.lead_source || '-';
-      case 'status':
-        const displayStatus = lead.status || lead.lead_status || 'New';
-        return (
-          <span className={`px-2 py-1 rounded-full text-xs ${
-            displayStatus === 'Qualified' ? 'bg-blue-100 text-blue-800' :
-            displayStatus === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
-            {displayStatus}
-          </span>
-        );
-      default:
-        return lead[field] || '-';
+  const handleSelectLead = (leadId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLeads(prev => [...prev, leadId]);
+    } else {
+      setSelectedLeads(prev => prev.filter(id => id !== leadId));
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center p-8">Loading leads...</div>;
-  }
+  const getCurrentPageLeads = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredLeads.slice(startIndex, startIndex + itemsPerPage);
+  };
+
+  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+
+  // Memoize user IDs to prevent unnecessary re-fetches
+  const createdByIds = useMemo(() => {
+    return [...new Set(leads.map(l => l.created_by).filter(Boolean))];
+  }, [leads]);
+
+  // Use the optimized hook
+  const { displayNames } = useUserDisplayNames(createdByIds);
+
+  const visibleColumns = columns.filter(col => col.visible);
+  const pageLeads = getCurrentPageLeads();
+
+  const handleConvertToDeal = (lead: Lead) => {
+    setLeadToConvert(lead);
+    setShowConvertModal(true);
+  };
+
+  const handleConvertSuccess = async () => {
+    // Update the lead status to "Converted" immediately
+    if (leadToConvert) {
+      try {
+        const { error } = await supabase
+          .from('leads')
+          .update({ lead_status: 'Converted' })
+          .eq('id', leadToConvert.id);
+
+        if (error) {
+          console.error("Error updating lead status:", error);
+        } else {
+          // Update local state immediately
+          setLeads(prevLeads => 
+            prevLeads.map(lead => 
+              lead.id === leadToConvert.id 
+                ? { ...lead, lead_status: 'Converted' }
+                : lead
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Error updating lead status:", error);
+      }
+    }
+    
+    fetchLeads();
+    setLeadToConvert(null);
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Header with actions */}
-      <div className="flex justify-between items-center">
-        <div className="flex gap-4 items-center">
-          <Input
-            placeholder="Search leads..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
+    <div className="space-y-6">
+      {/* Header and Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search leads..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-80"
+            />
+          </div>
+          <LeadStatusFilter 
+            value={statusFilter}
+            onValueChange={setStatusFilter}
           />
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="New">New</SelectItem>
-              <SelectItem value="Contacted">Contacted</SelectItem>
-              <SelectItem value="Qualified">Qualified</SelectItem>
-            </SelectContent>
-          </Select>
+          <Checkbox
+            checked={selectedLeads.length > 0 && selectedLeads.length === Math.min(pageLeads.length, 50)}
+            onCheckedChange={handleSelectAll}
+          />
+          <span className="text-sm text-muted-foreground">Select all</span>
         </div>
-        
-        <div className="flex gap-2">
-          {selectedLeads.length > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDeleteSelected}
-            >
-              <Trash className="w-4 h-4 mr-2" />
-              Delete Selected ({selectedLeads.length})
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowColumnCustomizer(true)}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Customize Columns
-          </Button>
-        </div>
-      </div>
-
-      {/* Results Info */}
-      <div className="text-sm text-muted-foreground">
-        Showing {paginatedLeads.length} of {sortedData.length} leads
-        {selectedLeads.length > 0 && ` (${selectedLeads.length} selected)`}
       </div>
 
       {/* Table */}
-      <div className="border rounded-lg">
-        <Table key={tableKey}>
+      <Card>
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">
                 <Checkbox
-                  checked={paginatedLeads.length > 0 && selectedLeads.length === paginatedLeads.length}
+                  checked={selectedLeads.length > 0 && selectedLeads.length === Math.min(pageLeads.length, 50)}
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
               {visibleColumns.map((column) => (
-                <SortableTableHead
-                  key={column.field}
-                  field={column.field}
-                  label={column.label}
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                />
+                <TableHead key={column.field}>
+                  <div 
+                    className="flex items-center gap-2 cursor-pointer hover:text-primary"
+                    onClick={() => handleSort(column.field)}
+                  >
+                    {column.label}
+                    {getSortIcon(column.field)}
+                  </div>
+                </TableHead>
               ))}
-              <TableHead>Actions</TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Actions
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Handle bulk convert to deal for selected leads
+                      if (selectedLeads.length === 1) {
+                        const lead = leads.find(l => l.id === selectedLeads[0]);
+                        if (lead) handleConvertToDeal(lead);
+                      }
+                    }}
+                    disabled={selectedLeads.length !== 1}
+                    className="ml-2"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                  </Button>
+                </div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedLeads.map((lead) => (
-              <TableRow key={lead.id}>
-                <TableCell>
-                  <Checkbox
-                    checked={selectedLeads.includes(lead.id)}
-                    onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
-                  />
-                </TableCell>
-                {visibleColumns.map((column) => (
-                  <TableCell key={`${lead.id}-${column.field}`}>
-                    {renderCellValue(lead, column.field)}
-                  </TableCell>
-                ))}
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(lead)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(lead.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
+                  Loading leads...
                 </TableCell>
               </TableRow>
-            ))}
+            ) : pageLeads.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
+                  No leads found
+                </TableCell>
+              </TableRow>
+            ) : (
+              pageLeads.map((lead) => (
+                <TableRow key={lead.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedLeads.includes(lead.id)}
+                      onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
+                    />
+                  </TableCell>
+                  {visibleColumns.map((column) => (
+                    <TableCell key={column.field}>
+                      {column.field === 'lead_name' ? (
+                        <button
+                          onClick={() => {
+                            setEditingLead(lead);
+                            setShowModal(true);
+                          }}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          {lead[column.field as keyof Lead]}
+                        </button>
+                      ) : column.field === 'contact_owner' ? (
+                        <span>
+                          {lead.created_by 
+                            ? displayNames[lead.created_by] || "Loading..."
+                            : '-'
+                          }
+                        </span>
+                      ) : column.field === 'lead_status' && lead.lead_status ? (
+                        <Badge variant={
+                          lead.lead_status === 'New' ? 'secondary' : 
+                          lead.lead_status === 'Contacted' ? 'default' : 
+                          lead.lead_status === 'Converted' ? 'outline' :
+                          'outline'
+                        }>
+                          {lead.lead_status}
+                        </Badge>
+                      ) : (
+                        lead[column.field as keyof Lead] || '-'
+                      )}
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingLead(lead);
+                          setShowModal(true);
+                        }}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setLeadToDelete(lead.id);
+                          setShowDeleteDialog(true);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleConvertToDeal(lead)}
+                        disabled={lead.lead_status === 'Converted'}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Convert
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          <span className="flex items-center px-4">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLeads.length)} of {filteredLeads.length} leads
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            <span className="text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       )}
 
       {/* Modals */}
-      {showModal && (
-        <LeadModal 
-          open={showModal} 
-          onOpenChange={setShowModal}
-          lead={editingLead}
-          onSuccess={handleModalClose}
-        />
-      )}
+      <LeadModal
+        open={showModal}
+        onOpenChange={setShowModal}
+        lead={editingLead}
+        onSuccess={() => {
+          fetchLeads();
+          setEditingLead(null);
+        }}
+      />
 
-      {showColumnCustomizer && (
-        <LeadColumnCustomizer
-          open={showColumnCustomizer}
-          onOpenChange={setShowColumnCustomizer}
-          columns={columns}
-          onColumnsChange={handleColumnsChange}
-        />
-      )}
+      <LeadColumnCustomizer
+        open={showColumnCustomizer}
+        onOpenChange={setShowColumnCustomizer}
+        columns={columns}
+        onColumnsChange={setColumns}
+      />
+
+      <ConvertToDealModal
+        open={showConvertModal}
+        onOpenChange={setShowConvertModal}
+        lead={leadToConvert}
+        onSuccess={handleConvertSuccess}
+      />
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the lead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (leadToDelete) {
+                  handleDelete(leadToDelete);
+                  setLeadToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -2,68 +2,56 @@
 // CSV utility functions for import/export
 
 export interface ContactCSVRow {
-  'Contact Name': string;
-  'Company Name': string;
-  'Position': string;
-  'Email': string;
-  'Phone': string;
-  'Mobile': string;
-  'Region': string;
-  'City': string;
-  'State': string;
-  'Industry': string;
-  'Contact Source': string;
-  'LinkedIn': string;
-  'Website': string;
-  'Description': string;
-  'Contact Owner': string;
-  'Annual Revenue': string;
-  'No Of Employees': string;
+  'id': string;
+  'contact_name': string;
+  'company_name': string;
+  'position': string;
+  'email': string;
+  'phone_no': string;
+  'linkedin': string;
+  'website': string;
+  'contact_source': string;
+  'industry': string;
+  'country': string;
+  'description': string;
+  'contact_owner': string;
+  'created_by': string;
+  'modified_by': string;
+  'created_time': string;
+  'modified_time': string;
 }
 
-export interface LeadCSVRow {
-  'Lead Name': string;
-  'Company Name': string;
-  'Position': string;
-  'Email': string;
-  'Phone': string;
-  'Mobile': string;
-  'Region': string;
-  'City': string;
-  'Industry': string;
-  'Lead Source': string;
-  'Lead Status': string;
-  'LinkedIn': string;
-  'Website': string;
-  'Description': string;
-  'Lead Owner': string;
-}
-
-export const exportContactsToCSV = (contacts: any[], userDisplayNames: Record<string, string> = {}) => {
+export const exportContactsToCSV = (contacts: any[]) => {
   console.log('exportContactsToCSV called with:', contacts.length, 'contacts');
   
   if (!contacts || contacts.length === 0) {
     throw new Error('No contacts to export');
   }
 
-  // Define headers with all current form fields
+  // Define headers in the exact sequence from the Supabase table
   const headers = [
-    'Contact Name',
-    'Company Name', 
-    'Position',
-    'Email',
-    'Phone',
-    'LinkedIn',
-    'Website',
-    'Contact Source',
-    'Industry',
-    'Region',
-    'Description',
-    'Contact Owner'
+    'id',
+    'contact_name',
+    'company_name',
+    'position',
+    'email',
+    'phone_no',
+    'linkedin',
+    'website',
+    'contact_source',
+    'industry',
+    'country',
+    'description',
+    'contact_owner',
+    'created_by',
+    'modified_by',
+    'created_time',
+    'modified_time'
   ];
 
   // Convert contacts to CSV rows
   const csvRows = contacts.map(contact => [
+    contact.id || '',
     contact.contact_name || '',
     contact.company_name || '',
     contact.position || '',
@@ -73,75 +61,13 @@ export const exportContactsToCSV = (contacts: any[], userDisplayNames: Record<st
     contact.website || '',
     contact.contact_source || '',
     contact.industry || '',
-    contact.region || '',
+    contact.country || '',
     contact.description || '',
-    userDisplayNames[contact.contact_owner] || contact.contact_owner || ''
-  ]);
-
-  // Combine headers and data
-  const allRows = [headers, ...csvRows];
-
-  // Convert to CSV string
-  const csvContent = allRows
-    .map(row => 
-      row.map(field => {
-        const str = String(field || '');
-        // If field contains comma, quote, or newline, wrap in quotes and escape quotes
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-          return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
-      }).join(',')
-    )
-    .join('\n');
-
-  console.log('CSV content generated, length:', csvContent.length);
-  return csvContent;
-};
-
-export const exportLeadsToCSV = (leads: any[], userDisplayNames: Record<string, string> = {}) => {
-  console.log('exportLeadsToCSV called with:', leads.length, 'leads');
-  
-  if (!leads || leads.length === 0) {
-    throw new Error('No leads to export');
-  }
-
-  // Define headers with all current form fields for leads
-  const headers = [
-    'Lead Name',
-    'Company Name',
-    'Position', 
-    'Email',
-    'Phone',
-    'LinkedIn',
-    'Website',
-    'Lead Source',
-    'Lead Status',
-    'Industry',
-    'Region',
-    'Country',
-    'Status',
-    'Description',
-    'Lead Owner'
-  ];
-
-  // Convert leads to CSV rows
-  const csvRows = leads.map(lead => [
-    lead.lead_name || '',
-    lead.company_name || '',
-    lead.position || '',
-    lead.email || '',
-    lead.phone_no || '',
-    lead.linkedin || '',
-    lead.website || '',
-    lead.lead_source || '',
-    lead.lead_status || '',
-    lead.industry || '',
-    lead.region || '',
-    lead.country || '',
-    lead.status || '',
-    lead.description || '',
-    userDisplayNames[lead.contact_owner] || lead.contact_owner || ''
+    contact.contact_owner || '',
+    contact.created_by || '',
+    contact.modified_by || '',
+    contact.created_time || '',
+    contact.modified_time || ''
   ]);
 
   // Combine headers and data
@@ -211,9 +137,7 @@ export const downloadCSV = (csvContent: string, filename: string) => {
     
     // Small delay before cleanup to ensure download starts
     setTimeout(() => {
-      if (document.body.contains(link)) {
-        document.body.removeChild(link);
-      }
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       console.log('Cleanup completed');
     }, 100);
@@ -227,15 +151,14 @@ export const downloadCSV = (csvContent: string, filename: string) => {
   }
 };
 
-export const parseContactsCSVFile = async (file: File): Promise<ContactCSVRow[]> => {
-  console.log('parseContactsCSVFile called with file:', file.name, 'size:', file.size, 'type:', file.type);
+export const parseCSVFile = async (file: File): Promise<ContactCSVRow[]> => {
+  console.log('parseCSVFile called with file:', file.name);
   
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
     reader.onload = (e) => {
       try {
-        console.log('FileReader onload triggered');
         const text = e.target?.result as string;
         console.log('File content length:', text.length);
         
@@ -261,6 +184,7 @@ export const parseContactsCSVFile = async (file: File): Promise<ContactCSVRow[]>
           if (!line) continue;
 
           const values = parseCSVLine(line);
+          console.log(`Row ${i} values:`, values);
 
           // Create contact object mapping headers to values
           const contact: any = {};
@@ -269,28 +193,30 @@ export const parseContactsCSVFile = async (file: File): Promise<ContactCSVRow[]>
             contact[header] = value;
           });
 
-          // Map to our expected format with flexible field matching
+          // Map to our expected format with exact field matching
           const mappedContact: ContactCSVRow = {
-            'Contact Name': contact['Contact Name'] || contact['contact_name'] || contact['name'] || '',
-            'Company Name': contact['Company Name'] || contact['company_name'] || contact['company'] || '',
-            'Position': contact['Position'] || contact['position'] || contact['title'] || '',
-            'Email': contact['Email'] || contact['email'] || '',
-            'Phone': contact['Phone'] || contact['phone_no'] || contact['phone'] || '',
-            'Mobile': contact['Mobile'] || contact['mobile_no'] || contact['mobile'] || '',
-            'LinkedIn': contact['LinkedIn'] || contact['linkedin'] || '',
-            'Website': contact['Website'] || contact['website'] || '',
-            'Contact Source': contact['Contact Source'] || contact['contact_source'] || contact['source'] || '',
-            'Industry': contact['Industry'] || contact['industry'] || '',
-            'Region': contact['Region'] || contact['region'] || '',
-            'City': contact['City'] || contact['city'] || '',
-            'State': contact['State'] || contact['state'] || '',
-            'Description': contact['Description'] || contact['description'] || '',
-            'Contact Owner': contact['Contact Owner'] || contact['contact_owner'] || contact['owner'] || '',
-            'Annual Revenue': contact['Annual Revenue'] || contact['annual_revenue'] || contact['revenue'] || '',
-            'No Of Employees': contact['No Of Employees'] || contact['no_of_employees'] || contact['employees'] || ''
+            'id': contact['id'] || '',
+            'contact_name': contact['contact_name'] || contact['Contact Name'] || contact['name'] || '',
+            'company_name': contact['company_name'] || contact['Company Name'] || contact['company'] || '',
+            'position': contact['position'] || contact['Position'] || contact['title'] || '',
+            'email': contact['email'] || contact['Email'] || '',
+            'phone_no': contact['phone_no'] || contact['Phone'] || contact['phone'] || '',
+            'linkedin': contact['linkedin'] || contact['LinkedIn'] || '',
+            'website': contact['website'] || contact['Website'] || '',
+            'contact_source': contact['contact_source'] || contact['Contact Source'] || contact['source'] || '',
+            'industry': contact['industry'] || contact['Industry'] || '',
+            'country': contact['country'] || contact['Country'] || '',
+            'description': contact['description'] || contact['Description'] || '',
+            'contact_owner': contact['contact_owner'] || '',
+            'created_by': contact['created_by'] || '',
+            'modified_by': contact['modified_by'] || '',
+            'created_time': contact['created_time'] || '',
+            'modified_time': contact['modified_time'] || ''
           };
 
-          if (mappedContact['Contact Name']) {
+          console.log('Mapped contact:', mappedContact);
+
+          if (mappedContact['contact_name']) {
             rows.push(mappedContact);
           }
         }

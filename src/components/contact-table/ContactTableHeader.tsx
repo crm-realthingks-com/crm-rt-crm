@@ -1,6 +1,8 @@
 
-import { Search } from "lucide-react";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 
 interface Contact {
   id: string;
@@ -15,6 +17,9 @@ interface ContactTableHeaderProps {
   selectedContacts: string[];
   setSelectedContacts: React.Dispatch<React.SetStateAction<string[]>>;
   pageContacts: Contact[];
+  sortField: string | null;
+  sortDirection: 'asc' | 'desc';
+  onSort: (field: string) => void;
 }
 
 export const ContactTableHeader = ({
@@ -22,8 +27,25 @@ export const ContactTableHeader = ({
   setSearchTerm,
   selectedContacts,
   setSelectedContacts,
-  pageContacts
+  pageContacts,
+  sortField,
+  sortDirection,
+  onSort
 }: ContactTableHeaderProps) => {
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const pageContactIds = pageContacts.slice(0, 50).map(c => c.id);
+      setSelectedContacts(pageContactIds);
+    } else {
+      setSelectedContacts([]);
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <ArrowUpDown className="w-4 h-4" />;
+    return sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
+  };
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -36,6 +58,11 @@ export const ContactTableHeader = ({
             className="pl-10 w-80"
           />
         </div>
+        <Checkbox
+          checked={selectedContacts.length > 0 && selectedContacts.length === Math.min(pageContacts.length, 50)}
+          onCheckedChange={handleSelectAll}
+        />
+        <span className="text-sm text-muted-foreground">Select all</span>
       </div>
     </div>
   );

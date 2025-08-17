@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,39 +27,16 @@ export const LeadColumnCustomizer = ({
 }: LeadColumnCustomizerProps) => {
   const [localColumns, setLocalColumns] = useState<LeadColumnConfig[]>(columns);
 
-  // Update local columns when props change
-  useEffect(() => {
-    setLocalColumns(columns);
-  }, [columns]);
-
   const handleVisibilityChange = (field: string, visible: boolean) => {
     const updatedColumns = localColumns.map(col => 
       col.field === field ? { ...col, visible } : col
     );
     setLocalColumns(updatedColumns);
-    
-    // Apply changes immediately for real-time updates
-    onColumnsChange(updatedColumns);
-    localStorage.setItem('leadTableColumns', JSON.stringify(updatedColumns));
-    
-    // Trigger table re-render event
-    setTimeout(() => {
-      window.dispatchEvent(new Event('leadColumnsUpdated'));
-    }, 50);
   };
 
-  const handleApplyChanges = () => {
-    // Ensure all changes are applied and persist to localStorage
+  const handleSave = () => {
     onColumnsChange(localColumns);
-    localStorage.setItem('leadTableColumns', JSON.stringify(localColumns));
-    
-    // Close the modal
     onOpenChange(false);
-    
-    // Force table update
-    setTimeout(() => {
-      window.dispatchEvent(new Event('leadColumnsUpdated'));
-    }, 100);
   };
 
   const handleReset = () => {
@@ -69,26 +46,13 @@ export const LeadColumnCustomizer = ({
       { field: 'position', label: 'Position', visible: true, order: 2 },
       { field: 'email', label: 'Email', visible: true, order: 3 },
       { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
-      { field: 'region', label: 'Region', visible: true, order: 5 },
+      { field: 'country', label: 'Region', visible: true, order: 5 },
       { field: 'contact_owner', label: 'Lead Owner', visible: true, order: 6 },
-      { field: 'industry', label: 'Industry', visible: false, order: 7 },
-      { field: 'lead_source', label: 'Source', visible: false, order: 8 },
-      { field: 'status', label: 'Status', visible: false, order: 9 },
+      { field: 'lead_status', label: 'Lead Status', visible: true, order: 7 },
+      { field: 'industry', label: 'Industry', visible: false, order: 8 },
+      { field: 'contact_source', label: 'Source', visible: false, order: 9 },
     ];
     setLocalColumns(defaultColumns);
-    onColumnsChange(defaultColumns);
-    localStorage.setItem('leadTableColumns', JSON.stringify(defaultColumns));
-    
-    // Trigger table re-render
-    setTimeout(() => {
-      window.dispatchEvent(new Event('leadColumnsUpdated'));
-    }, 50);
-  };
-
-  const handleCancel = () => {
-    // Reset to original columns if user cancels
-    setLocalColumns(columns);
-    onOpenChange(false);
   };
 
   return (
@@ -100,14 +64,14 @@ export const LeadColumnCustomizer = ({
         
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-            <strong>Tip:</strong> Check/uncheck to show/hide columns in the lead table. Changes are applied instantly!
+            <strong>Tip:</strong> Check/uncheck to show/hide columns in the lead table.
           </div>
           
           <div className="space-y-2 max-h-[400px] overflow-y-auto p-1">
             {localColumns.map((column) => (
               <div
                 key={column.field}
-                className="flex items-center space-x-3 p-3 border rounded-lg bg-card hover:bg-muted/30 transition-colors"
+                className="flex items-center space-x-3 p-3 border rounded-lg bg-card hover:bg-muted/30"
               >
                 <Checkbox
                   id={column.field}
@@ -123,12 +87,6 @@ export const LeadColumnCustomizer = ({
                 >
                   {column.label}
                 </Label>
-
-                {column.visible && (
-                  <span className="text-xs text-green-600 font-medium">
-                    Visible
-                  </span>
-                )}
               </div>
             ))}
           </div>
@@ -137,14 +95,9 @@ export const LeadColumnCustomizer = ({
             <Button variant="outline" onClick={handleReset}>
               Reset to Default
             </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancel}>
-                Cancel
-              </Button>
-              <Button onClick={handleApplyChanges}>
-                Apply Changes
-              </Button>
-            </div>
+            <Button onClick={handleSave}>
+              Apply Changes
+            </Button>
           </div>
         </div>
       </DialogContent>

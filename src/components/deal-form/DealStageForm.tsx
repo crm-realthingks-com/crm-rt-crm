@@ -14,7 +14,6 @@ interface DealStageFormProps {
   fieldErrors: Record<string, string>;
   stage: DealStage;
   showPreviousStages: boolean;
-  isLeadConversion?: boolean; // Add flag to indicate lead conversion
 }
 
 export const DealStageForm = ({ 
@@ -23,8 +22,7 @@ export const DealStageForm = ({
   onLeadSelect, 
   fieldErrors, 
   stage, 
-  showPreviousStages,
-  isLeadConversion 
+  showPreviousStages 
 }: DealStageFormProps) => {
   const getStageIndex = (stage: DealStage): number => {
     const stages = ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'];
@@ -43,7 +41,6 @@ export const DealStageForm = ({
             onFieldChange={onFieldChange}
             onLeadSelect={onLeadSelect}
             fieldErrors={fieldErrors}
-            isLeadConversion={isLeadConversion}
           />
         );
       case 'Discussions':

@@ -25,10 +25,10 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!password.trim()) {
       toast({
-        title: "Validation Error",
-        description: "Email and password are required",
+        title: "Error",
+        description: "Password is required",
         variant: "destructive",
       });
       return;
@@ -36,7 +36,7 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
 
     if (password.length < 6) {
       toast({
-        title: "Validation Error",
+        title: "Error",
         description: "Password must be at least 6 characters long",
         variant: "destructive",
       });
@@ -46,34 +46,17 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No valid session found. Please refresh and try again.');
-      }
-
-      console.log('Creating user with data:', { email, displayName, role });
-
-      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+      const { error } = await supabase.functions.invoke('user-admin', {
+        method: 'POST',
         body: {
           email,
           displayName,
           role,
           password
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
         }
       });
 
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to create user');
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to create user');
-      }
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -82,11 +65,11 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
       
       onSuccess();
       handleClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating user:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create user",
+        description: "Failed to create user",
         variant: "destructive",
       });
     } finally {
@@ -110,7 +93,7 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
@@ -128,11 +111,12 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Full Name"
+              required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password *</Label>
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
@@ -159,7 +143,7 @@ const UserModal = ({ open, onClose, onSuccess }: UserModalProps) => {
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

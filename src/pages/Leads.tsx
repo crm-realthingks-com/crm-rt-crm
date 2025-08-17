@@ -1,126 +1,151 @@
 
-import { useState } from 'react';
-import { LeadsTable } from '@/components/LeadsTable';
-import { LeadConversionHandler } from '@/components/LeadConversionHandler';
-import { Deal } from '@/types/deal';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { convertLeadToDeal } from '@/utils/leadToDealConverter';
+import { LeadTable } from "@/components/LeadTable";
+import { Button } from "@/components/ui/button";
+import { Settings, Plus, Trash2, ChevronDown, Upload, Download } from "lucide-react";
+import { useState, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useSimpleLeadsImportExport } from "@/hooks/useSimpleLeadsImportExport";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Leads = () => {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedLead, setSelectedLead] = useState<any>(null);
-  const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
+  const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLeadEdit = (lead: any) => {
-    setSelectedLead(lead);
-    setIsLeadModalOpen(true);
-  };
-
-  const handleLeadModalClose = () => {
-    setIsLeadModalOpen(false);
-    setSelectedLead(null);
-  };
-
-  const handleLeadSuccess = () => {
+  const { handleImport, handleExport, isImporting } = useSimpleLeadsImportExport(() => {
     setRefreshTrigger(prev => prev + 1);
-  };
+  });
 
-  const handleDealSave = async (dealData: Partial<Deal>): Promise<void> => {
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
+  const handleBulkDelete = async () => {
+    if (selectedLeads.length === 0) return;
 
     try {
-      console.log('Creating deal with data:', dealData);
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .in('id', selectedLeads);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `${selectedLeads.length} leads deleted successfully`,
+      });
       
-      // Ensure deal_name is always provided
-      const dealToInsert = {
-        ...dealData,
-        deal_name: dealData.deal_name || dealData.project_name || 'Untitled Deal',
-        created_by: user.id,
-        modified_by: user.id,
-        created_at: new Date().toISOString(),
-        modified_at: new Date().toISOString()
-      };
-
-      const { data, error } = await supabase
-        .from('deals')
-        .insert(dealToInsert)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating deal:', error);
-        throw error;
-      }
-
-      console.log('Deal created successfully:', data);
-
-      // Update the related lead status to "Qualified" if there's a related_lead_id
-      if (dealData.related_lead_id) {
-        console.log('Updating lead status to Qualified for lead:', dealData.related_lead_id);
-        
-        const { error: updateError } = await supabase
-          .from('leads')
-          .update({ 
-            status: 'Qualified',
-            modified_by: user.id,
-            modified_time: new Date().toISOString()
-          })
-          .eq('id', dealData.related_lead_id);
-
-        if (updateError) {
-          console.error('Error updating lead status:', updateError);
-          // Still show success for deal creation, but warn about lead update
-          toast({
-            title: "Deal Created",
-            description: "Deal created successfully, but failed to update lead status",
-            variant: "destructive",
-          });
-        } else {
-          console.log('Lead status updated to Qualified successfully');
-          toast({
-            title: "Success",
-            description: "Deal created successfully and lead status updated to Qualified",
-          });
-        }
-      } else {
-        toast({
-          title: "Success",
-          description: "Deal created successfully",
-        });
-      }
-
-      // Trigger refresh of the leads table
+      setSelectedLeads([]);
       setRefreshTrigger(prev => prev + 1);
-    } catch (error: any) {
-      console.error('Error in handleDealSave:', error);
-      throw error;
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete leads",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshTrigger(prev => prev + 1);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'text/csv') {
+      handleImport(file);
+    } else {
+      toast({
+        title: "Error",
+        description: "Please select a valid CSV file",
+        variant: "destructive",
+      });
+    }
+    // Reset the input value so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
     <div className="p-6 space-y-6">
-      <LeadsTable 
-        key={refreshTrigger}
-        onLeadEdit={handleLeadEdit}
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Leads</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            onClick={() => setShowColumnCustomizer(true)}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+          </Button>
+          
+          {selectedLeads.length > 0 && (
+            <Button 
+              variant="destructive"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Selected ({selectedLeads.length})
+            </Button>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="default">
+                Actions
+                <ChevronDown className="w-4 h-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+                <Upload className="w-4 h-4 mr-2" />
+                {isImporting ? 'Importing...' : 'Import CSV'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExport}>
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleBulkDelete}
+                disabled={selectedLeads.length === 0}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected ({selectedLeads.length})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Lead
+          </Button>
+        </div>
+      </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
       />
-      
-      <LeadConversionHandler
-        lead={selectedLead}
-        isLeadModalOpen={isLeadModalOpen}
-        onLeadModalClose={handleLeadModalClose}
-        onLeadSuccess={handleLeadSuccess}
-        onDealSave={handleDealSave}
-        onRefresh={handleRefresh}
+
+      {/* Lead Table */}
+      <LeadTable 
+        showColumnCustomizer={showColumnCustomizer}
+        setShowColumnCustomizer={setShowColumnCustomizer}
+        showModal={showModal}
+        setShowModal={setShowModal}
+        selectedLeads={selectedLeads}
+        setSelectedLeads={setSelectedLeads}
+        key={refreshTrigger}
       />
     </div>
   );

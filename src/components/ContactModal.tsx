@@ -13,16 +13,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 
 const contactSchema = z.object({
-  contact_name: z.string().min(1, "Contact name is required").trim(),
-  company_name: z.string().min(1, "Company name is required").trim(),
+  contact_name: z.string().min(1, "Contact name is required"),
+  company_name: z.string().optional(),
   position: z.string().optional(),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  email: z.string().email("Invalid email address").min(1, "Email is required"),
   phone_no: z.string().optional(),
   linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
   contact_source: z.string().optional(),
   industry: z.string().optional(),
-  region: z.string().optional(),
+  region: z.string().optional(), // Changed from country to region
   description: z.string().optional(),
 });
 
@@ -39,11 +39,8 @@ interface Contact {
   website?: string;
   contact_source?: string;
   industry?: string;
-  region?: string;
+  region?: string; // Changed from country to region
   description?: string;
-  contact_owner?: string;
-  created_by?: string;
-  modified_by?: string;
 }
 
 interface ContactModalProps {
@@ -54,32 +51,25 @@ interface ContactModalProps {
 }
 
 const contactSources = [
+  "LinkedIn",
   "Website",
   "Referral", 
   "Social Media",
   "Email Campaign",
-  "Trade Show",
-  "Cold Call",
-  "LinkedIn",
   "Other"
 ];
 
 const industries = [
   "Automotive",
   "Technology",
-  "Healthcare",
-  "Finance",
   "Manufacturing",
-  "Retail",
-  "Education",
-  "Real Estate",
   "Other"
 ];
 
 const regions = [
   "EU",
-  "US",
-  "Asia",
+  "US", 
+  "ASIA",
   "Other"
 ];
 
@@ -99,14 +89,13 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       website: "",
       contact_source: "",
       industry: "Automotive",
-      region: "EU",
+      region: "EU", // Changed from country to region
       description: "",
     },
   });
 
   useEffect(() => {
     if (contact) {
-      console.log('ContactModal: Setting form values for contact:', contact);
       form.reset({
         contact_name: contact.contact_name || "",
         company_name: contact.company_name || "",
@@ -117,7 +106,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: contact.website || "",
         contact_source: contact.contact_source || "",
         industry: contact.industry || "Automotive",
-        region: contact.region || "EU",
+        region: contact.region || "EU", // Changed from country to region
         description: contact.description || "",
       });
     } else {
@@ -131,7 +120,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: "",
         contact_source: "",
         industry: "Automotive",
-        region: "EU",
+        region: "EU", // Changed from country to region
         description: "",
       });
     }
@@ -140,9 +129,6 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
   const onSubmit = async (data: ContactFormData) => {
     try {
       setLoading(true);
-      console.log('ContactModal: Submitting form data:', data);
-      console.log('ContactModal: Contact being edited:', contact);
-      
       const user = await supabase.auth.getUser();
       
       if (!user.data.user) {
@@ -154,73 +140,47 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         return;
       }
 
-      // Prepare the contact data with proper validation and trimming
       const contactData = {
-        contact_name: data.contact_name.trim(),
-        company_name: data.company_name.trim(),
-        position: data.position?.trim() || null,
-        email: data.email?.trim() || null,
-        phone_no: data.phone_no?.trim() || null,
-        linkedin: data.linkedin?.trim() || null,
-        website: data.website?.trim() || null,
-        contact_source: data.contact_source?.trim() || null,
-        industry: data.industry?.trim() || null,
-        region: data.region?.trim() || "EU",
-        description: data.description?.trim() || null,
+        contact_name: data.contact_name,
+        company_name: data.company_name || null,
+        position: data.position || null,
+        email: data.email,
+        phone_no: data.phone_no || null,
+        linkedin: data.linkedin || null,
+        website: data.website || null,
+        contact_source: data.contact_source || null,
+        industry: data.industry || null,
+        region: data.region || null, // Changed from country to region
+        description: data.description || null,
+        created_by: user.data.user.id,
         modified_by: user.data.user.id,
+        contact_owner: user.data.user.id,
       };
 
-      // Additional validation for URLs if provided
-      if (contactData.linkedin && contactData.linkedin !== '' && !contactData.linkedin.startsWith('http')) {
-        contactData.linkedin = `https://${contactData.linkedin}`;
-      }
-      
-      if (contactData.website && contactData.website !== '' && !contactData.website.startsWith('http')) {
-        contactData.website = `https://${contactData.website}`;
-      }
-
-      console.log('ContactModal: Prepared contact data:', contactData);
-
-      if (contact?.id) {
+      if (contact) {
         // Update existing contact
-        console.log('ContactModal: Updating contact with ID:', contact.id);
-        
-        const { data: updatedData, error } = await supabase
+        const { error } = await supabase
           .from('contacts')
-          .update(contactData)
-          .eq('id', contact.id)
-          .select();
+          .update({
+            ...contactData,
+            modified_time: new Date().toISOString(),
+          })
+          .eq('id', contact.id);
 
-        if (error) {
-          console.error('ContactModal: Update error:', error);
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log('ContactModal: Contact updated successfully:', updatedData);
         toast({
           title: "Success",
           description: "Contact updated successfully",
         });
       } else {
         // Create new contact
-        console.log('ContactModal: Creating new contact');
-        const newContactData = {
-          ...contactData,
-          created_by: user.data.user.id,
-          contact_owner: user.data.user.id,
-        };
-        
-        const { data: newData, error } = await supabase
+        const { error } = await supabase
           .from('contacts')
-          .insert(newContactData)
-          .select();
+          .insert(contactData);
 
-        if (error) {
-          console.error('ContactModal: Insert error:', error);
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log('ContactModal: Contact created successfully:', newData);
         toast({
           title: "Success",
           description: "Contact created successfully",
@@ -229,24 +189,11 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
 
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      console.error('ContactModal: Submit error:', error);
-      
-      // Provide more specific error messages
-      let errorMessage = "An unexpected error occurred";
-      if (error.message?.includes('contact_name')) {
-        errorMessage = "Contact name is required and cannot be empty";
-      } else if (error.message?.includes('company_name')) {
-        errorMessage = "Company name is required and cannot be empty";
-      } else if (error.message?.includes('email')) {
-        errorMessage = "Please provide a valid email address";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
+    } catch (error) {
+      console.error('Error saving contact:', error);
       toast({
         title: "Error",
-        description: errorMessage,
+        description: contact ? "Failed to update contact" : "Failed to create contact",
         variant: "destructive",
       });
     } finally {
@@ -273,11 +220,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>Contact Name *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="John Doe" 
-                        {...field}
-                        value={field.value || ""}
-                      />
+                      <Input placeholder="Contact Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -289,13 +232,9 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                 name="company_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Company Name *</FormLabel>
+                    <FormLabel>Company Name</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Acme Corp" 
-                        {...field}
-                        value={field.value || ""}
-                      />
+                      <Input placeholder="Company Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -321,9 +260,9 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email *</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@acme.com" {...field} />
+                      <Input type="email" placeholder="email@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -351,7 +290,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>LinkedIn Profile</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://linkedin.com/in/johndoe" {...field} />
+                      <Input placeholder="https://linkedin.com/in/username" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -365,7 +304,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>Website</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://acme.com" {...field} />
+                      <Input placeholder="https://example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -378,7 +317,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Contact Source</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select source" />
@@ -403,7 +342,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Industry</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select industry" />
@@ -428,7 +367,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Region</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || "EU"}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select region" />

@@ -4,16 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Deal, DealStage } from "@/types/deal";
-import { DealFilters } from "@/types/filters";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { ListView } from "@/components/ListView";
 import { DealForm } from "@/components/DealForm";
-import { DealsFilterPanel } from "@/components/deal-filters/DealsFilterPanel";
 import { Button } from "@/components/ui/button";
-import { ImportExportBar } from "@/components/ImportExportBar";
-import { ColumnCustomizer, ColumnConfig } from "@/components/ColumnCustomizer";
 import { useToast } from "@/hooks/use-toast";
-import { useFilteredDeals } from "@/hooks/useFilteredDeals";
 import { Plus } from "lucide-react";
 
 const DealsPage = () => {
@@ -27,48 +22,7 @@ const DealsPage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [initialStage, setInitialStage] = useState<DealStage>('Lead');
-  const [activeView, setActiveView] = useState<'kanban' | 'list'>('kanban');
-  const [filters, setFilters] = useState<DealFilters>({});
-  const [columns, setColumns] = useState<ColumnConfig[]>([
-    { field: 'project_name', label: 'Project', visible: true, order: 0 },
-    { field: 'customer_name', label: 'Customer', visible: true, order: 1 },
-    { field: 'lead_owner', label: 'Lead Owner', visible: true, order: 2 },
-    { field: 'stage', label: 'Stage', visible: true, order: 3 },
-    { field: 'priority', label: 'Priority', visible: true, order: 4 },
-    { field: 'total_contract_value', label: 'Value', visible: true, order: 5 },
-    { field: 'expected_closing_date', label: 'Expected Close', visible: true, order: 6 },
-    
-    { field: 'lead_name', label: 'Lead Name', visible: false, order: 7 },
-    { field: 'region', label: 'Region', visible: false, order: 8 },
-    { field: 'probability', label: 'Probability', visible: false, order: 9 },
-    { field: 'internal_comment', label: 'Comment', visible: false, order: 10 },
-    { field: 'customer_need', label: 'Customer Need', visible: false, order: 11 },
-    { field: 'customer_challenges', label: 'Customer Challenges', visible: false, order: 12 },
-    { field: 'relationship_strength', label: 'Relationship Strength', visible: false, order: 13 },
-    { field: 'budget', label: 'Budget', visible: false, order: 14 },
-    { field: 'business_value', label: 'Business Value', visible: false, order: 15 },
-    { field: 'decision_maker_level', label: 'Decision Maker Level', visible: false, order: 16 },
-    { field: 'is_recurring', label: 'Is Recurring', visible: false, order: 17 },
-    { field: 'project_duration', label: 'Duration', visible: false, order: 18 },
-    { field: 'start_date', label: 'Start Date', visible: false, order: 19 },
-    { field: 'end_date', label: 'End Date', visible: false, order: 20 },
-    { field: 'rfq_received_date', label: 'RFQ Received', visible: false, order: 21 },
-    { field: 'proposal_due_date', label: 'Proposal Due', visible: false, order: 22 },
-    { field: 'rfq_status', label: 'RFQ Status', visible: false, order: 23 },
-    { field: 'currency_type', label: 'Currency', visible: false, order: 24 },
-    { field: 'action_items', label: 'Action Items', visible: false, order: 25 },
-    { field: 'current_status', label: 'Current Status', visible: false, order: 26 },
-    { field: 'closing', label: 'Closing', visible: false, order: 27 },
-    { field: 'won_reason', label: 'Won Reason', visible: false, order: 28 },
-    { field: 'lost_reason', label: 'Lost Reason', visible: false, order: 29 },
-    { field: 'need_improvement', label: 'Need Improvement', visible: false, order: 30 },
-    { field: 'drop_reason', label: 'Drop Reason', visible: false, order: 31 },
-    { field: 'created_at', label: 'Created', visible: false, order: 32 },
-    { field: 'modified_at', label: 'Updated', visible: false, order: 33 },
-  ]);
-
-  // Use the filtered deals hook
-  const { filteredDeals, uniqueValues } = useFilteredDeals(deals, filters);
+  const [activeView, setActiveView] = useState<'kanban' | 'list'>('list');
 
   const fetchDeals = async () => {
     try {
@@ -87,10 +41,8 @@ const DealsPage = () => {
         return;
       }
 
-      console.log('Fetched deals:', data);
       setDeals((data || []) as unknown as Deal[]);
     } catch (error) {
-      console.error('Error fetching deals:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred",
@@ -101,78 +53,72 @@ const DealsPage = () => {
     }
   };
 
-  // Centralized update function that both views will use
   const handleUpdateDeal = async (dealId: string, updates: Partial<Deal>) => {
     try {
-      console.log('Updating deal:', dealId, updates);
+      console.log("=== HANDLE UPDATE DEAL DEBUG ===");
+      console.log("Deal ID:", dealId);
+      console.log("Updates:", updates);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('deals')
         .update({ ...updates, modified_at: new Date().toISOString() })
-        .eq('id', dealId);
+        .eq('id', dealId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
 
-      // Update local state immediately for instant UI feedback
+      console.log("Update successful, data:", data);
+      
       setDeals(prev => prev.map(deal => 
-        deal.id === dealId ? { ...deal, ...updates, modified_at: new Date().toISOString() } : deal
+        deal.id === dealId ? { ...deal, ...updates } : deal
       ));
-
-      console.log('Deal updated successfully');
+      
+      toast({
+        title: "Success",
+        description: "Deal updated successfully",
+      });
     } catch (error) {
-      console.error('Error updating deal:', error);
+      console.error("Update deal error:", error);
       toast({
         title: "Error",
-        description: "Failed to update deal",
+        description: `Failed to update deal: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
-      throw error; // Re-throw to let calling component handle it
+      throw error;
     }
   };
 
-  // Centralized save function for both creating and updating deals
   const handleSaveDeal = async (dealData: Partial<Deal>) => {
     try {
-      console.log('Saving deal:', { isCreating, dealData });
-      
       if (isCreating) {
-        const newDealData = { 
-          ...dealData, 
-          deal_name: dealData.project_name || 'Untitled Deal',
-          created_by: user?.id,
-          modified_by: user?.id,
-          created_at: new Date().toISOString(),
-          modified_at: new Date().toISOString()
-        };
-
         const { data, error } = await supabase
           .from('deals')
-          .insert([newDealData])
+          .insert([{ 
+            ...dealData, 
+            deal_name: dealData.project_name || 'Untitled Deal',
+            created_by: user?.id,
+            modified_by: user?.id 
+          }])
           .select()
           .single();
 
         if (error) throw error;
 
-        // Add to local state immediately
         setDeals(prev => [data as unknown as Deal, ...prev]);
-        
-        toast({
-          title: "Success",
-          description: "Deal created successfully",
-        });
       } else if (selectedDeal) {
         const updateData = {
           ...dealData,
           deal_name: dealData.project_name || selectedDeal.project_name || 'Untitled Deal',
+          modified_at: new Date().toISOString(),
           modified_by: user?.id
         };
         
         await handleUpdateDeal(selectedDeal.id, updateData);
-        
-        toast({
-          title: "Success",
-          description: "Deal updated successfully",
-        });
+        await fetchDeals();
       }
     } catch (error) {
       console.error("Error in handleSaveDeal:", error);
@@ -180,11 +126,8 @@ const DealsPage = () => {
     }
   };
 
-  // Centralized delete function that both views will use
   const handleDeleteDeals = async (dealIds: string[]) => {
     try {
-      console.log('Deleting deals:', dealIds);
-      
       const { error } = await supabase
         .from('deals')
         .delete()
@@ -192,7 +135,6 @@ const DealsPage = () => {
 
       if (error) throw error;
 
-      // Update local state immediately
       setDeals(prev => prev.filter(deal => !dealIds.includes(deal.id)));
       
       toast({
@@ -200,78 +142,20 @@ const DealsPage = () => {
         description: `Deleted ${dealIds.length} deal(s)`,
       });
     } catch (error) {
-      console.error('Error deleting deals:', error);
       toast({
         title: "Error",
         description: "Failed to delete deals",
         variant: "destructive",
       });
-      throw error;
     }
   };
 
-  // Centralized import function
   const handleImportDeals = async (importedDeals: (Partial<Deal> & { shouldUpdate?: boolean })[]) => {
-    try {
-      console.log('Importing deals:', importedDeals);
-      let createdCount = 0;
-      let updatedCount = 0;
-
-      for (const importDeal of importedDeals) {
-        const { shouldUpdate, ...dealData } = importDeal;
-        
-        const existingDeal = deals.find(d => 
-          (dealData.id && d.id === dealData.id) || 
-          (dealData.project_name && d.project_name === dealData.project_name)
-        );
-
-        if (existingDeal) {
-          const updateData = {
-            ...dealData,
-            modified_by: user?.id,
-            deal_name: dealData.project_name || existingDeal.deal_name,
-            modified_at: new Date().toISOString()
-          };
-
-          await handleUpdateDeal(existingDeal.id, updateData);
-          updatedCount++;
-        } else {
-          const newDealData = {
-            ...dealData,
-            stage: dealData.stage || 'Lead' as const,
-            created_by: user?.id,
-            modified_by: user?.id,
-            deal_name: dealData.project_name || `Imported Deal ${Date.now()}`,
-            created_at: new Date().toISOString(),
-            modified_at: new Date().toISOString()
-          };
-
-          const { data, error } = await supabase
-            .from('deals')
-            .insert(newDealData)
-            .select()
-            .single();
-
-          if (error) throw error;
-          
-          // Add to local state
-          setDeals(prev => [data as unknown as Deal, ...prev]);
-          createdCount++;
-        }
-      }
-      
-      toast({
-        title: "Import successful",
-        description: `Created ${createdCount} new deals, updated ${updatedCount} existing deals`,
-      });
-    } catch (error) {
-      console.error('Import error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to import deals. Please check the CSV format.",
-        variant: "destructive",
-      });
-    }
+    // This function is kept for compatibility but the actual import logic is now handled
+    // by the simplified CSV processor in useDealsImportExport hook
+    console.log('handleImportDeals called with:', importedDeals.length, 'deals');
+    // Refresh data after import
+    await fetchDeals();
   };
 
   const handleCreateDeal = (stage: DealStage) => {
@@ -302,12 +186,51 @@ const DealsPage = () => {
   useEffect(() => {
     if (user) {
       fetchDeals();
+
+      // Set up real-time subscription
+      const channel = supabase
+        .channel('deals-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'deals'
+          },
+          (payload) => {
+            console.log('Real-time deal change:', payload);
+            
+            if (payload.eventType === 'INSERT') {
+              setDeals(prev => [payload.new as Deal, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+              setDeals(prev => prev.map(deal => 
+                deal.id === payload.new.id ? { ...deal, ...payload.new } as Deal : deal
+              ));
+            } else if (payload.eventType === 'DELETE') {
+              setDeals(prev => prev.filter(deal => deal.id !== payload.old.id));
+            }
+          }
+        )
+        .subscribe();
+
+      // Listen for custom import events
+      const handleImportEvent = () => {
+        console.log('DealsPage: Received deals-data-updated event, refreshing...');
+        fetchDeals();
+      };
+      
+      window.addEventListener('deals-data-updated', handleImportEvent);
+
+      return () => {
+        supabase.removeChannel(channel);
+        window.removeEventListener('deals-data-updated', handleImportEvent);
+      };
     }
   }, [user]);
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading...</p>
@@ -321,41 +244,21 @@ const DealsPage = () => {
   }
 
   return (
-    <div className="w-full h-screen overflow-hidden bg-background">
-      {/* Compact Header */}
-      <div className="w-full bg-background border-b">
-        <div className="w-full px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 flex-1">
-              <h1 className="text-2xl font-bold text-foreground">Deals Pipeline</h1>
-              <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                {filteredDeals.length} deals
-              </span>
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Fixed Header */}
+      <div className="flex-shrink-0 bg-background border-b">
+        <div className="px-6 py-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Deals Pipeline</h1>
             </div>
-            
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <ImportExportBar
-                deals={filteredDeals}
-                onImport={handleImportDeals}
-                onExport={() => {}}
-                selectedDeals={[]}
-                onRefresh={fetchDeals}
-              />
-              
-              {/* Columns button - moved to the right side, only shown in list view */}
-              {activeView === 'list' && (
-                <ColumnCustomizer
-                  columns={columns}
-                  onUpdate={setColumns}
-                />
-              )}
-              
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
               <div className="bg-muted rounded-lg p-1 flex">
                 <Button
                   variant={activeView === 'kanban' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setActiveView('kanban')}
-                  className={`h-8 px-3 text-sm ${activeView === 'kanban' ? 'bg-primary text-primary-foreground' : ''}`}
+                  className={activeView === 'kanban' ? 'bg-primary text-primary-foreground' : ''}
                 >
                   Kanban
                 </Button>
@@ -363,41 +266,28 @@ const DealsPage = () => {
                   variant={activeView === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setActiveView('list')}
-                  className={`h-8 px-3 text-sm ${activeView === 'list' ? 'bg-primary text-primary-foreground' : ''}`}
+                  className={activeView === 'list' ? 'bg-primary text-primary-foreground' : ''}
                 >
                   List
                 </Button>
               </div>
-              
               <Button 
                 onClick={() => handleCreateDeal('Lead')}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 text-sm"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                New Deal
+                <span className="hidden sm:inline">New Deal</span>
               </Button>
             </div>
           </div>
-
-          {/* Only show filters panel in List view */}
-          {activeView === 'list' && (
-            <div className="mt-3">
-              <DealsFilterPanel
-                filters={filters}
-                onFiltersChange={setFilters}
-                uniqueValues={uniqueValues}
-                onRefresh={fetchDeals}
-              />
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="w-full" style={{ height: activeView === 'list' ? 'calc(100vh - 140px)' : 'calc(100vh - 100px)' }}>
+      {/* Main Content Area - Takes remaining height */}
+      <div className="flex-1 min-h-0 overflow-hidden">
         {activeView === 'kanban' ? (
           <KanbanBoard
-            deals={filteredDeals}
+            deals={deals}
             onUpdateDeal={handleUpdateDeal}
             onDealClick={handleDealClick}
             onCreateDeal={handleCreateDeal}
@@ -406,17 +296,13 @@ const DealsPage = () => {
             onRefresh={fetchDeals}
           />
         ) : (
-          <div className="h-full overflow-y-auto">
-            <ListView
-              deals={filteredDeals}
-              onDealClick={handleDealClick}
-              onUpdateDeal={handleUpdateDeal}
-              onDeleteDeals={handleDeleteDeals}
-              onImportDeals={handleImportDeals}
-              columns={columns}
-              onColumnsChange={setColumns}
-            />
-          </div>
+          <ListView
+            deals={deals}
+            onDealClick={handleDealClick}
+            onUpdateDeal={handleUpdateDeal}
+            onDeleteDeals={handleDeleteDeals}
+            onImportDeals={handleImportDeals}
+          />
         )}
       </div>
 

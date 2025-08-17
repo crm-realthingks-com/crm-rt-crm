@@ -47,24 +47,18 @@ export const createRecordValidator = (tableName: string) => {
       return true;
     }
     
-    if (tableName === 'contacts' || tableName === 'leads') {
-      // For contacts and leads, use the existing logic but be more lenient
-      const missingRequired = config.required.filter(field => {
-        const value = record[field];
-        return value === undefined || value === null || String(value).trim() === '';
-      });
-      
-      if (missingRequired.length > 0) {
-        console.log(`Missing required fields for ${tableName}:`, missingRequired);
-        return false;
-      }
-      
-      console.log(`Validation passed for ${tableName}`);
-      return true;
+    // For other tables, use the existing logic but be more lenient
+    const missingRequired = config.required.filter(field => {
+      const value = record[field];
+      return value === undefined || value === null || String(value).trim() === '';
+    });
+    
+    if (missingRequired.length > 0) {
+      console.log(`Missing required fields for ${tableName}:`, missingRequired);
+      return false;
     }
     
-    // For any other tables, default to true (minimal validation)
-    console.log(`Validation passed for ${tableName} (default)`);
+    console.log(`Validation passed for ${tableName}`);
     return true;
   };
 };

@@ -8,10 +8,9 @@ interface LeadStageFormProps {
   onFieldChange: (field: string, value: any) => void;
   onLeadSelect?: (lead: any) => void;
   fieldErrors: Record<string, string>;
-  isLeadConversion?: boolean; // Add flag to indicate lead conversion
 }
 
-export const LeadStageForm = ({ formData, onFieldChange, onLeadSelect, fieldErrors, isLeadConversion }: LeadStageFormProps) => {
+export const LeadStageForm = ({ formData, onFieldChange, onLeadSelect, fieldErrors }: LeadStageFormProps) => {
   const fields = ['project_name', 'lead_name', 'customer_name', 'region', 'lead_owner', 'priority'];
 
   return (
@@ -29,7 +28,6 @@ export const LeadStageForm = ({ formData, onFieldChange, onLeadSelect, fieldErro
               onChange={onFieldChange}
               onLeadSelect={onLeadSelect}
               error={fieldErrors[field]}
-              isLeadConversion={isLeadConversion}
             />
           ))}
         </div>

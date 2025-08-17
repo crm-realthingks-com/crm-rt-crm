@@ -42,13 +42,12 @@ export const useYearlyRevenueData = (selectedYear: number) => {
 
       console.log('All deals:', allDeals);
 
-      // Filter deals by year based on closing_date, expected_closing_date, or signed_contract_date
+      // Filter deals by year based on expected_closing_date or signed_contract_date
       const dealsForYear = allDeals?.filter(deal => {
-        const closingDate = deal.closing_date ? new Date(deal.closing_date).getFullYear() : null;
         const expectedClosingDate = deal.expected_closing_date ? new Date(deal.expected_closing_date).getFullYear() : null;
         const signedContractDate = deal.signed_contract_date ? new Date(deal.signed_contract_date).getFullYear() : null;
         
-        return closingDate === selectedYear || expectedClosingDate === selectedYear || signedContractDate === selectedYear;
+        return expectedClosingDate === selectedYear || signedContractDate === selectedYear;
       }) || [];
 
       console.log(`Deals for year ${selectedYear}:`, dealsForYear);
@@ -191,8 +190,8 @@ export const useAvailableYears = () => {
       // Get years from deals
       const { data: deals } = await supabase
         .from('deals')
-        .select('closing_date')
-        .not('closing_date', 'is', null);
+        .select('expected_closing_date')
+        .not('expected_closing_date', 'is', null);
 
       // Get years from targets
       const { data: targets } = await supabase
@@ -206,8 +205,8 @@ export const useAvailableYears = () => {
       
       // Add years from deals
       deals?.forEach(deal => {
-        if (deal.closing_date) {
-          const year = new Date(deal.closing_date).getFullYear();
+        if (deal.expected_closing_date) {
+          const year = new Date(deal.expected_closing_date).getFullYear();
           yearSet.add(year);
         }
       });
@@ -259,7 +258,7 @@ export const useDashboardStats = () => {
         totalDeals,
         totalRevenue,
         wonDeals,
-        todayMeetings: 0 // Set to 0 since meetings module was removed
+        todayMeetings: 0 // Remove meetings dependency
       };
     },
   });

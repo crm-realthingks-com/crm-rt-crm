@@ -18,10 +18,6 @@ export default {
 			}
 		},
 		extend: {
-			fontFamily: {
-				sans: ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-				inter: ['Inter', 'sans-serif'],
-			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -55,16 +51,6 @@ export default {
 				card: {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
-				},
-				table: {
-					header: 'hsl(var(--table-header))',
-					body: 'hsl(var(--table-body))',
-					hover: 'hsl(var(--table-hover))',
-					stripe: 'hsl(var(--table-stripe))'
-				},
-				link: {
-					DEFAULT: 'hsl(var(--link))',
-					hover: 'hsl(var(--link-hover))'
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',

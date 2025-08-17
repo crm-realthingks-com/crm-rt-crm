@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +12,8 @@ interface Lead {
   id: string;
   lead_name: string;
   company_name?: string;
+  country?: string;
   created_by?: string;
-  contact_owner?: string;
-  region?: string;
 }
 
 interface LeadSearchableDropdownProps {
@@ -39,12 +37,12 @@ export const LeadSearchableDropdown = ({
   const [searchValue, setSearchValue] = useState("");
   const { toast } = useToast();
 
-  // Get unique contact_owner IDs for fetching display names
-  const contactOwnerIds = useMemo(() => {
-    return [...new Set(leads.map(l => l.contact_owner).filter(Boolean))];
+  // Get unique created_by IDs for fetching display names
+  const createdByIds = useMemo(() => {
+    return [...new Set(leads.map(l => l.created_by).filter(Boolean))];
   }, [leads]);
   
-  const { displayNames } = useUserDisplayNames(contactOwnerIds);
+  const { displayNames } = useUserDisplayNames(createdByIds);
 
   useEffect(() => {
     fetchLeads();
@@ -55,7 +53,8 @@ export const LeadSearchableDropdown = ({
       setLoading(true);
       const { data, error } = await supabase
         .from('leads')
-        .select('id, lead_name, company_name, created_by, contact_owner, region')
+        .select('id, lead_name, company_name, country, created_by, lead_status')
+        .neq('lead_status', 'Converted') // Only show leads that haven't been converted to deals yet
         .order('lead_name', { ascending: true });
 
       if (error) throw error;
@@ -79,7 +78,8 @@ export const LeadSearchableDropdown = ({
     const searchLower = searchValue.toLowerCase();
     return leads.filter(lead => 
       lead.lead_name?.toLowerCase().includes(searchLower) ||
-      lead.company_name?.toLowerCase().includes(searchLower)
+      lead.company_name?.toLowerCase().includes(searchLower) ||
+      lead.country?.toLowerCase().includes(searchLower)
     );
   }, [leads, searchValue]);
 
@@ -147,16 +147,14 @@ export const LeadSearchableDropdown = ({
                           {lead.company_name && (
                             <span>{lead.company_name}</span>
                           )}
-                          {lead.contact_owner && (
+                          {lead.company_name && lead.country && <span> • </span>}
+                          {lead.country && (
+                            <span>{lead.country}</span>
+                          )}
+                          {lead.created_by && (
                             <>
                               <span> • Owner: </span>
-                              <span>{displayNames[lead.contact_owner] || "Loading..."}</span>
-                            </>
-                          )}
-                          {lead.region && (
-                            <>
-                              <span> • </span>
-                              <span>{lead.region}</span>
+                              <span>{displayNames[lead.created_by] || "Unknown"}</span>
                             </>
                           )}
                         </div>

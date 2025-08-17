@@ -1,10 +1,18 @@
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Deal } from "@/types/deal";
 import { LeadSearchableDropdown } from "@/components/LeadSearchableDropdown";
-import { useLeadOwnerDisplayName } from "@/hooks/useLeadOwnerDisplayName";
-import { UserSelect } from "@/components/UserSelect";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
 
 interface FormFieldRendererProps {
   field: string;
@@ -12,27 +20,203 @@ interface FormFieldRendererProps {
   onChange: (field: string, value: any) => void;
   onLeadSelect?: (lead: any) => void;
   error?: string;
-  isLeadConversion?: boolean;
 }
 
-export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error, isLeadConversion }: FormFieldRendererProps) => {
-  const handleLeadSelect = (lead: any) => {
-    console.log("FormFieldRenderer - Lead selected:", lead);
-    console.log("Lead data received:", lead);
+export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error }: FormFieldRendererProps) => {
+  const [leadOwnerIds, setLeadOwnerIds] = useState<string[]>([]);
+  const { displayNames, loading } = useUserDisplayNames(leadOwnerIds);
+
+  useEffect(() => {
+    if (field === 'lead_owner') {
+      fetchLeadOwners();
+    }
+  }, [field]);
+
+  const fetchLeadOwners = async () => {
+    try {
+      // Fetch all unique lead owners (created_by) from leads table
+      const { data: leads, error } = await supabase
+        .from('leads')
+        .select('created_by')
+        .not('created_by', 'is', null);
+
+      if (error) {
+        console.error('Error fetching lead owners:', error);
+        return;
+      }
+
+      // Get unique user IDs
+      const uniqueUserIds = Array.from(new Set(leads.map(lead => lead.created_by).filter(Boolean)));
+      setLeadOwnerIds(uniqueUserIds);
+    } catch (error) {
+      console.error('Error in fetchLeadOwners:', error);
+    }
+  };
+
+  const getFieldLabel = (field: string) => {
+    const labels: Record<string, string> = {
+      project_name: 'Project Name',
+      customer_name: 'Customer Name',
+      lead_name: 'Lead Name',
+      lead_owner: 'Lead Owner',
+      region: 'Region',
+      priority: 'Priority',
+      probability: 'Probability (%)',
+      internal_comment: 'Internal Comment',
+      expected_closing_date: 'Expected Closing Date',
+      customer_need: 'Customer Need',
+      customer_challenges: 'Customer Challenges',
+      relationship_strength: 'Relationship Strength',
+      budget: 'Budget',
+      is_recurring: 'Is Recurring?',
+      project_type: 'Project Type',
+      duration: 'Duration (months)',
+      revenue: 'Revenue',
+      start_date: 'Start Date',
+      end_date: 'End Date',
+      total_contract_value: 'Total Contract Value',
+      currency_type: 'Currency Type',
+      project_duration: 'Project Duration (months)',
+      rfq_received_date: 'RFQ Received Date',
+      proposal_due_date: 'Proposal Due Date',
+      rfq_status: 'RFQ Status',
+      quarterly_revenue_q1: 'Q1 Revenue',
+      quarterly_revenue_q2: 'Q2 Revenue',
+      quarterly_revenue_q3: 'Q3 Revenue',
+      quarterly_revenue_q4: 'Q4 Revenue',
+      total_revenue: 'Total Revenue',
+      action_items: 'Action Items',
+      current_status: 'Current Status',
+      closing: 'Closing',
+      won_reason: 'Won Reason',
+      lost_reason: 'Lost Reason',
+      need_improvement: 'Need Improvement',
+      drop_reason: 'Drop Reason',
+      fax: 'Fax',
+      business_value: 'Business Value',
+      decision_maker_level: 'Decision Maker Level',
+      signed_contract_date: 'Signed Contract Date',
+      implementation_start_date: 'Implementation Start Date',
+      handoff_status: 'Handoff Status',
+    };
+    return labels[field] || field;
+  };
+
+  const getStringValue = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    return String(val);
+  };
+
+  const handleNumericChange = (fieldName: string, inputValue: string) => {
+    console.log(`=== NUMERIC FIELD CHANGE DEBUG ===`);
+    console.log(`Field: ${fieldName}, Input value: "${inputValue}"`);
     
-    if (!lead || !lead.id) {
-      console.error("Invalid lead data in FormFieldRenderer:", lead);
+    if (inputValue === '' || inputValue === null || inputValue === undefined) {
+      console.log(`Setting ${fieldName} to 0 (empty input)`);
+      onChange(fieldName, 0);
       return;
     }
     
-    // Update the lead name field immediately
-    onChange('lead_name', lead.lead_name || '');
+    const numericValue = parseFloat(inputValue);
+    if (isNaN(numericValue)) {
+      console.log(`Invalid numeric value for ${fieldName}: "${inputValue}"`);
+      onChange(fieldName, 0);
+      return;
+    }
     
-    // Call the parent's onLeadSelect to handle auto-population and tracking
+    // For revenue fields, ensure positive values
+    if (fieldName.includes('revenue') && numericValue < 0) {
+      console.log(`Setting ${fieldName} to 0 (negative value not allowed)`);
+      onChange(fieldName, 0);
+      return;
+    }
+    
+    console.log(`Setting ${fieldName} to ${numericValue}`);
+    onChange(fieldName, numericValue);
+  };
+
+  const handleLeadSelect = (lead: any) => {
+    console.log("Selected lead:", lead);
+    
+    // Auto-fill available fields based on lead data
+    const updates: Partial<Deal> = {
+      lead_name: lead.lead_name,
+      customer_name: lead.company_name || '',
+      region: lead.country || '',
+    };
+
+    // Update each field individually
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        onChange(key, value);
+      }
+    });
+
+    // Get lead owner display name if available
+    if (lead.created_by) {
+      const fetchLeadOwner = async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('admin-list-users');
+          if (!error && data?.users) {
+            const user = data.users.find((u: any) => u.id === lead.created_by);
+            if (user) {
+              onChange('lead_owner', user.user_metadata?.display_name || "Unknown");
+              return;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user display name:", error);
+        }
+        
+        // Fallback if user fetch fails
+        onChange('lead_owner', "Unknown");
+      };
+      
+      fetchLeadOwner();
+    }
+
     if (onLeadSelect) {
-      console.log("Calling parent onLeadSelect with lead:", lead);
       onLeadSelect(lead);
     }
+  };
+
+  const renderDatePicker = (fieldName: string, dateValue: any) => {
+    const date = dateValue ? new Date(dateValue) : undefined;
+    
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !date && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {date ? format(date, "PPP") : <span>Pick a date</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(selectedDate) => {
+              if (selectedDate) {
+                const formattedDate = format(selectedDate, "yyyy-MM-dd");
+                console.log(`Date field ${fieldName} update: setting to ${formattedDate}`);
+                onChange(fieldName, formattedDate);
+              } else {
+                onChange(fieldName, '');
+              }
+            }}
+            disabled={(date) => date > new Date()} // Disable future dates
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+    );
   };
 
   const renderField = () => {
@@ -40,11 +224,8 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error,
       case 'lead_name':
         return (
           <LeadSearchableDropdown
-            value={value || ''}
-            onValueChange={(leadName) => {
-              console.log("Lead name changed to:", leadName);
-              onChange(field, leadName);
-            }}
+            value={getStringValue(value)}
+            onValueChange={(val) => onChange(field, val)}
             onLeadSelect={handleLeadSelect}
             placeholder="Search and select a lead..."
           />
@@ -52,93 +233,131 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error,
 
       case 'lead_owner':
         return (
-          <UserSelect
-            value={value || ''}
-            onValueChange={(userId) => onChange(field, userId)}
-            placeholder="Select lead owner..."
-          />
-        );
-
-      case 'customer_name':
-      case 'project_name':
-        return (
           <Input
-            type="text"
-            value={value || ''}
+            value={getStringValue(value)}
             onChange={(e) => onChange(field, e.target.value)}
-            placeholder={`Enter ${field.replace('_', ' ')}`}
-            className={isLeadConversion && field === 'project_name' ? 'border-orange-300 focus:border-orange-500' : ''}
+            placeholder="Enter lead owner name..."
           />
-        );
-
-      case 'region':
-        return (
-          <Select value={value || ''} onValueChange={(newValue) => onChange(field, newValue)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select region" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="EU">EU</SelectItem>
-              <SelectItem value="US">US</SelectItem>
-              <SelectItem value="Asia">Asia</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
-            </SelectContent>
-          </Select>
         );
 
       case 'priority':
         return (
-          <Select value={value?.toString() || ''} onValueChange={(newValue) => onChange(field, parseInt(newValue))}>
-            <SelectTrigger className={isLeadConversion ? 'border-orange-300 focus:border-orange-500' : ''}>
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(val) => onChange(field, parseInt(val))}
+          >
+            <SelectTrigger>
               <SelectValue placeholder="Select priority" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1">Priority 1 (Highest)</SelectItem>
-              <SelectItem value="2">Priority 2 (High)</SelectItem>
-              <SelectItem value="3">Priority 3 (Medium)</SelectItem>
-              <SelectItem value="4">Priority 4 (Low)</SelectItem>
-              <SelectItem value="5">Priority 5 (Lowest)</SelectItem>
+              {[1, 2, 3, 4, 5].map(num => (
+                <SelectItem key={num} value={num.toString()}>
+                  Priority {num} {num === 1 ? '(Highest)' : num === 2 ? '(High)' : num === 3 ? '(Medium)' : num === 4 ? '(Low)' : '(Lowest)'}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         );
 
-      case 'internal_comment':
+      case 'probability':
         return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter internal comment"
-          />
+          <Select
+            value={value ? value.toString() : ''}
+            onValueChange={(val) => {
+              console.log(`Probability update: setting to ${val}`);
+              onChange(field, parseInt(val));
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select probability" />
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(percent => (
+                <SelectItem key={percent} value={percent.toString()}>
+                  {percent}%
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case 'region':
+        return (
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(val) => onChange(field, val)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select region" />
+            </SelectTrigger>
+            <SelectContent>
+              {['EU', 'US', 'ASIA', 'Other'].map(region => (
+                <SelectItem key={region} value={region}>
+                  {region}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
 
       case 'customer_need':
         return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter customer need"
-          />
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(val) => onChange(field, val)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select customer need" />
+            </SelectTrigger>
+            <SelectContent>
+              {['Open', 'Ongoing', 'Done'].map(option => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
 
       case 'customer_challenges':
+      case 'business_value':
+      case 'decision_maker_level':
         return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter customer challenges"
-          />
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(val) => {
+              console.log(`${field} update: setting to ${val}`);
+              onChange(field, val);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={`Select ${getFieldLabel(field).toLowerCase()}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {['Open', 'Ongoing', 'Done'].map(option => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
 
       case 'relationship_strength':
         return (
-          <Select value={value?.toString() || ''} onValueChange={(newValue) => onChange(field, parseInt(newValue))}>
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(val) => onChange(field, val)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select relationship strength" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1">Strong (1)</SelectItem>
-              <SelectItem value="2">Good (2)</SelectItem>
-              <SelectItem value="3">Weak (3)</SelectItem>
+              {['Low', 'Medium', 'High'].map(option => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         );
@@ -147,241 +366,228 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error,
         return (
           <Input
             type="number"
-            value={value?.toString() || ''}
-            onChange={(e) => onChange(field, parseFloat(e.target.value))}
-            placeholder="Enter budget"
+            step="0.01"
+            min="0"
+            value={getStringValue(value)}
+            onChange={(e) => {
+              console.log(`Budget update: setting to ${e.target.value}`);
+              handleNumericChange(field, e.target.value);
+            }}
+            placeholder="Enter budget in euros..."
           />
-        );
-
-      case 'business_value':
-        return (
-          <Input
-            type="number"
-            value={value?.toString() || ''}
-            onChange={(e) => onChange(field, parseFloat(e.target.value))}
-            placeholder="Enter business value"
-          />
-        );
-
-      case 'decision_maker_level':
-        return (
-          <Select value={value?.toString() || ''} onValueChange={(newValue) => onChange(field, parseInt(newValue))}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select decision maker level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">High (1)</SelectItem>
-              <SelectItem value="2">Medium (2)</SelectItem>
-              <SelectItem value="3">Low (3)</SelectItem>
-            </SelectContent>
-          </Select>
         );
 
       case 'is_recurring':
         return (
-          <label className="flex items-center space-x-2">
-            <Checkbox
-              checked={!!value}
-              onCheckedChange={(checked) => onChange(field, checked)}
-            />
-            <span>Is Recurring</span>
-          </label>
-        );
-
-      case 'project_duration':
-        return (
-          <Input
-            type="text"
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter project duration"
-          />
-        );
-
-      case 'start_date':
-        return (
-          <Input
-            type="date"
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-          />
-        );
-
-      case 'end_date':
-        return (
-          <Input
-            type="date"
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-          />
-        );
-
-      case 'rfq_received_date':
-        return (
-          <Input
-            type="date"
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-          />
-        );
-
-      case 'proposal_due_date':
-        return (
-          <Input
-            type="date"
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-          />
-        );
-
-      case 'rfq_status':
-        return (
-          <Input
-            type="text"
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter RFQ status"
-          />
-        );
-
-      case 'currency_type':
-        return (
-          <Select value={value || ''} onValueChange={(newValue) => onChange(field, newValue)}>
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(val) => {
+              console.log(`Is recurring update: setting to ${val}`);
+              onChange(field, val);
+            }}
+          >
             <SelectTrigger>
-              <SelectValue placeholder="Select currency" />
+              <SelectValue placeholder="Select recurring status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="USD">USD</SelectItem>
-              <SelectItem value="EUR">EUR</SelectItem>
-              <SelectItem value="GBP">GBP</SelectItem>
+              {['Yes', 'No', 'Unclear'].map(option => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         );
 
-      case 'action_items':
+      case 'currency_type':
         return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter action items"
-          />
+          <Select
+            value={value?.toString() || 'EUR'}
+            onValueChange={(val) => onChange(field, val)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select currency" />
+            </SelectTrigger>
+            <SelectContent>
+              {[
+                { value: 'EUR', label: '€ EUR' },
+                { value: 'USD', label: '$ USD' },
+                { value: 'INR', label: '₹ INR' },
+              ].map(currency => (
+                <SelectItem key={currency.value} value={currency.value}>
+                  {currency.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
 
-      case 'current_status':
+      case 'rfq_status':
+        return (
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(val) => onChange(field, val)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select RFQ status" />
+            </SelectTrigger>
+            <SelectContent>
+              {['Drafted', 'Submitted', 'Rejected', 'Accepted'].map(status => (
+                <SelectItem key={status} value={status}>
+                  {status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case 'handoff_status':
+        return (
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(val) => {
+              console.log(`Handoff status update: setting to ${val}`);
+              onChange(field, val);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select handoff status" />
+            </SelectTrigger>
+            <SelectContent>
+              {['Not Started', 'In Progress', 'Complete'].map(status => (
+                <SelectItem key={status} value={status}>
+                  {status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case 'signed_contract_date':
+      case 'implementation_start_date':
+        return renderDatePicker(field, value);
+
+      case 'expected_closing_date':
+      case 'start_date':
+      case 'end_date':
+      case 'rfq_received_date':
+      case 'proposal_due_date':
         return (
           <Input
-            type="text"
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter current status"
+            type="date"
+            value={getStringValue(value)}
+            onChange={(e) => {
+              console.log(`Date field ${field} update: setting to ${e.target.value}`);
+              onChange(field, e.target.value);
+            }}
           />
         );
 
+      case 'total_contract_value':
+      case 'project_duration':
+        return (
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={getStringValue(value)}
+            onChange={(e) => {
+              console.log(`RFQ numeric field ${field} update: setting to ${e.target.value}`);
+              handleNumericChange(field, e.target.value);
+            }}
+            placeholder={field === 'project_duration' ? 'Enter duration in months...' : 'Enter value...'}
+          />
+        );
+
+      case 'quarterly_revenue_q1':
+      case 'quarterly_revenue_q2':
+      case 'quarterly_revenue_q3':
+      case 'quarterly_revenue_q4':
+        return (
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={getStringValue(value)}
+            onChange={(e) => {
+              console.log(`Revenue field ${field} update: setting to ${e.target.value}`);
+              handleNumericChange(field, e.target.value);
+            }}
+            placeholder="Enter quarterly revenue..."
+          />
+        );
+
+      case 'total_revenue':
+        return (
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={getStringValue(value)}
+            onChange={(e) => {
+              console.log(`Total revenue field ${field} update: setting to ${e.target.value}`);
+              handleNumericChange(field, e.target.value);
+            }}
+            placeholder="Enter total revenue..."
+          />
+        );
+
+      case 'duration':
+      case 'revenue':
+        return (
+          <Input
+            type="number"
+            value={getStringValue(value)}
+            onChange={(e) => handleNumericChange(field, e.target.value)}
+          />
+        );
+
+      case 'internal_comment':
+      case 'action_items':
       case 'closing':
-        return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter closing details"
-          />
-        );
-
       case 'won_reason':
-        return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter reason for winning"
-          />
-        );
-
       case 'lost_reason':
-        return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter reason for losing"
-          />
-        );
-
       case 'need_improvement':
-        return (
-          <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter areas for improvement"
-          />
-        );
-
       case 'drop_reason':
         return (
           <Textarea
-            value={value || ''}
+            value={getStringValue(value)}
+            onChange={(e) => {
+              console.log(`Textarea field ${field} update: setting to ${e.target.value}`);
+              onChange(field, e.target.value);
+            }}
+            rows={3}
+            placeholder={`Enter ${getFieldLabel(field).toLowerCase()}...`}
+          />
+        );
+
+      case 'fax':
+        return (
+          <Input
+            type="tel"
+            value={getStringValue(value)}
             onChange={(e) => onChange(field, e.target.value)}
-            placeholder="Enter reason for dropping"
+            placeholder={`Enter ${getFieldLabel(field).toLowerCase()}...`}
           />
         );
 
       default:
         return (
           <Input
-            type="text"
-            value={value || ''}
+            value={getStringValue(value)}
             onChange={(e) => onChange(field, e.target.value)}
-            placeholder={`Enter ${field.replace('_', ' ')}`}
+            placeholder={`Enter ${getFieldLabel(field).toLowerCase()}...`}
           />
         );
     }
   };
 
-  const getFieldLabel = (field: string) => {
-    const labels: Record<string, string> = {
-      project_name: 'Project Name',
-      lead_name: 'Lead Name',
-      customer_name: 'Customer Name',
-      region: 'Region',
-      lead_owner: 'Lead Owner',
-      priority: 'Priority',
-      internal_comment: 'Internal Comment',
-      customer_need: 'Customer Need',
-      customer_challenges: 'Customer Challenges',
-      relationship_strength: 'Relationship Strength',
-      budget: 'Budget',
-      business_value: 'Business Value',
-      decision_maker_level: 'Decision Maker Level',
-      is_recurring: 'Is Recurring',
-      project_duration: 'Project Duration',
-      start_date: 'Start Date',
-      end_date: 'End Date',
-      rfq_received_date: 'RFQ Received Date',
-      proposal_due_date: 'Proposal Due Date',
-      rfq_status: 'RFQ Status',
-      currency_type: 'Currency Type',
-      action_items: 'Action Items',
-      current_status: 'Current Status',
-      closing: 'Closing',
-      won_reason: 'Won Reason',
-      lost_reason: 'Lost Reason',
-      need_improvement: 'Need Improvement',
-      drop_reason: 'Drop Reason',
-    };
-    return labels[field] || field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-gray-700">
-        {getFieldLabel(field)}
-        {['project_name', 'lead_name', 'customer_name'].includes(field) && (
-          <span className="text-red-500 ml-1">*</span>
-        )}
-        {isLeadConversion && ['project_name', 'priority'].includes(field) && (
-          <span className="text-orange-500 ml-1 text-xs">(Required for conversion)</span>
-        )}
-      </label>
+      <Label>{getFieldLabel(field)}</Label>
       {renderField()}
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
       )}
     </div>
   );
