@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, ShieldAlert, User } from "lucide-react";
+import { Shield, User } from "lucide-react";
 
 interface User {
   id: string;
@@ -25,33 +25,34 @@ interface ChangeRoleModalProps {
 }
 
 const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProps) => {
-  const [role, setRole] = useState('user');
+  const [selectedRole, setSelectedRole] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
-      setRole(user.role || 'user');
+      setSelectedRole(user.role || 'user');
     }
   }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !selectedRole) return;
     
     setLoading(true);
 
     try {
       toast({
         title: "Updating Role",
-        description: "Updating user role with server-controlled security...",
+        description: "Changing user role...",
       });
 
       const { data, error } = await supabase.functions.invoke('user-admin', {
-        method: 'PUT',
+        method: 'POST',
         body: {
+          action: 'change-role',
           userId: user.id,
-          role
+          newRole: selectedRole
         }
       });
 
@@ -60,7 +61,7 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
       if (data?.success) {
         toast({
           title: "Success",
-          description: "User role updated successfully. Changes are now active.",
+          description: `User role updated to ${selectedRole}`,
         });
         
         onSuccess();
@@ -69,7 +70,7 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
         throw new Error(data?.error || "Failed to update user role");
       }
     } catch (error: any) {
-      console.error('Error updating user role:', error);
+      console.error('Error updating role:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to update user role",
@@ -83,108 +84,90 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
   const handleClose = () => {
     if (!loading) {
       onClose();
-      setRole('user');
-    }
-  };
-
-  const getRoleIcon = (roleValue: string) => {
-    switch (roleValue) {
-      case 'admin':
-        return <Shield className="h-4 w-4" />;
-      case 'manager':
-        return <ShieldAlert className="h-4 w-4" />;
-      default:
-        return <User className="h-4 w-4" />;
-    }
-  };
-
-  const getRoleDescription = (roleValue: string) => {
-    switch (roleValue) {
-      case 'admin':
-        return 'Full system access including user management';
-      case 'manager':
-        return 'Advanced permissions with team management capabilities';
-      default:
-        return 'Standard user permissions';
+      setSelectedRole('');
     }
   };
 
   if (!user) return null;
 
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return <Shield className="h-4 w-4" />;
+      case 'user':
+        return <User className="h-4 w-4" />;
+      default:
+        return <User className="h-4 w-4" />;
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Change User Role
-          </DialogTitle>
+          <DialogTitle>Change User Role</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>User</Label>
+            <Label htmlFor="user">User</Label>
             <div className="p-3 bg-muted rounded-md">
               <p className="font-medium">{user.user_metadata?.full_name || user.email}</p>
               <p className="text-sm text-muted-foreground">{user.email}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Current role: <span className="font-medium capitalize">{user.role || 'user'}</span>
-              </p>
             </div>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="role">New Role</Label>
-            <Select value={role} onValueChange={setRole} disabled={loading}>
+            <Label htmlFor="role">Role</Label>
+            <Select value={selectedRole} onValueChange={setSelectedRole} disabled={loading}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    <div>
-                      <div>User</div>
-                      <div className="text-xs text-muted-foreground">Standard permissions</div>
-                    </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="manager">
-                  <div className="flex items-center gap-2">
-                    <ShieldAlert className="h-4 w-4" />
-                    <div>
-                      <div>Manager</div>
-                      <div className="text-xs text-muted-foreground">Team management capabilities</div>
-                    </div>
+                    User
                   </div>
                 </SelectItem>
                 <SelectItem value="admin">
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4" />
-                    <div>
-                      <div>Admin</div>
-                      <div className="text-xs text-muted-foreground">Full system access</div>
-                    </div>
+                    Admin
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              {getRoleIcon(role)}
-              {getRoleDescription(role)}
-            </p>
           </div>
-          
-          <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
-            <p className="text-sm text-amber-800">
-              <strong>Security Note:</strong> Role changes are managed by server-controlled security policies and take effect immediately.
-            </p>
+
+          <div className="bg-muted p-3 rounded-md">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              {getRoleIcon(selectedRole)}
+              {selectedRole === 'admin' ? 'Admin' : 'User'} Permissions
+            </h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              {selectedRole === 'admin' ? (
+                <>
+                  <li>• Full access to all modules</li>
+                  <li>• Can manage users and settings</li>
+                  <li>• Can update and delete all records</li>
+                  <li>• Access to audit logs</li>
+                </>
+              ) : (
+                <>
+                  <li>• Can view all records</li>
+                  <li>• Can add new content</li>
+                  <li>• Can only edit their own records</li>
+                  <li>• No access to user management</li>
+                </>
+              )}
+            </ul>
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !selectedRole}>
               {loading ? 'Updating...' : 'Update Role'}
             </Button>
           </div>

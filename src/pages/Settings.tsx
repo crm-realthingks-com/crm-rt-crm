@@ -1,9 +1,16 @@
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Palette, Shield, FileText } from "lucide-react";
 import UserManagement from "@/components/UserManagement";
+import PreferencesSettings from "@/components/settings/PreferencesSettings";
+import SecuritySettings from "@/components/settings/SecuritySettings";
+import AuditLogsSettings from "@/components/settings/AuditLogsSettings";
 
 const Settings = () => {
+  const [activeTab, setActiveTab] = useState("user-management");
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -12,17 +19,43 @@ const Settings = () => {
         <p className="text-muted-foreground">Manage your account and application preferences</p>
       </div>
 
-      {/* User Management Tab */}
-      <div className="space-y-6">
-        <div className="border-b border-border">
-          <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground bg-background border-b-2 border-primary">
+      {/* Settings Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-1">
+          <TabsTrigger value="user-management" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
-            User Management
-          </div>
-        </div>
+            <span className="hidden sm:inline">User Management</span>
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="flex items-center gap-2">
+            <Palette className="w-4 h-4" />
+            <span className="hidden sm:inline">Preferences</span>
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            <span className="hidden sm:inline">Security</span>
+          </TabsTrigger>
+          <TabsTrigger value="audit-logs" className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            <span className="hidden sm:inline">Audit & Logs</span>
+          </TabsTrigger>
+        </TabsList>
 
-        <UserManagement />
-      </div>
+        <TabsContent value="user-management" className="mt-6">
+          <UserManagement />
+        </TabsContent>
+
+        <TabsContent value="preferences" className="mt-6">
+          <PreferencesSettings />
+        </TabsContent>
+
+        <TabsContent value="security" className="mt-6">
+          <SecuritySettings />
+        </TabsContent>
+
+        <TabsContent value="audit-logs" className="mt-6">
+          <AuditLogsSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

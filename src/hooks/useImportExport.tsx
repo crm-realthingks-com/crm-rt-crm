@@ -4,6 +4,7 @@ import { getExportFilename } from '@/utils/exportUtils';
 import { CSVProcessor } from './import-export/csvProcessor';
 import { CSVExporter } from './import-export/csvExporter';
 import { toast } from '@/hooks/use-toast';
+import { useSecurityAudit } from '@/hooks/useSecurityAudit';
 
 interface ImportExportOptions {
   moduleName: string;
@@ -13,6 +14,7 @@ interface ImportExportOptions {
 
 export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts' }: ImportExportOptions) => {
   const { user } = useAuth();
+  const { logSecurityEvent } = useSecurityAudit();
   
   const handleImport = async (file: File) => {
     console.log('useImportExport: Starting import process');
@@ -62,6 +64,15 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts' 
     try {
       console.log(`useImportExport: Starting import of ${file.name} (${file.size} bytes) into ${tableName}`);
       
+      // Log import attempt
+      await logSecurityEvent('DATA_IMPORT', tableName, undefined, {
+        file_name: file.name,
+        file_size: file.size,
+        file_type: file.type,
+        module: moduleName,
+        timestamp: new Date().toISOString()
+      });
+      
       // Show initial loading toast
       toast({
         title: "Import Started",
@@ -109,6 +120,18 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts' 
       if (errorCount > 0) message += message ? `, ${errorCount} errors` : `${errorCount} errors occurred`;
 
       if (successCount > 0 || updateCount > 0) {
+        // Log successful import
+        await logSecurityEvent('DATA_IMPORT_SUCCESS', tableName, undefined, {
+          file_name: file.name,
+          file_size: file.size,
+          records_imported: successCount,
+          records_updated: updateCount,
+          records_duplicated: duplicateCount,
+          total_records_processed: successCount + updateCount + duplicateCount + errorCount,
+          module: moduleName,
+          timestamp: new Date().toISOString()
+        });
+        
         toast({
           title: "Import Successful",
           description: message || "Import completed successfully",
@@ -117,6 +140,16 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts' 
         console.log('useImportExport: Refreshing data after successful import...');
         onRefresh();
       } else if (errorCount > 0) {
+        // Log failed import
+        await logSecurityEvent('DATA_IMPORT_FAILED', tableName, undefined, {
+          file_name: file.name,
+          file_size: file.size,
+          error_count: errorCount,
+          errors: errors.slice(0, 5), // Log first 5 errors
+          module: moduleName,
+          timestamp: new Date().toISOString()
+        });
+        
         toast({
           title: "Import Failed",
           description: message + (errors.length > 0 ? `. First error: ${errors[0]}` : ''),
@@ -154,6 +187,17 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts' 
   const handleExportAll = async (data: any[]) => {
     console.log(`useImportExport: Exporting all data for ${tableName}:`, data?.length || 0, 'records');
     const filename = getExportFilename(moduleName, 'all');
+    
+    // Log export attempt
+    await logSecurityEvent('DATA_EXPORT', tableName, undefined, {
+      export_type: 'CSV',
+      export_scope: 'all',
+      record_count: data?.length || 0,
+      file_name: filename,
+      module: moduleName,
+      timestamp: new Date().toISOString()
+    });
+    
     const exporter = new CSVExporter(tableName);
     await exporter.exportToCSV(data, filename);
   };
@@ -162,6 +206,18 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts' 
     const selectedData = data.filter(item => selectedIds.includes(item.id));
     const filename = getExportFilename(moduleName, 'selected');
     console.log(`useImportExport: Exporting selected data:`, selectedData.length, 'records');
+    
+    // Log export attempt
+    await logSecurityEvent('DATA_EXPORT', tableName, undefined, {
+      export_type: 'CSV',
+      export_scope: 'selected',
+      record_count: selectedData.length,
+      selected_ids: selectedIds.slice(0, 10), // Log first 10 IDs
+      file_name: filename,
+      module: moduleName,
+      timestamp: new Date().toISOString()
+    });
+    
     const exporter = new CSVExporter(tableName);
     await exporter.exportToCSV(selectedData, filename);
   };
@@ -169,6 +225,17 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts' 
   const handleExportFiltered = async (filteredData: any[]) => {
     const filename = getExportFilename(moduleName, 'filtered');
     console.log(`useImportExport: Exporting filtered data:`, filteredData.length, 'records');
+    
+    // Log export attempt
+    await logSecurityEvent('DATA_EXPORT', tableName, undefined, {
+      export_type: 'CSV',
+      export_scope: 'filtered',
+      record_count: filteredData.length,
+      file_name: filename,
+      module: moduleName,
+      timestamp: new Date().toISOString()
+    });
+    
     const exporter = new CSVExporter(tableName);
     await exporter.exportToCSV(filteredData, filename);
   };

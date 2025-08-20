@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCRUDAudit } from "@/hooks/useCRUDAudit";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ const leadSchema = z.object({
   lead_name: z.string().min(1, "Lead name is required"),
   company_name: z.string().optional(),
   position: z.string().optional(),
-  email: z.string().email("Invalid email address").min(1, "Email is required"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone_no: z.string().optional(),
   linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
@@ -88,6 +88,7 @@ const leadStatuses = [
 
 export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProps) => {
   const { toast } = useToast();
+  const { logCreate, logUpdate } = useCRUDAudit();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<LeadFormData>({
@@ -160,7 +161,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         lead_name: data.lead_name,
         company_name: data.company_name || null,
         position: data.position || null,
-        email: data.email,
+        email: data.email || null,
         phone_no: data.phone_no || null,
         linkedin: data.linkedin || null,
         website: data.website || null,
@@ -176,15 +177,20 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
 
       if (lead) {
         // Update existing lead
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('leads')
           .update({
             ...leadData,
             modified_time: new Date().toISOString(),
           })
-          .eq('id', lead.id);
+          .eq('id', lead.id)
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Log update operation
+        await logUpdate('leads', lead.id, leadData, lead);
 
         toast({
           title: "Success",
@@ -192,11 +198,16 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         });
       } else {
         // Create new lead
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('leads')
-          .insert(leadData);
+          .insert(leadData)
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Log create operation
+        await logCreate('leads', data.id, leadData);
 
         toast({
           title: "Success",
@@ -276,9 +287,9 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email *</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder=" " {...field} />
+                      <Input type="email" placeholder="email@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

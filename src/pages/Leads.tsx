@@ -6,6 +6,7 @@ import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSimpleLeadsImportExport } from "@/hooks/useSimpleLeadsImportExport";
+import { useCRUDAudit } from "@/hooks/useCRUDAudit";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,7 @@ import {
 
 const Leads = () => {
   const { toast } = useToast();
+  const { logBulkDelete } = useCRUDAudit();
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
@@ -35,6 +37,9 @@ const Leads = () => {
         .in('id', selectedLeads);
 
       if (error) throw error;
+
+      // Log bulk delete operation
+      await logBulkDelete('leads', selectedLeads.length, selectedLeads);
 
       toast({
         title: "Success",

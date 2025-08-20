@@ -85,27 +85,28 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark theme using tested Tailwind palette */
+    --background: 222.2 84% 5.9%; /* #0f172a - slate-900 */
+    --foreground: 210 40% 98%; /* #f8fafc - slate-50 */
 
-    --card: 222.2 84% 6%;
-    --card-foreground: 210 40% 98%;
+    --card: 215 28% 17%; /* #1e293b - slate-800 */
+    --card-foreground: 210 40% 98%; /* #f8fafc - slate-50 */
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 215 28% 17%; /* #1e293b - slate-800 */
+    --popover-foreground: 210 40% 98%; /* #f8fafc - slate-50 */
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --primary-variant: 210 40% 85%;
+    --primary: 217.2 91.2% 59.8%; /* #3b82f6 - blue-500 */
+    --primary-foreground: 210 40% 98%; /* #f8fafc - slate-50 */
+    --primary-variant: 221.2 83.2% 53.3%; /* #2563eb - blue-600 */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 215 25% 27%; /* #334155 - slate-700 */
+    --secondary-foreground: 210 40% 98%; /* #f8fafc - slate-50 */
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 215 28% 17%; /* #1e293b - slate-800 */
+    --muted-foreground: 215 16% 47%; /* #64748b - slate-500 */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 217.2 91.2% 59.8%; /* #3b82f6 - blue-500 */
+    --accent-foreground: 210 40% 98%; /* #f8fafc - slate-50 */
 
     --destructive: 0 62.8% 50%;
     --destructive-foreground: 210 40% 98%;
@@ -116,17 +117,19 @@ All colors MUST be HSL.
     --warning: 48 96% 63%;
     --warning-foreground: 222.2 47.4% 11.2%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 215 20% 35%; /* #475569 - slate-600 */
+    --input: 215 28% 17%; /* #1e293b - slate-800 */
+    --ring: 217.2 91.2% 59.8%; /* #3b82f6 - blue-500 */
+    
+    /* Enhanced sidebar colors for dark theme */
+    --sidebar-background: 215 28% 17%; /* #1e293b - slate-800 */
+    --sidebar-foreground: 210 40% 98%; /* #f8fafc - slate-50 */
+    --sidebar-primary: 217.2 91.2% 59.8%; /* #3b82f6 - blue-500 */
+    --sidebar-primary-foreground: 210 40% 98%; /* #f8fafc - slate-50 */
+    --sidebar-accent: 215 25% 27%; /* #334155 - slate-700 */
+    --sidebar-accent-foreground: 210 40% 98%; /* #f8fafc - slate-50 */
+    --sidebar-border: 215 20% 35%; /* #475569 - slate-600 */
+    --sidebar-ring: 217.2 91.2% 59.8%; /* #3b82f6 - blue-500 */
   }
 }
 

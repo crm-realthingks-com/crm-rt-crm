@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCRUDAudit } from "@/hooks/useCRUDAudit";
 import { Card } from "@/components/ui/card";
 import { ContactTableHeader } from "./contact-table/ContactTableHeader";
 import { ContactTableBody } from "./contact-table/ContactTableBody";
@@ -65,6 +66,7 @@ export const ContactTable = ({
   refreshTrigger
 }: ContactTableProps) => {
   const { toast } = useToast();
+  const { logDelete } = useCRUDAudit();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,12 +173,18 @@ export const ContactTable = ({
 
   const handleDelete = async (id: string) => {
     try {
+      // Find the contact first to log the deleted data
+      const contactToDelete = contacts.find(c => c.id === id);
+      
       const { error } = await supabase
         .from('contacts')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      // Log delete operation
+      await logDelete('contacts', id, contactToDelete);
 
       toast({
         title: "Success",

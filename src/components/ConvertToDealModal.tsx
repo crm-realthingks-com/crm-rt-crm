@@ -7,6 +7,7 @@ import { DealForm } from "./DealForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Deal } from "@/types/deal";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
+import { useCRUDAudit } from "@/hooks/useCRUDAudit";
 
 interface Lead {
   id: string;
@@ -15,6 +16,7 @@ interface Lead {
   country?: string;
   contact_owner?: string;
   created_by?: string;
+  lead_status?: string;
 }
 
 interface ConvertToDealModalProps {
@@ -26,6 +28,7 @@ interface ConvertToDealModalProps {
 
 export const ConvertToDealModal = ({ open, onOpenChange, lead, onSuccess }: ConvertToDealModalProps) => {
   const { toast } = useToast();
+  const { logCreate, logUpdate } = useCRUDAudit();
 
   // Get display names for lead owner
   const leadOwnerIds = lead?.created_by ? [lead.created_by] : [];
@@ -63,11 +66,16 @@ export const ConvertToDealModal = ({ open, onOpenChange, lead, onSuccess }: Conv
         ...(dealData.quarterly_revenue_q4 !== undefined && { quarterly_revenue_q4: dealData.quarterly_revenue_q4 }),
       };
       
-      const { error } = await supabase
+      const { data: insertedDeal, error } = await supabase
         .from('deals')
-        .insert([dealToInsert]);
+        .insert([dealToInsert])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Log deal creation
+      await logCreate('deals', insertedDeal.id, dealToInsert);
 
       // Update lead status to 'Converted'
       const { error: leadUpdateError } = await supabase
@@ -79,6 +87,9 @@ export const ConvertToDealModal = ({ open, onOpenChange, lead, onSuccess }: Conv
         console.error("Error updating lead status:", leadUpdateError);
         throw leadUpdateError; // Throw the error so user knows about it
       }
+
+      // Log lead update
+      await logUpdate('leads', lead.id, { lead_status: 'Converted' }, { lead_status: lead.lead_status });
 
       toast({
         title: "Success",

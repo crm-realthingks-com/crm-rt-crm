@@ -10,11 +10,13 @@ import { DealForm } from "@/components/DealForm";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Plus } from "lucide-react";
+import { useCRUDAudit } from "@/hooks/useCRUDAudit";
 
 const DealsPage = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logCreate, logUpdate, logBulkDelete } = useCRUDAudit();
   
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +61,9 @@ const DealsPage = () => {
       console.log("Deal ID:", dealId);
       console.log("Updates:", updates);
       
+      // Get the existing deal for audit logging
+      const existingDeal = deals.find(deal => deal.id === dealId);
+      
       const { data, error } = await supabase
         .from('deals')
         .update({ ...updates, modified_at: new Date().toISOString() })
@@ -72,6 +77,9 @@ const DealsPage = () => {
       }
 
       console.log("Update successful, data:", data);
+      
+      // Log update operation
+      await logUpdate('deals', dealId, updates, existingDeal);
       
       setDeals(prev => prev.map(deal => 
         deal.id === dealId ? { ...deal, ...updates } : deal
@@ -108,6 +116,9 @@ const DealsPage = () => {
 
         if (error) throw error;
 
+        // Log create operation
+        await logCreate('deals', data.id, dealData);
+
         setDeals(prev => [data as unknown as Deal, ...prev]);
       } else if (selectedDeal) {
         const updateData = {
@@ -134,6 +145,9 @@ const DealsPage = () => {
         .in('id', dealIds);
 
       if (error) throw error;
+
+      // Log bulk delete operation
+      await logBulkDelete('deals', dealIds.length, dealIds);
 
       setDeals(prev => prev.filter(deal => !dealIds.includes(deal.id)));
       

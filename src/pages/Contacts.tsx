@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSimpleContactsImportExport } from "@/hooks/useSimpleContactsImportExport";
+import { useCRUDAudit } from "@/hooks/useCRUDAudit";
 
 const Contacts = () => {
   const { toast } = useToast();
+  const { logBulkDelete } = useCRUDAudit();
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
@@ -76,6 +78,9 @@ const Contacts = () => {
         .in('id', selectedContacts);
 
       if (error) throw error;
+
+      // Log bulk delete operation
+      await logBulkDelete('contacts', selectedContacts.length, selectedContacts);
 
       toast({
         title: "Success",

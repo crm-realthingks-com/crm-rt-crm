@@ -4,6 +4,7 @@ import { getExportFilename } from '@/utils/exportUtils';
 import { SimpleDealsCSVProcessor } from './import-export/simpleDealsCSVProcessor';
 import { DealsCSVExporter } from './import-export/dealsCSVExporter';
 import { toast } from '@/hooks/use-toast';
+import { useSecurityAudit } from '@/hooks/useSecurityAudit';
 
 interface DealsImportExportOptions {
   onRefresh: () => void;
@@ -11,6 +12,7 @@ interface DealsImportExportOptions {
 
 export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) => {
   const { user } = useAuth();
+  const { logSecurityEvent } = useSecurityAudit();
   
   const handleImport = async (file: File) => {
     console.log('useDealsImportExport: Starting import process with centralized logic');
@@ -51,6 +53,15 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
 
     try {
       console.log(`useDealsImportExport: Starting import of ${file.name} (${file.size} bytes)`);
+      
+      // Log import attempt
+      await logSecurityEvent('DATA_IMPORT', 'deals', undefined, {
+        file_name: file.name,
+        file_size: file.size,
+        file_type: file.type,
+        module: 'deals',
+        timestamp: new Date().toISOString()
+      });
       
       // Show initial loading toast
       toast({
@@ -95,6 +106,18 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
       if (errorCount > 0) message += message ? `, ${errorCount} errors` : `${errorCount} errors occurred`;
 
       if (successCount > 0 || updateCount > 0) {
+        // Log successful import
+        await logSecurityEvent('DATA_IMPORT_SUCCESS', 'deals', undefined, {
+          file_name: file.name,
+          file_size: file.size,
+          records_imported: successCount,
+          records_updated: updateCount,
+          records_duplicated: duplicateCount,
+          total_records_processed: successCount + updateCount + duplicateCount + errorCount,
+          module: 'deals',
+          timestamp: new Date().toISOString()
+        });
+        
         toast({
           title: "Import Successful",
           description: message || "Import completed successfully",
@@ -110,6 +133,16 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
           detail: { successCount, updateCount, source: 'csv-import' }
         }));
       } else if (errorCount > 0) {
+        // Log failed import
+        await logSecurityEvent('DATA_IMPORT_FAILED', 'deals', undefined, {
+          file_name: file.name,
+          file_size: file.size,
+          error_count: errorCount,
+          errors: errors.slice(0, 5), // Log first 5 errors
+          module: 'deals',
+          timestamp: new Date().toISOString()
+        });
+        
         toast({
           title: "Import Failed",
           description: message + (errors.length > 0 ? `. First error: ${errors[0]}` : ''),
@@ -147,6 +180,17 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
   const handleExportAll = async (data: any[]) => {
     console.log(`useDealsImportExport: Exporting all deals with global date format:`, data?.length || 0, 'records');
     const filename = getExportFilename('deals', 'all');
+    
+    // Log export attempt
+    await logSecurityEvent('DATA_EXPORT', 'deals', undefined, {
+      export_type: 'CSV',
+      export_scope: 'all',
+      record_count: data?.length || 0,
+      file_name: filename,
+      module: 'deals',
+      timestamp: new Date().toISOString()
+    });
+    
     const exporter = new DealsCSVExporter();
     await exporter.exportToCSV(data, filename);
   };
@@ -155,6 +199,18 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
     const selectedData = data.filter(item => selectedIds.includes(item.id));
     const filename = getExportFilename('deals', 'selected');
     console.log(`useDealsImportExport: Exporting selected deals with global date format:`, selectedData.length, 'records');
+    
+    // Log export attempt
+    await logSecurityEvent('DATA_EXPORT', 'deals', undefined, {
+      export_type: 'CSV',
+      export_scope: 'selected',
+      record_count: selectedData.length,
+      selected_ids: selectedIds.slice(0, 10), // Log first 10 IDs
+      file_name: filename,
+      module: 'deals',
+      timestamp: new Date().toISOString()
+    });
+    
     const exporter = new DealsCSVExporter();
     await exporter.exportToCSV(selectedData, filename);
   };
@@ -162,6 +218,17 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
   const handleExportFiltered = async (filteredData: any[]) => {
     const filename = getExportFilename('deals', 'filtered');
     console.log(`useDealsImportExport: Exporting filtered deals with global date format:`, filteredData.length, 'records');
+    
+    // Log export attempt
+    await logSecurityEvent('DATA_EXPORT', 'deals', undefined, {
+      export_type: 'CSV',
+      export_scope: 'filtered',
+      record_count: filteredData.length,
+      file_name: filename,
+      module: 'deals',
+      timestamp: new Date().toISOString()
+    });
+    
     const exporter = new DealsCSVExporter();
     await exporter.exportToCSV(filteredData, filename);
   };

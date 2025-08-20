@@ -3,7 +3,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSecurityAudit } from '@/hooks/useSecurityAudit';
 import { supabase } from '@/integrations/supabase/client';
-import SecurityAlert from '@/components/SecurityAlert';
 
 interface SecurityContextType {
   isSecurityEnabled: boolean;
@@ -40,19 +39,30 @@ export const SecurityProvider = ({ children }: SecurityProviderProps) => {
       }
 
       try {
+        // Check user metadata first for role
+        const metadataRole = user.user_metadata?.role;
+        if (metadataRole) {
+          setUserRole(metadataRole);
+          console.log('User role from metadata:', metadataRole);
+          return;
+        }
+
+        // Fallback to database lookup
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
           .single();
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
           console.error('Error fetching user role:', error);
           setUserRole('user'); // Default fallback
           return;
         }
 
-        setUserRole(data?.role || 'user');
+        const role = data?.role || 'user';
+        setUserRole(role);
+        console.log('User role from database:', role);
       } catch (error) {
         console.error('Failed to fetch user role:', error);
         setUserRole('user');
@@ -63,12 +73,13 @@ export const SecurityProvider = ({ children }: SecurityProviderProps) => {
   }, [user]);
 
   useEffect(() => {
-    if (user) {
+    if (user && userRole) {
       // Log user session start
       logSecurityEvent('SESSION_START', 'auth', user.id, {
         login_time: new Date().toISOString(),
         user_agent: navigator.userAgent,
-        role: userRole
+        role: userRole,
+        user_email: user.email
       });
 
       // Set up session monitoring
