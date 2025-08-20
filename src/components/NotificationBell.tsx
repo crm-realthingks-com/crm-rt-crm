@@ -58,19 +58,19 @@ export const NotificationBell = () => {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Bell Icon Button - Highly visible */}
+    <div className="relative z-50" ref={dropdownRef}>
+      {/* Bell Icon Button - Maximum visibility */}
       <Button
-        variant="ghost"
+        variant="outline"
         size="lg"
-        className="relative h-12 w-12 p-0 hover:bg-blue-50 rounded-full border-2 border-transparent hover:border-blue-200 transition-all duration-200"
+        className="relative h-14 w-14 p-0 bg-white hover:bg-blue-50 rounded-full border-2 border-gray-300 hover:border-blue-400 shadow-md hover:shadow-lg transition-all duration-200"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Bell className="h-7 w-7 text-gray-700 hover:text-blue-600 transition-colors" />
+        <Bell className="h-8 w-8 text-gray-800 hover:text-blue-600 transition-colors" />
         {unreadCount > 0 && (
           <Badge 
             variant="destructive" 
-            className="absolute -top-1 -right-1 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white shadow-lg animate-pulse"
+            className="absolute -top-2 -right-2 h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-3 border-white shadow-xl animate-bounce"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>

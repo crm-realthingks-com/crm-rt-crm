@@ -48,8 +48,8 @@ export const DashboardHeader = ({
           </Button>
         </div>
         
-        {/* Notification Bell - Made highly visible */}
-        <div className="flex items-center bg-gray-50 rounded-full p-2 border border-gray-200">
+        {/* Notification Bell - Maximum visibility */}
+        <div className="flex items-center bg-yellow-100 rounded-full p-3 border-2 border-yellow-300 shadow-lg">
           <NotificationBell />
         </div>
         
