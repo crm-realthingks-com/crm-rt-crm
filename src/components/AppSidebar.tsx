@@ -75,13 +75,14 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
 
   return (
     <div 
-      className={`h-screen flex flex-col border-r border-sidebar-border bg-sidebar-background transition-all duration-300 ease-in-out ${
+      className={`h-screen flex flex-col border-r border-sidebar-border bg-sidebar-background transition-all duration-300 ease-in-out relative ${
         isFixed ? 'relative' : ''
       }`}
       style={{ 
         width: sidebarOpen ? '220px' : '60px',
         minWidth: sidebarOpen ? '220px' : '60px',
-        maxWidth: sidebarOpen ? '220px' : '60px'
+        maxWidth: sidebarOpen ? '220px' : '60px',
+        overflow: 'visible' // Allow content to overflow for dropdowns
       }}
     >
       {/* Header */}
@@ -182,10 +183,10 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
         </nav>
       </div>
 
-        {/* Bottom Section - Pin Toggle & User & Sign Out */}
-      <div className="border-t border-sidebar-border p-4 space-y-3 relative overflow-visible z-[100]">
-        {/* Bottom Notifications - moved ABOVE the pin toggle and removed red background */}
-        <div className={sidebarOpen ? "flex justify-start mt-2" : "flex justify-center mt-2"}>
+      {/* Bottom Section - Pin Toggle & User & Sign Out */}
+      <div className="border-t border-sidebar-border p-4 space-y-3 relative" style={{ overflow: 'visible', zIndex: 100 }}>
+        {/* Bottom Notifications - positioned above pin toggle */}
+        <div className={sidebarOpen ? "flex justify-start" : "flex justify-center"}>
           <NotificationBell placement="up" size="small" />
         </div>
 

@@ -63,7 +63,7 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
   };
 
   return (
-    <div className="relative z-[1000]" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef} style={{ zIndex: 9999 }}>
       {/* Bell Icon Button */}
       <Button
         variant="outline"
@@ -92,7 +92,14 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
 
       {/* Notifications Dropdown */}
       {isOpen && (
-        <div className={`absolute right-0 ${placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-[1100]`}>
+        <div 
+          className={`absolute ${placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-80 bg-white rounded-lg shadow-xl border border-gray-200`}
+          style={{ 
+            right: size === 'small' ? '0' : '0',
+            zIndex: 10000,
+            position: 'fixed' // Use fixed positioning to escape parent overflow
+          }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Notifications</h3>
