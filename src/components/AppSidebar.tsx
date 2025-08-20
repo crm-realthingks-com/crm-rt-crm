@@ -185,10 +185,6 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
 
       {/* Bottom Section - Pin Toggle & User & Sign Out */}
       <div className="border-t border-sidebar-border p-4 space-y-3 relative" style={{ overflow: 'visible', zIndex: 100 }}>
-        {/* Bottom Notifications - positioned above pin toggle */}
-        <div className={sidebarOpen ? "flex justify-start" : "flex justify-center"}>
-          <NotificationBell placement="up" size="small" />
-        </div>
 
         {/* Pin Toggle Button - Always bottom-left aligned */}
         <div className="flex" style={{ justifyContent: sidebarOpen ? 'flex-start' : 'flex-start', paddingLeft: sidebarOpen ? '0px' : '6px' }}>

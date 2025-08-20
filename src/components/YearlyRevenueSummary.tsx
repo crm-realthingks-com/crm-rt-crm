@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TrendingUp, Target, Euro, Calendar, Edit2, Check, X, AlertCircle } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useYearlyRevenueData, useAvailableYears } from "@/hooks/useYearlyRevenueData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
@@ -111,24 +112,27 @@ const YearlyRevenueSummary = () => {
   if (revenueData && !revenueData.hasDeals) {
     return (
       <div className="space-y-6">
-        {/* Header with Year Selector */}
+        {/* Header with Year Selector and Notification Bell */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Revenue Analytics</h2>
             <p className="text-muted-foreground"> </p>
           </div>
-          <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableYears.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-4">
+            <NotificationBell placement="down" size="small" />
+            <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableYears.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Empty State */}
@@ -154,24 +158,27 @@ const YearlyRevenueSummary = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Year Selector */}
+      {/* Header with Year Selector and Notification Bell */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Revenue Analytics</h2>
           <p className="text-muted-foreground"> </p>
         </div>
-        <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {availableYears.map((year) => (
-              <SelectItem key={year} value={year.toString()}>
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-4">
+          <NotificationBell placement="down" size="small" />
+          <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Summary Cards */}
