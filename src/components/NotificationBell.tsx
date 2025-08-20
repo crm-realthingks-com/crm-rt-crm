@@ -35,8 +35,8 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   const handleNotificationClick = async (notification: any) => {
@@ -93,11 +93,9 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
       {/* Notifications Dropdown */}
       {isOpen && (
         <div 
-          className={`absolute ${placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-80 bg-white rounded-lg shadow-xl border border-gray-200`}
+          className={`absolute right-0 ${placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-80 bg-background rounded-lg shadow-xl border border-border`}
           style={{ 
-            right: size === 'small' ? '0' : '0',
-            zIndex: 10000,
-            position: 'fixed' // Use fixed positioning to escape parent overflow
+            zIndex: 10000
           }}
         >
           {/* Header */}
