@@ -183,7 +183,12 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
       </div>
 
         {/* Bottom Section - Pin Toggle & User & Sign Out */}
-      <div className="border-t border-sidebar-border p-4 space-y-3 relative">
+      <div className="border-t border-sidebar-border p-4 space-y-3 relative overflow-visible z-[100]">
+        {/* Bottom Notifications - moved ABOVE the pin toggle and removed red background */}
+        <div className={sidebarOpen ? "flex justify-start mt-2" : "flex justify-center mt-2"}>
+          <NotificationBell placement="up" size="small" />
+        </div>
+
         {/* Pin Toggle Button - Always bottom-left aligned */}
         <div className="flex" style={{ justifyContent: sidebarOpen ? 'flex-start' : 'flex-start', paddingLeft: sidebarOpen ? '0px' : '6px' }}>
           <Tooltip>
@@ -203,13 +208,6 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
               <p>{sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}</p>
             </TooltipContent>
           </Tooltip>
-        </div>
-
-        {/* Bottom Notifications */}
-        <div className={sidebarOpen ? "flex justify-start mt-2" : "flex justify-center mt-2"}>
-          <div className="flex items-center bg-red-500 rounded-lg p-2 border-2 border-red-600 shadow-lg">
-            <NotificationBell placement="up" size="small" />
-          </div>
         </div>
 
         {/* User & Sign Out */}
