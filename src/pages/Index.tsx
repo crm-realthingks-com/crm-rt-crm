@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -251,7 +250,6 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader
-        userEmail={user.email || ''}
         activeView={activeView}
         onViewChange={setActiveView}
         onCreateDeal={() => handleCreateDeal('Lead')}
