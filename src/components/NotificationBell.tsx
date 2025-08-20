@@ -16,9 +16,12 @@ import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
-interface NotificationBellProps { placement?: 'up' | 'down' }
+interface NotificationBellProps { 
+  placement?: 'up' | 'down'
+  size?: 'small' | 'large'
+}
 
-export const NotificationBell = ({ placement = 'down' }: NotificationBellProps) => {
+export const NotificationBell = ({ placement = 'down', size = 'large' }: NotificationBellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const navigate = useNavigate();
@@ -61,18 +64,26 @@ export const NotificationBell = ({ placement = 'down' }: NotificationBellProps) 
 
   return (
     <div className="relative z-50" ref={dropdownRef}>
-      {/* Bell Icon Button - Maximum visibility */}
+      {/* Bell Icon Button */}
       <Button
         variant="outline"
-        size="lg"
-        className="relative h-14 w-14 p-0 bg-white hover:bg-blue-50 rounded-full border-2 border-gray-300 hover:border-blue-400 shadow-md hover:shadow-lg transition-all duration-200"
+        size={size === 'small' ? 'sm' : 'lg'}
+        className={`relative p-0 bg-white hover:bg-blue-50 rounded-full border-2 border-gray-300 hover:border-blue-400 shadow-md hover:shadow-lg transition-all duration-200 ${
+          size === 'small' ? 'h-8 w-8' : 'h-14 w-14'
+        }`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Bell className="h-8 w-8 text-gray-800 hover:text-blue-600 transition-colors" />
+        <Bell className={`text-gray-800 hover:text-blue-600 transition-colors ${
+          size === 'small' ? 'h-4 w-4' : 'h-8 w-8'
+        }`} />
         {unreadCount > 0 && (
           <Badge 
             variant="destructive" 
-            className="absolute -top-2 -right-2 h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white shadow-xl animate-bounce"
+            className={`absolute rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white shadow-xl animate-bounce ${
+              size === 'small' 
+                ? '-top-1 -right-1 h-4 w-4 text-xs' 
+                : '-top-2 -right-2 h-7 w-7 text-xs'
+            }`}
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>

@@ -207,8 +207,8 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
 
         {/* Bottom Notifications */}
         <div className={sidebarOpen ? "flex justify-start mt-2" : "flex justify-center mt-2"}>
-          <div className="flex items-center bg-yellow-100 rounded-full p-2 border-2 border-yellow-300 shadow-lg">
-            <NotificationBell placement="up" />
+          <div className="flex items-center bg-red-500 rounded-lg p-2 border-2 border-red-600 shadow-lg">
+            <NotificationBell placement="up" size="small" />
           </div>
         </div>
 
