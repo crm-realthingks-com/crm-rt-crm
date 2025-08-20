@@ -17,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -97,6 +98,13 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
             </span>
           )}
         </div>
+        
+        {/* Notification Bell - Only show when sidebar is expanded */}
+        {sidebarOpen && (
+          <div className="ml-2">
+            <NotificationBell />
+          </div>
+        )}
       </div>
 
       {/* Menu Items */}
