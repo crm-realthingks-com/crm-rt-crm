@@ -17,9 +17,9 @@ export const DashboardHeader = ({
   onSignOut 
 }: DashboardHeaderProps) => {
   return (
-    <div className="flex items-center justify-between p-6 border-b">
+    <div className="flex items-center justify-between p-6 border-b bg-white">
       <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold">Deals Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Deals Dashboard</h1>
         <Button onClick={onCreateDeal} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
           New Deal
@@ -27,7 +27,7 @@ export const DashboardHeader = ({
       </div>
       
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
           <Button
             variant={activeView === 'kanban' ? 'default' : 'ghost'}
             size="sm"
@@ -47,7 +47,12 @@ export const DashboardHeader = ({
             List
           </Button>
         </div>
-        <NotificationBell />
+        
+        {/* Notification Bell - positioned prominently */}
+        <div className="flex items-center">
+          <NotificationBell />
+        </div>
+        
         <Button variant="outline" onClick={onSignOut}>
           Sign Out
         </Button>

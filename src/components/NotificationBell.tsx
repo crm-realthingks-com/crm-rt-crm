@@ -42,7 +42,7 @@ export const NotificationBell = () => {
 
     // Navigate to lead page if lead_id exists
     if (notification.lead_id) {
-      navigate(`/leads`); // Navigate to leads page - you can enhance this to go to specific lead
+      navigate(`/leads`);
       setIsOpen(false);
     }
   };
@@ -59,18 +59,18 @@ export const NotificationBell = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Icon Button */}
+      {/* Bell Icon Button - Made more prominent */}
       <Button
         variant="ghost"
         size="sm"
-        className="relative h-9 w-9 p-0"
+        className="relative h-10 w-10 p-0 hover:bg-gray-100 rounded-full"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-6 w-6 text-gray-700" />
         {unreadCount > 0 && (
           <Badge 
             variant="destructive" 
-            className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+            className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white border-2 border-white"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>
@@ -185,7 +185,6 @@ export const NotificationBell = () => {
                 size="sm"
                 className="text-xs text-blue-600 hover:text-blue-700"
                 onClick={() => {
-                  // You can navigate to a full notifications page here
                   setIsOpen(false);
                 }}
               >
