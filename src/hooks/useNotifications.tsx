@@ -38,8 +38,14 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      setNotifications(data || []);
-      setUnreadCount((data || []).filter(n => n.status === 'unread').length);
+      // Cast the data to proper notification format
+      const typedNotifications: Notification[] = (data || []).map(item => ({
+        ...item,
+        status: item.status as 'read' | 'unread'
+      }));
+
+      setNotifications(typedNotifications);
+      setUnreadCount(typedNotifications.filter(n => n.status === 'unread').length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       toast({
@@ -164,7 +170,10 @@ export const useNotifications = () => {
         },
         (payload) => {
           console.log('New notification received:', payload);
-          const newNotification = payload.new as Notification;
+          const newNotification = { 
+            ...payload.new, 
+            status: payload.new.status as 'read' | 'unread' 
+          } as Notification;
           
           // Add to notifications list
           setNotifications(prev => [newNotification, ...prev]);
@@ -188,7 +197,10 @@ export const useNotifications = () => {
         },
         (payload) => {
           console.log('Notification updated:', payload);
-          const updatedNotification = payload.new as Notification;
+          const updatedNotification = { 
+            ...payload.new, 
+            status: payload.new.status as 'read' | 'unread' 
+          } as Notification;
           
           setNotifications(prev => 
             prev.map(n => 
@@ -214,7 +226,10 @@ export const useNotifications = () => {
         },
         (payload) => {
           console.log('Notification deleted:', payload);
-          const deletedNotification = payload.old as Notification;
+          const deletedNotification = { 
+            ...payload.old, 
+            status: payload.old.status as 'read' | 'unread' 
+          } as Notification;
           
           setNotifications(prev => prev.filter(n => n.id !== deletedNotification.id));
           
