@@ -16,7 +16,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
-export const NotificationBell = () => {
+interface NotificationBellProps { placement?: 'up' | 'down' }
+
+export const NotificationBell = ({ placement = 'down' }: NotificationBellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const navigate = useNavigate();
@@ -70,7 +72,7 @@ export const NotificationBell = () => {
         {unreadCount > 0 && (
           <Badge 
             variant="destructive" 
-            className="absolute -top-2 -right-2 h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-3 border-white shadow-xl animate-bounce"
+            className="absolute -top-2 -right-2 h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white shadow-xl animate-bounce"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>
@@ -79,7 +81,7 @@ export const NotificationBell = () => {
 
       {/* Notifications Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+        <div className={`absolute right-0 ${placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50`}>
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Notifications</h3>

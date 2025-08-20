@@ -205,6 +205,13 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
           </Tooltip>
         </div>
 
+        {/* Bottom Notifications */}
+        <div className={sidebarOpen ? "flex justify-start mt-2" : "flex justify-center mt-2"}>
+          <div className="flex items-center bg-yellow-100 rounded-full p-2 border-2 border-yellow-300 shadow-lg">
+            <NotificationBell placement="up" />
+          </div>
+        </div>
+
         {/* User & Sign Out */}
         {!sidebarOpen ? (
           <div className="flex justify-center">
