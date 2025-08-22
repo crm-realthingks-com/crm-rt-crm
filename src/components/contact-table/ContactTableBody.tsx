@@ -222,89 +222,95 @@ export const ContactTableBody = ({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">
-            <Checkbox
-              checked={selectedContacts.length > 0 && selectedContacts.length === Math.min(pageContacts.length, 50)}
-              onCheckedChange={handleSelectAll}
-            />
-          </TableHead>
-          {visibleColumns.map((column) => (
-            <TableHead key={column.field}>
-              <Button
-                variant="ghost"
-                className="h-auto p-0 font-medium hover:bg-transparent"
-                onClick={() => onSort(column.field)}
-              >
-                <div className="flex items-center gap-2">
-                  {column.label}
-                  {getSortIcon(column.field)}
-                </div>
-              </Button>
-            </TableHead>
-          ))}
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {pageContacts.map((contact) => (
-          <TableRow key={contact.id}>
-            <TableCell>
-              <Checkbox
-                checked={selectedContacts.includes(contact.id)}
-                onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
-              />
-            </TableCell>
-            {visibleColumns.map((column) => (
-              <TableCell key={column.field}>
-                {column.field === 'contact_name' ? (
-                  <button
-                    onClick={() => onEdit(contact)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {contact[column.field as keyof Contact]}
-                  </button>
-                ) : (
-                  getDisplayValue(contact, column.field)
-                )}
-              </TableCell>
-            ))}
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEdit(contact)}
-                  className="h-8 w-8 p-0 hover:bg-muted"
-                  title="Edit contact"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleConvertToLead(contact)}
-                  className="h-8 w-8 p-0 hover:bg-muted"
-                  title="Convert to lead"
-                >
-                  <UserPlus className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDelete(contact.id)}
-                  className="h-8 w-8 p-0 hover:bg-destructive/10 text-destructive hover:text-destructive"
-                  title="Delete contact"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+    <div className="overflow-auto">
+      <Table>
+        <TableHeader className="sticky top-0 z-10">
+          <TableRow className="bg-muted/30 hover:bg-muted/40">
+            <TableHead className="w-12 text-center font-semibold">
+              <div className="flex justify-center">
+                <Checkbox
+                  checked={selectedContacts.length > 0 && selectedContacts.length === Math.min(pageContacts.length, 50)}
+                  onCheckedChange={handleSelectAll}
+                />
               </div>
-            </TableCell>
+            </TableHead>
+            {visibleColumns.map((column) => (
+              <TableHead key={column.field} className="text-center font-semibold px-4">
+                <Button
+                  variant="ghost"
+                  className="h-auto p-0 font-semibold hover:bg-transparent w-full justify-center"
+                  onClick={() => onSort(column.field)}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    {column.label}
+                    {getSortIcon(column.field)}
+                  </div>
+                </Button>
+              </TableHead>
+            ))}
+            <TableHead className="text-center font-semibold w-32">Actions</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {pageContacts.map((contact) => (
+            <TableRow key={contact.id} className="hover:bg-muted/20">
+              <TableCell className="text-center px-4">
+                <div className="flex justify-center">
+                  <Checkbox
+                    checked={selectedContacts.includes(contact.id)}
+                    onCheckedChange={(checked) => handleSelectContact(contact.id, checked as boolean)}
+                  />
+                </div>
+              </TableCell>
+              {visibleColumns.map((column) => (
+                <TableCell key={column.field} className="text-center px-4">
+                  {column.field === 'contact_name' ? (
+                    <button
+                      onClick={() => onEdit(contact)}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      {contact[column.field as keyof Contact]}
+                    </button>
+                  ) : (
+                    getDisplayValue(contact, column.field)
+                  )}
+                </TableCell>
+              ))}
+              <TableCell className="w-32">
+                <div className="flex items-center justify-end gap-1 pr-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEdit(contact)}
+                    className="h-8 w-8 p-0 hover:bg-muted"
+                    title="Edit contact"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleConvertToLead(contact)}
+                    className="h-8 w-8 p-0 hover:bg-muted"
+                    title="Convert to lead"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDelete(contact.id)}
+                    className="h-8 w-8 p-0 hover:bg-destructive/10 text-destructive hover:text-destructive"
+                    title="Delete contact"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };

@@ -380,78 +380,82 @@ const LeadTable = ({
 
       {/* Table */}
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox checked={selectedLeads.length > 0 && selectedLeads.length === Math.min(pageLeads.length, 50)} onCheckedChange={handleSelectAll} />
-              </TableHead>
-              {visibleColumns.map(column => <TableHead key={column.field}>
-                  <div className="flex items-center gap-2 cursor-pointer hover:text-primary" onClick={() => handleSort(column.field)}>
-                    {column.label}
-                    {getSortIcon(column.field)}
+        <div className="overflow-auto">
+          <Table>
+            <TableHeader className="sticky top-0 z-10">
+              <TableRow className="bg-muted/30 hover:bg-muted/40">
+                <TableHead className="w-12 text-center font-semibold">
+                  <div className="flex justify-center">
+                    <Checkbox checked={selectedLeads.length > 0 && selectedLeads.length === Math.min(pageLeads.length, 50)} onCheckedChange={handleSelectAll} />
                   </div>
-                </TableHead>)}
-              <TableHead>
-                <div className="flex items-center gap-2">
+                </TableHead>
+                {visibleColumns.map(column => <TableHead key={column.field} className="text-center font-semibold px-4">
+                    <div className="flex items-center justify-center gap-2 cursor-pointer hover:text-primary" onClick={() => handleSort(column.field)}>
+                      {column.label}
+                      {getSortIcon(column.field)}
+                    </div>
+                  </TableHead>)}
+                <TableHead className="text-center font-semibold w-48">
                   Actions
-                </div>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? <TableRow>
-                <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-                  Loading leads...
-                </TableCell>
-              </TableRow> : pageLeads.length === 0 ? <TableRow>
-                <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-                  No leads found
-                </TableCell>
-              </TableRow> : pageLeads.map(lead => <TableRow key={lead.id}>
-                  <TableCell>
-                    <Checkbox checked={selectedLeads.includes(lead.id)} onCheckedChange={checked => handleSelectLead(lead.id, checked as boolean)} />
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? <TableRow>
+                  <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
+                    Loading leads...
                   </TableCell>
-                  {visibleColumns.map(column => <TableCell key={column.field}>
-                      {column.field === 'lead_name' ? <button onClick={() => {
-                setEditingLead(lead);
-                setShowModal(true);
-              }} className="text-primary hover:underline font-medium">
-                          {lead[column.field as keyof Lead]}
-                        </button> : column.field === 'contact_owner' ? <span>
-                          {lead.created_by ? displayNames[lead.created_by] || "Loading..." : '-'}
-                        </span> : column.field === 'lead_status' && lead.lead_status ? <Badge variant={lead.lead_status === 'New' ? 'secondary' : lead.lead_status === 'Contacted' ? 'default' : lead.lead_status === 'Converted' ? 'outline' : 'outline'}>
-                          {lead.lead_status}
-                        </Badge> : lead[column.field as keyof Lead] || '-'}
-                    </TableCell>)}
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => {
+                </TableRow> : pageLeads.length === 0 ? <TableRow>
+                  <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
+                    No leads found
+                  </TableCell>
+                </TableRow> : pageLeads.map(lead => <TableRow key={lead.id} className="hover:bg-muted/20">
+                    <TableCell className="text-center px-4">
+                      <div className="flex justify-center">
+                        <Checkbox checked={selectedLeads.includes(lead.id)} onCheckedChange={checked => handleSelectLead(lead.id, checked as boolean)} />
+                      </div>
+                    </TableCell>
+                    {visibleColumns.map(column => <TableCell key={column.field} className="text-center px-4">
+                        {column.field === 'lead_name' ? <button onClick={() => {
                   setEditingLead(lead);
                   setShowModal(true);
-                }}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => {
-                  console.log('Setting lead to delete:', lead);
-                  setLeadToDelete(lead);
-                  setShowDeleteDialog(true);
-                }}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleConvertToDeal(lead)} disabled={lead.lead_status === 'Converted'}>
-                        <RefreshCw className="w-4 h-4 mr-1" />
-                        Convert
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleActionItems(lead)}>
-                        <ListTodo className="w-4 h-4 mr-1" />
-                        Action
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>)}
-          </TableBody>
-        </Table>
+                }} className="text-primary hover:underline font-medium">
+                            {lead[column.field as keyof Lead]}
+                          </button> : column.field === 'contact_owner' ? <span>
+                            {lead.created_by ? displayNames[lead.created_by] || "Loading..." : '-'}
+                          </span> : column.field === 'lead_status' && lead.lead_status ? <Badge variant={lead.lead_status === 'New' ? 'secondary' : lead.lead_status === 'Contacted' ? 'default' : lead.lead_status === 'Converted' ? 'outline' : 'outline'}>
+                            {lead.lead_status}
+                          </Badge> : lead[column.field as keyof Lead] || '-'}
+                      </TableCell>)}
+                    <TableCell className="w-48">
+                      <div className="flex items-center justify-end gap-1 pr-2">
+                        <Button variant="ghost" size="sm" onClick={() => {
+                    setEditingLead(lead);
+                    setShowModal(true);
+                  }} title="Edit lead">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                    console.log('Setting lead to delete:', lead);
+                    setLeadToDelete(lead);
+                    setShowDeleteDialog(true);
+                  }} title="Delete lead">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleConvertToDeal(lead)} disabled={lead.lead_status === 'Converted'} title="Convert to deal">
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Convert
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleActionItems(lead)} title="Action items">
+                          <ListTodo className="w-4 h-4 mr-1" />
+                          Action
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>)}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       {totalPages > 1 && <div className="flex items-center justify-between">
