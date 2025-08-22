@@ -20,21 +20,39 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalNotifications, setTotalNotifications] = useState(0);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
+  const itemsPerPage = 50;
+
+  // Fetch notifications with pagination
+  const fetchNotifications = async (page: number = 1) => {
     if (!user) return;
 
     try {
       setLoading(true);
+      
+      // Get total count for pagination
+      const { count, error: countError } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (countError) throw countError;
+      setTotalNotifications(count || 0);
+
+      // Get paginated notifications
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+      
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .range(startIndex, endIndex);
 
       if (error) throw error;
 
@@ -44,7 +62,18 @@ export const useNotifications = () => {
       }));
 
       setNotifications(typedNotifications);
-      setUnreadCount(typedNotifications.filter(n => n.status === 'unread').length);
+      setCurrentPage(page);
+      
+      // Get total unread count separately
+      const { data: unreadData, error: unreadError } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'unread');
+      
+      if (!unreadError) {
+        setUnreadCount(unreadData?.length || 0);
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
       toast({
@@ -247,9 +276,13 @@ export const useNotifications = () => {
     notifications,
     unreadCount,
     loading,
+    currentPage,
+    totalNotifications,
+    itemsPerPage,
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    fetchNotifications
+    fetchNotifications,
+    setCurrentPage
   };
 };
