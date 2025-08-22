@@ -442,13 +442,11 @@ const LeadTable = ({
                   }} title="Delete lead">
                           <Trash2 className="w-4 h-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleConvertToDeal(lead)} disabled={lead.lead_status === 'Converted'} title="Convert to deal">
-                          <RefreshCw className="w-4 h-4 mr-1" />
-                          Convert
+                        <Button variant="ghost" size="sm" onClick={() => handleConvertToDeal(lead)} disabled={lead.lead_status === 'Converted'} title="Convert to deal">
+                          <RefreshCw className="w-4 h-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleActionItems(lead)} title="Action items">
-                          <ListTodo className="w-4 h-4 mr-1" />
-                          Action
+                        <Button variant="ghost" size="sm" onClick={() => handleActionItems(lead)} title="Action items">
+                          <ListTodo className="w-4 h-4" />
                         </Button>
                       </div>
                     </TableCell>
