@@ -16,7 +16,6 @@ import { LeadStatusFilter } from "./LeadStatusFilter";
 import { ConvertToDealModal } from "./ConvertToDealModal";
 import { LeadActionItemsModal } from "./LeadActionItemsModal";
 import { LeadDeleteConfirmDialog } from "./LeadDeleteConfirmDialog";
-
 interface Lead {
   id: string;
   lead_name: string;
@@ -37,7 +36,6 @@ interface Lead {
   created_by?: string;
   modified_by?: string;
 }
-
 const defaultColumns: LeadColumnConfig[] = [{
   field: 'lead_name',
   label: 'Lead Name',
@@ -89,7 +87,6 @@ const defaultColumns: LeadColumnConfig[] = [{
   visible: false,
   order: 9
 }];
-
 interface LeadTableProps {
   showColumnCustomizer: boolean;
   setShowColumnCustomizer: (show: boolean) => void;
@@ -98,7 +95,6 @@ interface LeadTableProps {
   selectedLeads: string[];
   setSelectedLeads: React.Dispatch<React.SetStateAction<string[]>>;
 }
-
 const LeadTable = ({
   showColumnCustomizer,
   setShowColumnCustomizer,
@@ -110,7 +106,9 @@ const LeadTable = ({
   const {
     toast
   } = useToast();
-  const { logDelete } = useCRUDAudit();
+  const {
+    logDelete
+  } = useCRUDAudit();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,11 +126,9 @@ const LeadTable = ({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showActionItemsModal, setShowActionItemsModal] = useState(false);
   const [selectedLeadForActions, setSelectedLeadForActions] = useState<Lead | null>(null);
-
   useEffect(() => {
     fetchLeads();
   }, []);
-
   useEffect(() => {
     let filtered = leads.filter(lead => lead.lead_name?.toLowerCase().includes(searchTerm.toLowerCase()) || lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) || lead.email?.toLowerCase().includes(searchTerm.toLowerCase()));
     if (statusFilter !== "all") {
@@ -151,7 +147,6 @@ const LeadTable = ({
     setFilteredLeads(filtered);
     setCurrentPage(1);
   }, [leads, searchTerm, statusFilter, sortField, sortDirection]);
-
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -160,14 +155,12 @@ const LeadTable = ({
       setSortDirection('asc');
     }
   };
-
   const getSortIcon = (field: string) => {
     if (sortField !== field) {
       return <ArrowUpDown className="w-4 h-4" />;
     }
     return sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
   };
-
   const fetchLeads = async () => {
     try {
       setLoading(true);
@@ -189,7 +182,6 @@ const LeadTable = ({
       setLoading(false);
     }
   };
-
   const handleDelete = async (deleteLinkedRecords: boolean = true) => {
     // Add validation to ensure leadToDelete exists and has a valid id
     if (!leadToDelete) {
@@ -201,7 +193,6 @@ const LeadTable = ({
       });
       return;
     }
-
     if (!leadToDelete.id) {
       console.error('Lead ID is undefined:', leadToDelete);
       toast({
@@ -211,50 +202,36 @@ const LeadTable = ({
       });
       return;
     }
-
     try {
       console.log('Starting lead deletion process for ID:', leadToDelete.id);
-      
       if (deleteLinkedRecords) {
         // First, delete ALL notifications related to this lead (both direct and through action items)
         console.log('Deleting all notifications for this lead...');
-        const { error: allNotificationsError } = await supabase
-          .from('notifications')
-          .delete()
-          .or(`lead_id.eq.${leadToDelete.id},action_item_id.in.(select id from lead_action_items where lead_id = '${leadToDelete.id}')`);
-
+        const {
+          error: allNotificationsError
+        } = await supabase.from('notifications').delete().or(`lead_id.eq.${leadToDelete.id},action_item_id.in.(select id from lead_action_items where lead_id = '${leadToDelete.id}')`);
         if (allNotificationsError) {
           console.error('Error deleting notifications:', allNotificationsError);
           // Try alternative approach - delete by lead_id first, then by action_item_id
-          
+
           // Delete notifications by lead_id
-          await supabase
-            .from('notifications')
-            .delete()
-            .eq('lead_id', leadToDelete.id);
+          await supabase.from('notifications').delete().eq('lead_id', leadToDelete.id);
 
           // Get action items and delete notifications for them
-          const { data: actionItems } = await supabase
-            .from('lead_action_items')
-            .select('id')
-            .eq('lead_id', leadToDelete.id);
-          
+          const {
+            data: actionItems
+          } = await supabase.from('lead_action_items').select('id').eq('lead_id', leadToDelete.id);
           if (actionItems && actionItems.length > 0) {
             const actionItemIds = actionItems.map(item => item.id);
-            await supabase
-              .from('notifications')
-              .delete()
-              .in('action_item_id', actionItemIds);
+            await supabase.from('notifications').delete().in('action_item_id', actionItemIds);
           }
         }
 
         // Now delete lead action items
         console.log('Deleting lead action items...');
-        const { error: actionItemsError } = await supabase
-          .from('lead_action_items')
-          .delete()
-          .eq('lead_id', leadToDelete.id);
-
+        const {
+          error: actionItemsError
+        } = await supabase.from('lead_action_items').delete().eq('lead_id', leadToDelete.id);
         if (actionItemsError) {
           console.error('Error deleting lead action items:', actionItemsError);
           throw actionItemsError;
@@ -263,16 +240,13 @@ const LeadTable = ({
 
       // Finally delete the lead itself
       console.log('Deleting the lead...');
-      const { error } = await supabase
-        .from('leads')
-        .delete()
-        .eq('id', leadToDelete.id);
-        
+      const {
+        error
+      } = await supabase.from('leads').delete().eq('id', leadToDelete.id);
       if (error) throw error;
 
       // Log delete operation
       await logDelete('leads', leadToDelete.id, leadToDelete);
-
       console.log('Lead deletion completed successfully');
       toast({
         title: "Success",
@@ -290,7 +264,6 @@ const LeadTable = ({
       });
     }
   };
-
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const pageLeads = getCurrentPageLeads().slice(0, 50);
@@ -299,7 +272,6 @@ const LeadTable = ({
       setSelectedLeads([]);
     }
   };
-
   const handleSelectLead = (leadId: string, checked: boolean) => {
     if (checked) {
       setSelectedLeads(prev => [...prev, leadId]);
@@ -307,12 +279,10 @@ const LeadTable = ({
       setSelectedLeads(prev => prev.filter(id => id !== leadId));
     }
   };
-
   const getCurrentPageLeads = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredLeads.slice(startIndex, startIndex + itemsPerPage);
   };
-
   const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
 
   // Memoize user IDs to prevent unnecessary re-fetches
@@ -324,15 +294,12 @@ const LeadTable = ({
   const {
     displayNames
   } = useUserDisplayNames(createdByIds);
-
   const visibleColumns = columns.filter(col => col.visible);
   const pageLeads = getCurrentPageLeads();
-
   const handleConvertToDeal = (lead: Lead) => {
     setLeadToConvert(lead);
     setShowConvertModal(true);
   };
-
   const handleConvertSuccess = async () => {
     // Update the lead status to "Converted" immediately
     if (leadToConvert) {
@@ -358,12 +325,10 @@ const LeadTable = ({
     fetchLeads();
     setLeadToConvert(null);
   };
-
   const handleActionItems = (lead: Lead) => {
     setSelectedLeadForActions(lead);
     setShowActionItemsModal(true);
   };
-
   return <div className="space-y-6">
       {/* Header and Actions */}
       <div className="flex items-center justify-between">
@@ -373,8 +338,8 @@ const LeadTable = ({
             <Input placeholder="Search leads..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 w-80" />
           </div>
           <LeadStatusFilter value={statusFilter} onValueChange={setStatusFilter} />
-          <Checkbox checked={selectedLeads.length > 0 && selectedLeads.length === Math.min(pageLeads.length, 50)} onCheckedChange={handleSelectAll} />
-          <span className="text-sm text-muted-foreground">Select all</span>
+          
+          
         </div>
       </div>
 
@@ -486,22 +451,12 @@ const LeadTable = ({
 
       <ConvertToDealModal open={showConvertModal} onOpenChange={setShowConvertModal} lead={leadToConvert} onSuccess={handleConvertSuccess} />
 
-      <LeadActionItemsModal 
-        open={showActionItemsModal} 
-        onOpenChange={setShowActionItemsModal} 
-        lead={selectedLeadForActions} 
-      />
+      <LeadActionItemsModal open={showActionItemsModal} onOpenChange={setShowActionItemsModal} lead={selectedLeadForActions} />
 
-      <LeadDeleteConfirmDialog
-        open={showDeleteDialog}
-        onConfirm={handleDelete}
-        onCancel={() => {
-          setShowDeleteDialog(false);
-          setLeadToDelete(null);
-        }}
-        leadName={leadToDelete?.lead_name}
-      />
+      <LeadDeleteConfirmDialog open={showDeleteDialog} onConfirm={handleDelete} onCancel={() => {
+      setShowDeleteDialog(false);
+      setLeadToDelete(null);
+    }} leadName={leadToDelete?.lead_name} />
     </div>;
 };
-
 export default LeadTable;
