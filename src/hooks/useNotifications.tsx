@@ -38,7 +38,6 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      // Cast the data to proper notification format
       const typedNotifications: Notification[] = (data || []).map(item => ({
         ...item,
         status: item.status as 'read' | 'unread'
@@ -71,7 +70,6 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      // Update local state
       setNotifications(prev => 
         prev.map(n => 
           n.id === notificationId ? { ...n, status: 'read' as const } : n
@@ -96,7 +94,6 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      // Update local state
       setNotifications(prev => 
         prev.map(n => ({ ...n, status: 'read' as const }))
       );
@@ -129,7 +126,6 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      // Update local state
       const deletedNotification = notifications.find(n => n.id === notificationId);
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
       
@@ -151,7 +147,7 @@ export const useNotifications = () => {
     }
   };
 
-  // Set up real-time subscription
+  // Set up real-time subscription for notifications
   useEffect(() => {
     if (!user) return;
 
@@ -175,16 +171,17 @@ export const useNotifications = () => {
             status: payload.new.status as 'read' | 'unread' 
           } as Notification;
           
-          // Add to notifications list
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
 
-          // Show toast notification
-          toast({
-            title: "New Notification",
-            description: newNotification.message,
-            duration: 5000,
-          });
+          // Show toast notification for new action item notifications
+          if (newNotification.notification_type === 'action_item') {
+            toast({
+              title: "New Action Item Notification",
+              description: newNotification.message,
+              duration: 5000,
+            });
+          }
         }
       )
       .on(
@@ -209,11 +206,12 @@ export const useNotifications = () => {
           );
           
           // Recalculate unread count
-          setNotifications(prev => {
-            const newUnreadCount = prev.filter(n => n.status === 'unread').length;
-            setUnreadCount(newUnreadCount);
-            return prev;
-          });
+          const newUnreadCount = notifications.filter(n => 
+            n.id === updatedNotification.id 
+              ? updatedNotification.status === 'unread'
+              : n.status === 'unread'
+          ).length;
+          setUnreadCount(newUnreadCount);
         }
       )
       .on(

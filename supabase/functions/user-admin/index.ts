@@ -52,21 +52,22 @@ serve(async (req) => {
 
     console.log('Authenticated request by:', user.user.email);
 
-    // For now, let's bypass the admin check to debug the core functionality
-    // We'll check if the user exists in user_roles table but won't enforce admin requirement yet
-    const { data: userRole } = await supabaseAdmin
+    // Check user's role from both metadata and database
+    const userRole = user.user.user_metadata?.role || 'user';
+    const { data: userRoleFromDB } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', user.user.id)
       .single();
 
-    console.log('User role from database:', userRole?.role || 'no role found');
-    
-    // Temporarily allow all authenticated users to access this function for debugging
-    // In production, you should enforce: const isAdmin = userRole?.role === 'admin';
-    console.log('Proceeding without admin role check.');
+    const effectiveRole = userRoleFromDB?.role || userRole;
+    const isAdmin = effectiveRole === 'admin';
 
-    // GET - List all users
+    console.log('User role from metadata:', userRole);
+    console.log('User role from database:', userRoleFromDB?.role || 'no role found');
+    console.log('Effective role:', effectiveRole, 'isAdmin:', isAdmin);
+
+    // GET - List all users (allow all authenticated users to view)
     if (req.method === 'GET') {
       console.log('Fetching users list...');
       
@@ -95,8 +96,16 @@ serve(async (req) => {
       const body = await req.json();
       console.log('POST request body:', JSON.stringify(body, null, 2));
       
-      // Handle password reset with new password
+      // Handle password reset with new password (admin only)
       if (body.action === 'reset-password') {
+        if (!isAdmin) {
+          console.log('Non-admin user attempted password reset:', user.user.email);
+          return new Response(
+            JSON.stringify({ error: 'Only Admins can reset user passwords' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { userId, newPassword } = body;
         if (!userId || !newPassword) {
           return new Response(
@@ -133,8 +142,16 @@ serve(async (req) => {
         );
       }
 
-      // Handle role changes
+      // Handle role changes (ADMIN ONLY)
       if (body.action === 'change-role') {
+        if (!isAdmin) {
+          console.log('Non-admin user attempted role change:', user.user.email, 'for user:', body.userId);
+          return new Response(
+            JSON.stringify({ error: 'Only Admins can change user roles' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { userId, newRole } = body;
         if (!userId || !newRole || !['admin', 'user'].includes(newRole)) {
           return new Response(
@@ -143,7 +160,7 @@ serve(async (req) => {
           );
         }
 
-        console.log('Changing role for user:', userId, 'to:', newRole);
+        console.log('Admin changing role for user:', userId, 'to:', newRole, 'by:', user.user.email);
 
         try {
           // First, update the user metadata in Supabase Auth
@@ -178,7 +195,7 @@ serve(async (req) => {
             );
           }
 
-          console.log('Role updated successfully in both auth and database');
+          console.log('Role updated successfully in both auth and database by admin:', user.user.email);
           return new Response(
             JSON.stringify({ 
               success: true,
@@ -199,7 +216,15 @@ serve(async (req) => {
         }
       }
 
-      // Handle user creation
+      // Handle user creation (admin only)
+      if (!isAdmin) {
+        console.log('Non-admin user attempted user creation:', user.user.email);
+        return new Response(
+          JSON.stringify({ error: 'Only Admins can create new users' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { email, displayName, role, password } = body;
       
       if (!email || !password || !displayName) {
@@ -209,7 +234,7 @@ serve(async (req) => {
         );
       }
 
-      console.log('Creating user:', email, 'with role:', role || 'user');
+      console.log('Admin creating user:', email, 'with role:', role || 'user');
 
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -291,23 +316,34 @@ serve(async (req) => {
         );
       }
 
+      // Check if this is a restricted action that requires admin privileges
+      if (action === 'activate' || action === 'deactivate') {
+        if (!isAdmin) {
+          console.log('Non-admin user attempted user status change:', user.user.email, 'action:', action);
+          return new Response(
+            JSON.stringify({ error: 'Only Admins can activate/deactivate users' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       console.log('Updating user:', userId, 'action:', action, 'displayName:', displayName);
 
       // Prepare update data for auth.users
       let updateData: any = {};
 
-      // Handle display name updates
+      // Handle display name updates (allow all authenticated users for their own profile updates)
       if (displayName !== undefined) {
         updateData.user_metadata = { full_name: displayName };
       }
 
-      // Handle user activation/deactivation
+      // Handle user activation/deactivation (admin only)
       if (action === 'activate') {
         updateData.ban_duration = 'none';
-        console.log('Activating user:', userId);
+        console.log('Admin activating user:', userId);
       } else if (action === 'deactivate') {
         updateData.ban_duration = '876000h'; // ~100 years
-        console.log('Deactivating user:', userId);
+        console.log('Admin deactivating user:', userId);
       }
 
       // Update auth user if needed
@@ -359,8 +395,16 @@ serve(async (req) => {
       );
     }
 
-    // DELETE - Delete user
+    // DELETE - Delete user (admin only)
     if (req.method === 'DELETE') {
+      if (!isAdmin) {
+        console.log('Non-admin user attempted user deletion:', user.user.email);
+        return new Response(
+          JSON.stringify({ error: 'Only Admins can delete users' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { userId } = await req.json();
       
       if (!userId) {
@@ -370,7 +414,7 @@ serve(async (req) => {
         );
       }
 
-      console.log('Deleting user:', userId);
+      console.log('Admin deleting user:', userId);
 
       try {
         // Delete the auth user (cascade will handle related records)
@@ -386,7 +430,7 @@ serve(async (req) => {
           );
         }
 
-        console.log('User deleted successfully:', userId);
+        console.log('User deleted successfully by admin:', user.user.email);
         return new Response(
           JSON.stringify({ 
             success: true, 

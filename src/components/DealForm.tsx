@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { Deal, DealStage, getNextStage, getFinalStageOptions, getStageIndex, DEA
 import { useToast } from "@/hooks/use-toast";
 import { validateRequiredFields, getFieldErrors, validateDateLogic, validateRevenueSum } from "./deal-form/validation";
 import { DealStageForm } from "./deal-form/DealStageForm";
+import { DealActionItemsModal } from "./DealActionItemsModal";
 
 interface DealFormProps {
   deal: Deal | null;
@@ -25,6 +25,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   const [showPreviousStages, setShowPreviousStages] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [actionModalOpen, setActionModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -331,10 +332,26 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
                   </Select>
                 </div>
               )}
+              {!isCreating && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActionModalOpen(true)}
+                >
+                  Action
+                </Button>
+              )}
             </div>
           </div>
         </form>
       </DialogContent>
+      
+      {/* Action Items Modal */}
+      <DealActionItemsModal
+        open={actionModalOpen}
+        onOpenChange={setActionModalOpen}
+        deal={deal}
+      />
     </Dialog>
   );
 };

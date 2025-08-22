@@ -62,6 +62,19 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
     await deleteNotification(notificationId);
   };
 
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'action_item':
+        return '📋';
+      case 'lead_update':
+        return '👤';
+      case 'deal_update':
+        return '💼';
+      default:
+        return '🔔';
+    }
+  };
+
   return (
     <div className="relative" ref={dropdownRef} style={{ zIndex: 9999 }}>
       {/* Bell Icon Button */}
@@ -69,20 +82,20 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
         variant="outline"
         size={size === 'small' ? 'sm' : 'lg'}
         className={`relative p-0 bg-white hover:bg-blue-50 rounded-full border-2 border-gray-300 hover:border-blue-400 shadow-md hover:shadow-lg transition-all duration-200 ${
-          size === 'small' ? 'h-8 w-8' : 'h-14 w-14'
+          size === 'small' ? 'h-8 w-8' : 'h-12 w-12'
         }`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Bell className={`text-gray-800 hover:text-blue-600 transition-colors ${
-          size === 'small' ? 'h-4 w-4' : 'h-8 w-8'
+        <Bell className={`text-gray-700 hover:text-blue-600 transition-colors ${
+          size === 'small' ? 'h-4 w-4' : 'h-6 w-6'
         }`} />
         {unreadCount > 0 && (
           <Badge 
             variant="destructive" 
-            className={`absolute rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white shadow-xl animate-bounce ${
+            className={`absolute rounded-full p-0 flex items-center justify-center text-xs font-bold bg-red-500 text-white border-2 border-white shadow-lg animate-pulse ${
               size === 'small' 
-                ? '-top-1 -right-1 h-4 w-4 text-xs' 
-                : '-top-2 -right-2 h-7 w-7 text-xs'
+                ? '-top-1 -right-1 h-5 w-5 text-[10px]' 
+                : '-top-2 -right-2 h-6 w-6 text-xs'
             }`}
           >
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -93,21 +106,24 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
       {/* Notifications Dropdown */}
       {isOpen && (
         <div 
-          className={`absolute right-0 ${placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-80 bg-background rounded-lg shadow-xl border border-border`}
+          className={`absolute right-0 ${placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'} w-96 bg-white rounded-lg shadow-xl border border-gray-200`}
           style={{ 
             zIndex: 10000
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Notifications</h3>
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Notifications
+            </h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleMarkAllRead}
-                  className="text-xs text-blue-600 hover:text-blue-700"
+                  className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                 >
                   <CheckCheck className="h-4 w-4 mr-1" />
                   Mark all read
@@ -117,7 +133,7 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsOpen(false)}
-                className="h-6 w-6 p-0"
+                className="h-6 w-6 p-0 hover:bg-gray-200"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -129,7 +145,8 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <Bell className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No notifications yet</p>
+                <p className="text-sm">No notifications yet</p>
+                <p className="text-xs text-gray-400 mt-1">You'll see updates about action items here</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
@@ -144,15 +161,29 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className={cn(
-                          "text-sm text-gray-900",
-                          notification.status === 'unread' && "font-semibold"
-                        )}>
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                        </p>
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg mt-0.5">
+                            {getNotificationIcon(notification.notification_type)}
+                          </span>
+                          <div className="flex-1">
+                            <p className={cn(
+                              "text-sm text-gray-900 leading-relaxed",
+                              notification.status === 'unread' && "font-semibold"
+                            )}>
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <p className="text-xs text-gray-500">
+                                {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                              </p>
+                              {notification.status === 'unread' && (
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                                  New
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       
                       {/* Action Dropdown */}
@@ -197,13 +228,14 @@ export const NotificationBell = ({ placement = 'down', size = 'large' }: Notific
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="p-3 border-t border-gray-200 text-center">
+            <div className="p-3 border-t border-gray-200 text-center bg-gray-50 rounded-b-lg">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-blue-600 hover:text-blue-700"
+                className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-100"
                 onClick={() => {
                   setIsOpen(false);
+                  navigate('/notifications'); // Future: dedicated notifications page
                 }}
               >
                 View all notifications

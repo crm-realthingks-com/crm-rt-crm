@@ -272,6 +272,7 @@ const AuditLogsSettings = () => {
   };
 
   const handleRevertClick = (log: AuditLog) => {
+    console.log('Revert clicked for log:', log);
     setSelectedLog(log);
     setRevertDialogOpen(true);
   };
@@ -282,17 +283,37 @@ const AuditLogsSettings = () => {
     setReverting(true);
     try {
       const { action, resource_type, resource_id, details } = selectedLog;
+      
+      console.log('Starting revert operation:', {
+        action,
+        resource_type,
+        resource_id,
+        details
+      });
 
       // Validate that this is a supported table
       if (!isValidTableName(resource_type)) {
         throw new Error(`Reverting ${resource_type} records is not supported`);
       }
 
+      if (!resource_id) {
+        throw new Error('Resource ID is required for revert operation');
+      }
+
       if (action === 'DELETE' && details?.deleted_data) {
-        // Restore deleted record
+        console.log('Reverting DELETE - restoring record:', details.deleted_data);
+        
+        // For DELETE operations, restore the deleted record
+        const recordToRestore = { ...details.deleted_data };
+        
+        // Ensure the ID is preserved
+        if (!recordToRestore.id) {
+          recordToRestore.id = resource_id;
+        }
+
         const { error } = await supabase
           .from(resource_type)
-          .insert([details.deleted_data]);
+          .insert([recordToRestore]);
 
         if (error) throw error;
 
@@ -300,8 +321,11 @@ const AuditLogsSettings = () => {
           title: "Success",
           description: `Deleted ${resource_type} record has been restored`,
         });
+
       } else if (action === 'UPDATE' && details?.old_data) {
-        // Restore to old data
+        console.log('Reverting UPDATE - restoring old data:', details.old_data);
+        
+        // For UPDATE operations, restore to old data
         const { error } = await supabase
           .from(resource_type)
           .update(details.old_data)
@@ -313,8 +337,40 @@ const AuditLogsSettings = () => {
           title: "Success",
           description: `${resource_type} record has been reverted to previous state`,
         });
+
+      } else if (action === 'UPDATE' && details?.field_changes) {
+        console.log('Reverting UPDATE using field_changes:', details.field_changes);
+        
+        // Extract old values from field_changes
+        const oldData: Record<string, any> = {};
+        Object.entries(details.field_changes).forEach(([field, change]: [string, any]) => {
+          if (change && typeof change === 'object' && 'old' in change) {
+            oldData[field] = change.old;
+          }
+        });
+
+        if (Object.keys(oldData).length === 0) {
+          throw new Error('No revertible data found in audit log');
+        }
+
+        console.log('Reverting with extracted old data:', oldData);
+
+        const { error } = await supabase
+          .from(resource_type)
+          .update(oldData)
+          .eq('id', resource_id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: `${resource_type} record has been reverted to previous state`,
+        });
+
       } else if (action === 'CREATE') {
-        // Delete the created record
+        console.log('Reverting CREATE - deleting created record');
+        
+        // For CREATE operations, delete the created record
         const { error } = await supabase
           .from(resource_type)
           .delete()
@@ -326,10 +382,13 @@ const AuditLogsSettings = () => {
           title: "Success",
           description: `Created ${resource_type} record has been removed`,
         });
+      } else {
+        throw new Error(`Cannot revert ${action} operation - insufficient data in audit log`);
       }
 
       // Refresh logs after successful revert
       await fetchAuditLogs();
+      
     } catch (error: any) {
       console.error('Error reverting action:', error);
       toast({

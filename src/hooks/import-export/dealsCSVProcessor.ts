@@ -1,321 +1,347 @@
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
-import { CSVParser } from '@/utils/csvParser';
 
-interface DealsProcessOptions {
+import { supabase } from '@/integrations/supabase/client';
+import { CSVParser } from '@/utils/csvParser';
+import { DateFormatUtils } from '@/utils/dateFormatUtils';
+
+export interface DealsProcessingOptions {
   userId: string;
   onProgress?: (processed: number, total: number) => void;
 }
 
-// Updated field mapping after database field removal - removed deleted fields
-const DEALS_FIELDS = [
-  'deal_name', 'stage', 'internal_comment', 'project_name', 'lead_name',
-  'customer_name', 'region', 'lead_owner', 'priority', 'customer_need', 
-  'relationship_strength', 'budget', 'probability', 'expected_closing_date', 
-  'is_recurring', 'customer_challenges', 'business_value', 'decision_maker_level', 
-  'total_contract_value', 'currency_type', 'start_date', 'end_date', 
-  'project_duration', 'action_items', 'rfq_received_date', 'proposal_due_date', 
-  'rfq_status', 'current_status', 'closing', 'won_reason', 'quarterly_revenue_q1', 
-  'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4', 
-  'total_revenue', 'signed_contract_date', 'implementation_start_date', 
-  'handoff_status', 'lost_reason', 'need_improvement', 'drop_reason'
-];
+export interface DealsProcessingResult {
+  successCount: number;
+  updateCount: number;
+  errorCount: number;
+  errors: string[];
+}
 
 export class DealsCSVProcessor {
-  
-  async processCSV(text: string, options: DealsProcessOptions) {
-    console.log('DealsCSVProcessor: Starting CSV processing');
+  async processCSV(csvText: string, options: DealsProcessingOptions): Promise<DealsProcessingResult> {
+    console.log('DealsCSVProcessor: Starting processing with action items');
     
     try {
-      const { headers, rows: dataRows } = CSVParser.parseCSV(text);
-      
-      console.log('DealsCSVProcessor: Headers:', headers);
-      console.log('DealsCSVProcessor: Data rows:', dataRows.length);
+      const { headers, rows } = CSVParser.parseCSV(csvText);
+      console.log(`DealsCSVProcessor: Parsed ${rows.length} rows with headers:`, headers);
 
-      if (headers.length === 0) {
-        throw new Error('No headers found in CSV file');
+      if (rows.length === 0) {
+        throw new Error('No data rows found in CSV');
       }
 
-      if (dataRows.length === 0) {
-        throw new Error('No data rows found in CSV file');
+      const result: DealsProcessingResult = {
+        successCount: 0,
+        updateCount: 0,
+        errorCount: 0,
+        errors: []
+      };
+
+      // Process rows in batches
+      const batchSize = 20;
+      for (let i = 0; i < rows.length; i += batchSize) {
+        const batch = rows.slice(i, i + batchSize);
+        const batchResult = await this.processBatch(batch, headers, options);
+        
+        result.successCount += batchResult.successCount;
+        result.updateCount += batchResult.updateCount;
+        result.errorCount += batchResult.errorCount;
+        result.errors.push(...batchResult.errors);
+
+        if (options.onProgress) {
+          options.onProgress(Math.min(i + batchSize, rows.length), rows.length);
+        }
       }
 
-      return await this.processRows(dataRows, headers, options);
-    } catch (error) {
-      console.error('DealsCSVProcessor: Error:', error);
-      throw error;
+      console.log('DealsCSVProcessor: Processing complete:', result);
+      return result;
+
+    } catch (error: any) {
+      console.error('DealsCSVProcessor: Processing failed:', error);
+      throw new Error(`CSV processing failed: ${error.message}`);
     }
   }
 
-  private async processRows(dataRows: string[][], headers: string[], options: DealsProcessOptions) {
-    console.log('DealsCSVProcessor: Processing rows:', dataRows.length);
+  private async processBatch(
+    rows: string[][],
+    headers: string[],
+    options: DealsProcessingOptions
+  ): Promise<DealsProcessingResult> {
     
-    let successCount = 0;
-    let updateCount = 0;
-    let errorCount = 0;
-    const errors: string[] = [];
+    const result: DealsProcessingResult = {
+      successCount: 0,
+      updateCount: 0,
+      errorCount: 0,
+      errors: []
+    };
 
-    // Create header mapping - normalize headers to match our field names
-    const headerMap = this.createHeaderMapping(headers);
-    console.log('DealsCSVProcessor: Header mapping:', headerMap);
-
-    for (let i = 0; i < dataRows.length; i++) {
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const row = rows[rowIndex];
+      
       try {
-        console.log(`DealsCSVProcessor: Processing row ${i + 1}:`, dataRows[i]);
-        
-        const record = this.mapRowToRecord(dataRows[i], headerMap, i);
-        
-        if (!record || Object.keys(record).length === 0) {
-          console.log(`DealsCSVProcessor: Row ${i + 1}: Skipping empty record`);
-          errorCount++;
+        // Convert row to object
+        const rowObj: Record<string, any> = {};
+        headers.forEach((header, index) => {
+          if (row[index] !== undefined) {
+            rowObj[header] = row[index];
+          }
+        });
+
+        // Extract action items if present
+        let actionItemsData: any[] = [];
+        if (rowObj.action_items_json) {
+          try {
+            actionItemsData = JSON.parse(rowObj.action_items_json);
+            delete rowObj.action_items_json; // Remove from deal data
+          } catch (error) {
+            console.warn('Failed to parse action items JSON:', error);
+          }
+        }
+
+        // Prepare deal record
+        const dealRecord = this.prepareDeal(rowObj, options.userId);
+
+        // Validate required fields - ensure deal_name is present and not empty
+        if (!dealRecord.deal_name || dealRecord.deal_name.trim() === '') {
+          result.errorCount++;
+          result.errors.push(`Row ${rowIndex + 2}: Deal name is required and cannot be empty`);
+          console.error(`Row ${rowIndex + 2}: Missing or empty deal_name:`, rowObj);
           continue;
         }
 
-        console.log(`DealsCSVProcessor: Row ${i + 1}: Mapped record:`, record);
+        // Check for existing deal by name
+        const { data: existingDeals } = await supabase
+          .from('deals')
+          .select('id')
+          .eq('deal_name', dealRecord.deal_name)
+          .limit(1);
 
-        // Ensure we have a valid deal name for duplicate checking
-        if (!record.deal_name || record.deal_name.trim() === '') {
-          record.deal_name = record.project_name || `Deal ${i + 1}`;
-        }
+        let dealId: string;
 
-        // Check if deal with same deal_name already exists
-        const existingDeal = await this.findExistingDealByName(record.deal_name);
-        
-        if (existingDeal) {
+        if (existingDeals && existingDeals.length > 0) {
           // Update existing deal
-          await this.updateDeal(existingDeal.id, record, options.userId);
-          updateCount++;
-          console.log(`DealsCSVProcessor: Row ${i + 1}: Updated existing deal "${record.deal_name}"`);
+          dealId = existingDeals[0].id;
+          const { error: updateError } = await supabase
+            .from('deals')
+            .update(dealRecord)
+            .eq('id', dealId);
+
+          if (updateError) {
+            result.errorCount++;
+            result.errors.push(`Row ${rowIndex + 2}: Update failed - ${updateError.message}`);
+            continue;
+          }
+          result.updateCount++;
         } else {
-          // Create new deal
-          await this.insertDeal(record, options.userId);
-          successCount++;
-          console.log(`DealsCSVProcessor: Row ${i + 1}: Inserted new deal "${record.deal_name}"`);
+          // Insert new deal
+          const dealToInsert = {
+            deal_name: dealRecord.deal_name,
+            stage: dealRecord.stage || 'Lead',
+            project_name: dealRecord.project_name,
+            customer_name: dealRecord.customer_name,
+            lead_name: dealRecord.lead_name,
+            lead_owner: dealRecord.lead_owner,
+            region: dealRecord.region,
+            priority: dealRecord.priority,
+            probability: dealRecord.probability,
+            internal_comment: dealRecord.internal_comment,
+            expected_closing_date: dealRecord.expected_closing_date,
+            customer_need: dealRecord.customer_need,
+            customer_challenges: dealRecord.customer_challenges,
+            relationship_strength: dealRecord.relationship_strength,
+            budget: dealRecord.budget,
+            business_value: dealRecord.business_value,
+            decision_maker_level: dealRecord.decision_maker_level,
+            is_recurring: dealRecord.is_recurring,
+            start_date: dealRecord.start_date,
+            end_date: dealRecord.end_date,
+            currency_type: dealRecord.currency_type,
+            total_contract_value: dealRecord.total_contract_value,
+            project_duration: dealRecord.project_duration,
+            action_items: dealRecord.action_items,
+            current_status: dealRecord.current_status,
+            closing: dealRecord.closing,
+            won_reason: dealRecord.won_reason,
+            lost_reason: dealRecord.lost_reason,
+            need_improvement: dealRecord.need_improvement,
+            drop_reason: dealRecord.drop_reason,
+            quarterly_revenue_q1: dealRecord.quarterly_revenue_q1,
+            quarterly_revenue_q2: dealRecord.quarterly_revenue_q2,
+            quarterly_revenue_q3: dealRecord.quarterly_revenue_q3,
+            quarterly_revenue_q4: dealRecord.quarterly_revenue_q4,
+            total_revenue: dealRecord.total_revenue,
+            signed_contract_date: dealRecord.signed_contract_date,
+            implementation_start_date: dealRecord.implementation_start_date,
+            handoff_status: dealRecord.handoff_status,
+            rfq_received_date: dealRecord.rfq_received_date,
+            proposal_due_date: dealRecord.proposal_due_date,
+            rfq_status: dealRecord.rfq_status,
+            created_by: dealRecord.created_by,
+            modified_by: dealRecord.modified_by,
+            created_at: dealRecord.created_at,
+            modified_at: dealRecord.modified_at
+          };
+
+          const { data: insertedDeal, error: insertError } = await supabase
+            .from('deals')
+            .insert([dealToInsert])
+            .select('id')
+            .single();
+
+          if (insertError) {
+            result.errorCount++;
+            result.errors.push(`Row ${rowIndex + 2}: Insert failed - ${insertError.message}`);
+            continue;
+          }
+          dealId = insertedDeal.id;
+          result.successCount++;
         }
 
-        if (options.onProgress) {
-          options.onProgress(i + 1, dataRows.length);
+        // Process action items if any
+        if (actionItemsData.length > 0) {
+          await this.processActionItems(dealId, actionItemsData, options.userId);
         }
 
-        // Small delay to prevent overwhelming the database
-        if (i % 5 === 0 && i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-      } catch (rowError: any) {
-        console.error(`DealsCSVProcessor: Row ${i + 1}: Error:`, rowError);
-        errors.push(`Row ${i + 1}: ${rowError.message}`);
-        errorCount++;
+      } catch (error: any) {
+        result.errorCount++;
+        result.errors.push(`Row ${rowIndex + 2}: Processing error - ${error.message}`);
       }
     }
 
-    const result = { successCount, updateCount, duplicateCount: 0, errorCount, errors };
-    console.log('DealsCSVProcessor: Final result:', result);
-    
     return result;
   }
 
-  private createHeaderMapping(headers: string[]): Record<number, string> {
-    const mapping: Record<number, string> = {};
-    
-    headers.forEach((header, index) => {
-      const normalized = this.normalizeHeader(header);
-      if (DEALS_FIELDS.includes(normalized)) {
-        mapping[index] = normalized;
-      }
-    });
-    
-    return mapping;
-  }
+  private prepareDeal(rowObj: Record<string, any>, userId: string): Record<string, any> {
+    const dealRecord: Record<string, any> = {
+      created_by: userId,
+      modified_by: userId
+    };
 
-  private normalizeHeader(header: string): string {
-    // Normalize header to match our field names exactly
-    const normalized = header.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-    
-    // Direct mapping for remaining fields only
-    const mappings: Record<string, string> = {
+    // Map CSV fields to database fields
+    const fieldMapping: Record<string, string> = {
       'deal_name': 'deal_name',
-      'name': 'deal_name',
-      'title': 'deal_name',
       'stage': 'stage',
-      'internal_comment': 'internal_comment',
-      'comment': 'internal_comment',
-      'comments': 'internal_comment',
       'project_name': 'project_name',
-      'project': 'project_name',
-      'lead_name': 'lead_name',
-      'lead': 'lead_name',
       'customer_name': 'customer_name',
-      'customer': 'customer_name',
-      'client': 'customer_name',
-      'region': 'region',
+      'lead_name': 'lead_name',
       'lead_owner': 'lead_owner',
-      'owner': 'lead_owner',
+      'region': 'region',
       'priority': 'priority',
+      'probability': 'probability',
+      'internal_comment': 'internal_comment',
+      'expected_closing_date': 'expected_closing_date',
       'customer_need': 'customer_need',
-      'need': 'customer_need',
+      'customer_challenges': 'customer_challenges',
       'relationship_strength': 'relationship_strength',
       'budget': 'budget',
-      'probability': 'probability',
-      'expected_closing_date': 'expected_closing_date',
-      'closing_date': 'expected_closing_date',
-      'is_recurring': 'is_recurring',
-      'recurring': 'is_recurring',
-      'customer_challenges': 'customer_challenges',
-      'challenges': 'customer_challenges',
       'business_value': 'business_value',
-      'value': 'business_value',
       'decision_maker_level': 'decision_maker_level',
-      'total_contract_value': 'total_contract_value',
-      'contract_value': 'total_contract_value',
-      'currency_type': 'currency_type',
-      'currency': 'currency_type',
+      'is_recurring': 'is_recurring',
       'start_date': 'start_date',
       'end_date': 'end_date',
+      'currency_type': 'currency_type',
+      'total_contract_value': 'total_contract_value',
       'project_duration': 'project_duration',
-      'duration': 'project_duration',
       'action_items': 'action_items',
-      'actions': 'action_items',
-      'rfq_received_date': 'rfq_received_date',
-      'proposal_due_date': 'proposal_due_date',
-      'rfq_status': 'rfq_status',
       'current_status': 'current_status',
-      'status': 'current_status',
       'closing': 'closing',
       'won_reason': 'won_reason',
+      'lost_reason': 'lost_reason',
+      'need_improvement': 'need_improvement',
+      'drop_reason': 'drop_reason',
       'quarterly_revenue_q1': 'quarterly_revenue_q1',
-      'q1': 'quarterly_revenue_q1',
       'quarterly_revenue_q2': 'quarterly_revenue_q2',
-      'q2': 'quarterly_revenue_q2',
       'quarterly_revenue_q3': 'quarterly_revenue_q3',
-      'q3': 'quarterly_revenue_q3',
       'quarterly_revenue_q4': 'quarterly_revenue_q4',
-      'q4': 'quarterly_revenue_q4',
       'total_revenue': 'total_revenue',
-      'revenue': 'total_revenue',
       'signed_contract_date': 'signed_contract_date',
       'implementation_start_date': 'implementation_start_date',
       'handoff_status': 'handoff_status',
-      'lost_reason': 'lost_reason',
-      'need_improvement': 'need_improvement',
-      'drop_reason': 'drop_reason'
+      'rfq_received_date': 'rfq_received_date',
+      'proposal_due_date': 'proposal_due_date',
+      'rfq_status': 'rfq_status'
     };
-    
-    return mappings[normalized] || normalized;
-  }
 
-  private mapRowToRecord(row: string[], headerMap: Record<number, string>, rowIndex: number) {
-    const record: any = {};
-    let hasValidData = false;
-    
-    Object.entries(headerMap).forEach(([indexStr, fieldName]) => {
-      const index = parseInt(indexStr);
-      if (index < row.length) {
-        const rawValue = row[index];
-        if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '') {
-          record[fieldName] = this.convertValue(fieldName, String(rawValue).trim());
-          hasValidData = true;
-        }
+    Object.entries(fieldMapping).forEach(([csvField, dbField]) => {
+      if (rowObj[csvField] !== undefined && rowObj[csvField] !== '') {
+        dealRecord[dbField] = rowObj[csvField];
       }
     });
-    
-    console.log(`DealsCSVProcessor: Row ${rowIndex + 1} processed record:`, record);
-    
-    return hasValidData ? record : null;
-  }
 
-  private convertValue(fieldName: string, value: string): any {
-    // No validation - just basic type conversion
-    if (!value || value === '') return null;
-    
-    // Numbers - only for remaining numeric fields
-    if (['probability', 'total_contract_value', 'quarterly_revenue_q1', 
-         'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4', 
-         'total_revenue', 'project_duration'].includes(fieldName)) {
-      const num = parseFloat(value);
-      return isNaN(num) ? null : num;
-    }
-    
-    // Just return the string value for everything else
-    return value;
-  }
-
-  private async findExistingDealByName(dealName: string): Promise<{ id: string } | null> {
-    if (!dealName || dealName.trim() === '') {
-      return null;
+    // Ensure deal_name is always set - try multiple fallbacks
+    if (!dealRecord.deal_name || dealRecord.deal_name.trim() === '') {
+      // Try fallback fields
+      dealRecord.deal_name = rowObj.name || 
+                            rowObj.project_name || 
+                            rowObj.customer_name || 
+                            '';
     }
 
+    // Handle date fields
+    const dateFields = ['expected_closing_date', 'start_date', 'end_date', 'signed_contract_date', 
+                       'implementation_start_date', 'rfq_received_date', 'proposal_due_date'];
+    
+    dateFields.forEach(field => {
+      if (rowObj[field]) {
+        const convertedDate = DateFormatUtils.convertDateForImport(rowObj[field]);
+        if (convertedDate) dealRecord[field] = convertedDate;
+      }
+    });
+
+    // Handle datetime fields
+    if (rowObj.created_at) {
+      const convertedDate = DateFormatUtils.convertDateForImport(rowObj.created_at);
+      if (convertedDate) dealRecord.created_at = convertedDate;
+    }
+
+    if (rowObj.modified_at) {
+      const convertedDate = DateFormatUtils.convertDateForImport(rowObj.modified_at);
+      if (convertedDate) dealRecord.modified_at = convertedDate;
+    }
+
+    // Handle numeric fields
+    const numericFields = ['priority', 'probability', 'total_contract_value', 'project_duration',
+                          'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3',
+                          'quarterly_revenue_q4', 'total_revenue'];
+    
+    numericFields.forEach(field => {
+      if (rowObj[field] && rowObj[field] !== '') {
+        const num = parseFloat(rowObj[field]);
+        if (!isNaN(num)) dealRecord[field] = num;
+      }
+    });
+
+    return dealRecord;
+  }
+
+  private async processActionItems(dealId: string, actionItemsData: any[], userId: string) {
     try {
-      const trimmedName = dealName.trim();
-      console.log('DealsCSVProcessor: Checking for existing deal with name (case-insensitive):', trimmedName);
-      
-      // Use ilike for case-insensitive exact match
-      const { data, error } = await supabase
-        .from('deals')
-        .select('id, deal_name, stage')
-        .ilike('deal_name', trimmedName)
-        .limit(1);
+      // Clear existing action items for this deal (optional - you might want to keep them)
+      await supabase
+        .from('deal_action_items')
+        .delete()
+        .eq('deal_id', dealId);
 
-      if (error) {
-        console.error('DealsCSVProcessor: Error checking for existing deal:', error);
-        return null;
+      // Insert new action items
+      const actionItemsToInsert = actionItemsData.map(item => ({
+        deal_id: dealId,
+        next_action: item.next_action || '',
+        status: item.status || 'Open',
+        due_date: item.due_date || null,
+        assigned_to: item.assigned_to || null,
+        created_by: userId
+      }));
+
+      if (actionItemsToInsert.length > 0) {
+        const { error } = await supabase
+          .from('deal_action_items')
+          .insert(actionItemsToInsert);
+
+        if (error) {
+          console.error('Error inserting deal action items:', error);
+        } else {
+          console.log(`Inserted ${actionItemsToInsert.length} action items for deal ${dealId}`);
+        }
       }
-
-      if (data && data.length > 0) {
-        console.log('DealsCSVProcessor: Found existing deal:', data[0]);
-        return data[0];
-      }
-
-      console.log('DealsCSVProcessor: No existing deal found with name:', trimmedName);
-      return null;
     } catch (error) {
-      console.error('DealsCSVProcessor: Exception checking for existing deal:', error);
-      return null;
+      console.error('Error processing deal action items:', error);
     }
-  }
-
-  private async updateDeal(dealId: string, record: any, userId: string) {
-    // Set user information and timestamps
-    record.modified_by = userId;
-    record.modified_at = new Date().toISOString();
-
-    console.log('DealsCSVProcessor: Updating deal:', dealId, 'with data:', record);
-    
-    const { data, error } = await supabase
-      .from('deals')
-      .update(record)
-      .eq('id', dealId)
-      .select('id, deal_name');
-
-    if (error) {
-      console.error('DealsCSVProcessor: Update error:', error);
-      throw new Error(`Update failed - ${error.message}`);
-    }
-
-    console.log('DealsCSVProcessor: Successfully updated:', data[0]);
-    return data[0];
-  }
-
-  private async insertDeal(record: any, userId: string) {
-    // Set user information and timestamps
-    record.created_by = userId;
-    record.modified_by = userId;
-    record.created_at = new Date().toISOString();
-    record.modified_at = new Date().toISOString();
-
-    console.log('DealsCSVProcessor: Inserting new deal:', record);
-    
-    const { data, error } = await supabase
-      .from('deals')
-      .insert([record])
-      .select('id, deal_name');
-
-    if (error) {
-      console.error('DealsCSVProcessor: Insert error:', error);
-      throw new Error(`Insert failed - ${error.message}`);
-    }
-
-    console.log('DealsCSVProcessor: Successfully inserted:', data[0]);
-    return data[0];
   }
 }

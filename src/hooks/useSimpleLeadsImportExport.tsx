@@ -7,12 +7,12 @@ import { GenericCSVProcessor } from './import-export/genericCSVProcessor';
 import { GenericCSVExporter } from './import-export/genericCSVExporter';
 import { getExportFilename } from '@/utils/exportUtils';
 
-// Leads field order
+// Leads field order including action items
 const LEADS_EXPORT_FIELDS = [
   'id', 'lead_name', 'company_name', 'position', 'email', 'phone_no',
   'linkedin', 'website', 'contact_source', 'lead_status', 'industry', 'country',
   'description', 'contact_owner', 'created_by', 'modified_by',
-  'created_time', 'modified_time'
+  'created_time', 'modified_time', 'action_items_json'
 ];
 
 export const useSimpleLeadsImportExport = (onRefresh: () => void) => {
@@ -69,9 +69,23 @@ export const useSimpleLeadsImportExport = (onRefresh: () => void) => {
 
     } catch (error: any) {
       console.error('Import error:', error);
+      let errorMessage = "Failed to import leads";
+      
+      if (error.message) {
+        if (error.message.includes('foreign key')) {
+          errorMessage = "Import failed: Invalid user reference in data";
+        } else if (error.message.includes('duplicate key')) {
+          errorMessage = "Import failed: Duplicate records found";
+        } else if (error.message.includes('check constraint')) {
+          errorMessage = "Import failed: Invalid data format";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Import Error",
-        description: error.message || "Failed to import leads",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -81,12 +95,13 @@ export const useSimpleLeadsImportExport = (onRefresh: () => void) => {
 
   const handleExport = async () => {
     try {
-      const { data: leads, error } = await supabase
+      // Fetch leads with their action items
+      const { data: leads, error: leadsError } = await supabase
         .from('leads')
         .select('*')
         .order('created_time', { ascending: false });
 
-      if (error) throw error;
+      if (leadsError) throw leadsError;
 
       if (!leads || leads.length === 0) {
         toast({
@@ -97,13 +112,41 @@ export const useSimpleLeadsImportExport = (onRefresh: () => void) => {
         return;
       }
 
+      // Fetch all action items for these leads
+      const leadIds = leads.map(lead => lead.id);
+      const { data: actionItems, error: actionItemsError } = await supabase
+        .from('lead_action_items')
+        .select('*')
+        .in('lead_id', leadIds)
+        .order('created_at', { ascending: false });
+
+      if (actionItemsError) {
+        console.error('Error fetching action items:', actionItemsError);
+        // Continue with export without action items
+      }
+
+      // Group action items by lead_id
+      const actionItemsByLead = (actionItems || []).reduce((acc, item) => {
+        if (!acc[item.lead_id]) {
+          acc[item.lead_id] = [];
+        }
+        acc[item.lead_id].push(item);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      // Combine leads with their action items
+      const leadsWithActionItems = leads.map(lead => ({
+        ...lead,
+        action_items_json: JSON.stringify(actionItemsByLead[lead.id] || [])
+      }));
+
       const filename = getExportFilename('leads', 'all');
       const exporter = new GenericCSVExporter();
-      await exporter.exportToCSV(leads, filename, LEADS_EXPORT_FIELDS);
+      await exporter.exportToCSV(leadsWithActionItems, filename, LEADS_EXPORT_FIELDS);
 
       toast({
         title: "Export Successful",
-        description: `${leads.length} leads exported`,
+        description: `${leads.length} leads with action items exported`,
       });
 
     } catch (error: any) {

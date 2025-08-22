@@ -1,7 +1,7 @@
 
-import { GenericCSVProcessor } from './genericCSVProcessor';
+import { DealsCSVProcessor } from './dealsCSVProcessor';
 
-// Exact field order as specified
+// Exact field order as specified, including action items
 const DEALS_EXPORT_FIELDS = [
   'id', 'deal_name', 'stage', 'probability', 'drop_reason', 'created_by', 'modified_by', 
   'created_at', 'modified_at', 'lead_name', 'lead_owner', 'project_name', 'customer_name', 
@@ -12,7 +12,7 @@ const DEALS_EXPORT_FIELDS = [
   'total_contract_value', 'project_duration', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 
   'quarterly_revenue_q3', 'quarterly_revenue_q4', 'total_revenue', 'closing', 
   'signed_contract_date', 'implementation_start_date', 'handoff_status', 
-  'rfq_received_date', 'proposal_due_date', 'rfq_status'
+  'rfq_received_date', 'proposal_due_date', 'rfq_status', 'action_items_json'
 ];
 
 interface DealsProcessOptions {
@@ -20,19 +20,18 @@ interface DealsProcessOptions {
   onProgress?: (processed: number, total: number) => void;
 }
 
-// Simplified CSV processor using generic logic
+// Simplified CSV processor using specialized deals logic
 export class SimpleDealsCSVProcessor {
-  private genericProcessor: GenericCSVProcessor;
+  private dealsProcessor: DealsCSVProcessor;
 
   constructor() {
-    this.genericProcessor = new GenericCSVProcessor();
+    this.dealsProcessor = new DealsCSVProcessor();
   }
   
   async processCSV(csvText: string, options: DealsProcessOptions) {
-    console.log('SimpleDealsCSVProcessor: Starting CSV processing with centralized logic');
+    console.log('SimpleDealsCSVProcessor: Starting CSV processing with action items');
     
-    return await this.genericProcessor.processCSV(csvText, {
-      tableName: 'deals',
+    return await this.dealsProcessor.processCSV(csvText, {
       userId: options.userId,
       onProgress: options.onProgress
     });

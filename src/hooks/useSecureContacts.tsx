@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSecureDataAccess } from '@/hooks/useSecureDataAccess';
 import { useToast } from '@/hooks/use-toast';
+import { useCRUDAudit } from '@/hooks/useCRUDAudit';
 
 interface Contact {
   id: string;
@@ -36,6 +37,7 @@ export const useSecureContacts = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const { secureQuery, secureExport } = useSecureDataAccess();
+  const { logDelete } = useCRUDAudit();
   const { toast } = useToast();
 
   const fetchContacts = async () => {
@@ -128,25 +130,90 @@ export const useSecureContacts = () => {
 
   const deleteContact = async (id: string) => {
     try {
-      const query = supabase
+      // First get the contact to check ownership and get data for logging
+      const contactToDelete = contacts.find(c => c.id === id);
+      if (!contactToDelete) {
+        throw new Error('Contact not found');
+      }
+
+      console.log('Attempting to delete contact:', { id, contactToDelete });
+
+      // Count contacts before deletion to verify if deletion actually happened
+      const { count: beforeCount } = await supabase
         .from('contacts')
-        .delete()
+        .select('*', { count: 'exact', head: true })
         .eq('id', id);
 
-      await secureQuery('contacts', query, 'DELETE');
-      setContacts(prev => prev.filter(contact => contact.id !== id));
-      
-      toast({
-        title: "Success",
-        description: "Contact deleted successfully",
-      });
+      console.log('Contacts count before deletion:', beforeCount);
+
+      // Try to delete the contact
+      const { data, error } = await supabase
+        .from('contacts')
+        .delete()
+        .eq('id', id)
+        .select()
+        .single();
+
+      console.log('Delete operation result:', { data, error });
+
+      // Check if there's an error OR if no data was returned (both indicate failure)
+      if (error || !data) {
+        console.log('Delete operation failed - checking for permission error');
+        
+        // Count contacts after deletion attempt to verify if record was actually deleted
+        const { count: afterCount } = await supabase
+          .from('contacts')
+          .select('*', { count: 'exact', head: true })
+          .eq('id', id);
+
+        console.log('Contacts count after deletion attempt:', afterCount);
+
+        // If count is the same, the deletion was blocked (permission issue)
+        if (beforeCount === afterCount && afterCount === 1) {
+          console.log('Deletion was blocked - logging as unauthorized attempt');
+          
+          // Log unauthorized attempt
+          await logDelete('contacts', id, contactToDelete, undefined, 'Blocked');
+          
+          toast({
+            title: "Permission Denied",
+            description: "You don't have permission to delete this record.",
+            variant: "destructive",
+          });
+          
+          return; // Exit early, don't throw error or show success
+        }
+
+        // For other database errors, throw the error
+        if (error) {
+          throw error;
+        }
+      }
+
+      // If we get here and have data, the deletion was successful
+      if (data) {
+        console.log('Delete operation successful, updating UI');
+        setContacts(prev => prev.filter(contact => contact.id !== id));
+        
+        // Log successful deletion
+        await logDelete('contacts', id, contactToDelete, undefined, 'Success');
+        
+        toast({
+          title: "Success",
+          description: "Contact deleted successfully",
+        });
+      }
+
     } catch (error: any) {
-      console.error('Error deleting contact:', error);
+      console.error('Error in deleteContact:', error);
+      
+      // Show generic error for unexpected issues
       toast({
         title: "Error",
         description: "Failed to delete contact",
         variant: "destructive",
       });
+      
       throw error;
     }
   };

@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, RefreshCw, ListTodo } from "lucide-react";
 import { LeadModal } from "./LeadModal";
@@ -16,6 +15,7 @@ import { LeadColumnCustomizer, LeadColumnConfig } from "./LeadColumnCustomizer";
 import { LeadStatusFilter } from "./LeadStatusFilter";
 import { ConvertToDealModal } from "./ConvertToDealModal";
 import { LeadActionItemsModal } from "./LeadActionItemsModal";
+import { LeadDeleteConfirmDialog } from "./LeadDeleteConfirmDialog";
 
 interface Lead {
   id: string;
@@ -99,7 +99,7 @@ interface LeadTableProps {
   setSelectedLeads: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-export const LeadTable = ({
+const LeadTable = ({
   showColumnCustomizer,
   setShowColumnCustomizer,
   showModal,
@@ -118,7 +118,7 @@ export const LeadTable = ({
   const [statusFilter, setStatusFilter] = useState("New");
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [leadToDelete, setLeadToDelete] = useState<string | null>(null);
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
   const [columns, setColumns] = useState(defaultColumns);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
@@ -190,28 +190,102 @@ export const LeadTable = ({
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (deleteLinkedRecords: boolean = true) => {
+    // Add validation to ensure leadToDelete exists and has a valid id
+    if (!leadToDelete) {
+      console.error('No lead selected for deletion');
+      toast({
+        title: "Error",
+        description: "No lead selected for deletion",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!leadToDelete.id) {
+      console.error('Lead ID is undefined:', leadToDelete);
+      toast({
+        title: "Error",
+        description: "Invalid lead ID",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      // Find the lead first to log the deleted data
-      const leadToDelete = leads.find(l => l.id === id);
+      console.log('Starting lead deletion process for ID:', leadToDelete.id);
       
-      const {
-        error
-      } = await supabase.from('leads').delete().eq('id', id);
+      if (deleteLinkedRecords) {
+        // First, delete ALL notifications related to this lead (both direct and through action items)
+        console.log('Deleting all notifications for this lead...');
+        const { error: allNotificationsError } = await supabase
+          .from('notifications')
+          .delete()
+          .or(`lead_id.eq.${leadToDelete.id},action_item_id.in.(select id from lead_action_items where lead_id = '${leadToDelete.id}')`);
+
+        if (allNotificationsError) {
+          console.error('Error deleting notifications:', allNotificationsError);
+          // Try alternative approach - delete by lead_id first, then by action_item_id
+          
+          // Delete notifications by lead_id
+          await supabase
+            .from('notifications')
+            .delete()
+            .eq('lead_id', leadToDelete.id);
+
+          // Get action items and delete notifications for them
+          const { data: actionItems } = await supabase
+            .from('lead_action_items')
+            .select('id')
+            .eq('lead_id', leadToDelete.id);
+          
+          if (actionItems && actionItems.length > 0) {
+            const actionItemIds = actionItems.map(item => item.id);
+            await supabase
+              .from('notifications')
+              .delete()
+              .in('action_item_id', actionItemIds);
+          }
+        }
+
+        // Now delete lead action items
+        console.log('Deleting lead action items...');
+        const { error: actionItemsError } = await supabase
+          .from('lead_action_items')
+          .delete()
+          .eq('lead_id', leadToDelete.id);
+
+        if (actionItemsError) {
+          console.error('Error deleting lead action items:', actionItemsError);
+          throw actionItemsError;
+        }
+      }
+
+      // Finally delete the lead itself
+      console.log('Deleting the lead...');
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', leadToDelete.id);
+        
       if (error) throw error;
 
       // Log delete operation
-      await logDelete('leads', id, leadToDelete);
+      await logDelete('leads', leadToDelete.id, leadToDelete);
 
+      console.log('Lead deletion completed successfully');
       toast({
         title: "Success",
         description: "Lead deleted successfully"
       });
       fetchLeads();
-    } catch (error) {
+      setLeadToDelete(null);
+      setShowDeleteDialog(false);
+    } catch (error: any) {
+      console.error('Delete error:', error);
       toast({
         title: "Error",
-        description: "Failed to delete lead",
+        description: error.message || "Failed to delete lead",
         variant: "destructive"
       });
     }
@@ -359,7 +433,8 @@ export const LeadTable = ({
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => {
-                  setLeadToDelete(lead.id);
+                  console.log('Setting lead to delete:', lead);
+                  setLeadToDelete(lead);
                   setShowDeleteDialog(true);
                 }}>
                         <Trash2 className="w-4 h-4" />
@@ -379,7 +454,6 @@ export const LeadTable = ({
         </Table>
       </Card>
 
-      {/* Pagination */}
       {totalPages > 1 && <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
@@ -401,7 +475,6 @@ export const LeadTable = ({
           </div>
         </div>}
 
-      {/* Modals */}
       <LeadModal open={showModal} onOpenChange={setShowModal} lead={editingLead} onSuccess={() => {
       fetchLeads();
       setEditingLead(null);
@@ -417,26 +490,16 @@ export const LeadTable = ({
         lead={selectedLeadForActions} 
       />
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the lead.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-            if (leadToDelete) {
-              handleDelete(leadToDelete);
-              setLeadToDelete(null);
-            }
-          }}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <LeadDeleteConfirmDialog
+        open={showDeleteDialog}
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setShowDeleteDialog(false);
+          setLeadToDelete(null);
+        }}
+        leadName={leadToDelete?.lead_name}
+      />
     </div>;
 };
+
+export default LeadTable;

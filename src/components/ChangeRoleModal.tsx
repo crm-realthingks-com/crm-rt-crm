@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Shield, User } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface User {
   id: string;
@@ -28,6 +29,7 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
   const [selectedRole, setSelectedRole] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { isAdmin } = useUserRole();
 
   useEffect(() => {
     if (user) {
@@ -38,6 +40,16 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedRole) return;
+
+    // Check if current user is admin
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only Admins can change user roles.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setLoading(true);
 
@@ -71,11 +83,21 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
       }
     } catch (error: any) {
       console.error('Error updating role:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update user role",
-        variant: "destructive",
-      });
+      
+      // Handle specific admin restriction error
+      if (error.message?.includes('Only Admins can change user roles')) {
+        toast({
+          title: "Access Denied",
+          description: "Only Admins can change user roles.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to update user role",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -107,6 +129,15 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
         <DialogHeader>
           <DialogTitle>Change User Role</DialogTitle>
         </DialogHeader>
+        
+        {!isAdmin && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 mb-4">
+            <p className="text-sm text-destructive">
+              ⚠️ Only Admins can change user roles. You don't have permission to perform this action.
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="user">User</Label>
@@ -118,7 +149,11 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
           
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Select value={selectedRole} onValueChange={setSelectedRole} disabled={loading}>
+            <Select 
+              value={selectedRole} 
+              onValueChange={setSelectedRole} 
+              disabled={loading || !isAdmin}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
@@ -167,7 +202,10 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
             <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !selectedRole}>
+            <Button 
+              type="submit" 
+              disabled={loading || !selectedRole || !isAdmin}
+            >
               {loading ? 'Updating...' : 'Update Role'}
             </Button>
           </div>

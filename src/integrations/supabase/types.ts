@@ -104,6 +104,50 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_action_items: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          due_date: string | null
+          id: string
+          next_action: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          due_date?: string | null
+          id?: string
+          next_action: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          due_date?: string | null
+          id?: string
+          next_action?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_action_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           action_items: string | null
@@ -285,15 +329,7 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "lead_action_items_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       leads: {
         Row: {
@@ -392,22 +428,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_action_item_id_fkey"
-            columns: ["action_item_id"]
-            isOneToOne: false
-            referencedRelation: "lead_action_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notifications_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {

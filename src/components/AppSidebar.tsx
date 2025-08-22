@@ -1,4 +1,3 @@
-
 import { 
   Home, 
   Users, 
@@ -17,7 +16,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { NotificationBell } from "@/components/NotificationBell";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -86,7 +84,7 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-sidebar-border relative" style={{ height: '72px', padding: '0 16px' }}>
+      <div className="flex items-center border-b border-sidebar-border relative" style={{ height: '72px', padding: '0 16px' }}>
         <div className="flex items-center cursor-pointer" onClick={handleLogoClick}>
           <img 
             src="/lovable-uploads/12bdcc4a-a1c8-4ccf-ba6a-931fd566d3c8.png" 
@@ -99,13 +97,6 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
             </span>
           )}
         </div>
-        
-        {/* Notification Bell - Only show when sidebar is expanded */}
-        {sidebarOpen && (
-          <div className="ml-2">
-            <NotificationBell />
-          </div>
-        )}
       </div>
 
       {/* Menu Items */}

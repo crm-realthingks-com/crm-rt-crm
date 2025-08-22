@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +47,7 @@ const UserManagement = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      console.log('Fetching users with new function...');
+      console.log('Fetching users with role validation...');
       
       const { data, error } = await supabase.functions.invoke('user-admin', {
         method: 'GET'
@@ -132,16 +133,41 @@ const UserManagement = () => {
   }, []);
 
   const handleChangeRole = useCallback((user: UserData) => {
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only Admins can change user roles.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedUser(user);
     setShowRoleModal(true);
-  }, []);
+  }, [isAdmin, toast]);
 
   const handleSetPassword = useCallback((user: UserData) => {
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only Admins can reset user passwords.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedUser(user);
     setShowSetPasswordModal(true);
-  }, []);
+  }, [isAdmin, toast]);
 
   const handleToggleUserStatus = useCallback(async (user: UserData) => {
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only Admins can activate/deactivate users.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const action = user.banned_until ? 'activate' : 'deactivate';
       
@@ -169,18 +195,34 @@ const UserManagement = () => {
       await refreshUser();
     } catch (error: any) {
       console.error('Error updating user status:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update user status",
-        variant: "destructive",
-      });
+      if (error.message?.includes('Only Admins can')) {
+        toast({
+          title: "Access Denied",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to update user status",
+          variant: "destructive",
+        });
+      }
     }
-  }, [fetchUsers, refreshUser, toast]);
+  }, [fetchUsers, refreshUser, toast, isAdmin]);
 
   const handleDeleteUser = useCallback((user: UserData) => {
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only Admins can delete users.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedUser(user);
     setShowDeleteDialog(true);
-  }, []);
+  }, [isAdmin, toast]);
 
   const handleUserSuccess = useCallback(async () => {
     await fetchUsers();
@@ -213,9 +255,9 @@ const UserManagement = () => {
       console.log('UserManagement useEffect - isAdmin:', isAdmin, 'roleLoading:', roleLoading);
       
       setLoading(true);
-      // Temporarily allow all authenticated users to see this for debugging
-      // In production, change this back to: if (isAdmin) {
-      await fetchUsers();
+      if (isAdmin) {
+        await fetchUsers();
+      }
       setLoading(false);
     };
     
@@ -242,28 +284,27 @@ const UserManagement = () => {
     );
   }
 
-  // Temporarily comment out admin check for debugging
-  // if (!isAdmin) {
-  //   console.log('UserManagement - Access denied, isAdmin:', isAdmin);
-  //   return (
-  //     <Card>
-  //       <CardHeader>
-  //         <CardTitle className="flex items-center gap-2">
-  //           <Shield className="h-5 w-5" />
-  //           User Management
-  //         </CardTitle>
-  //       </CardHeader>
-  //       <CardContent>
-  //         <div className="flex flex-col items-center justify-center h-32 text-center">
-  //           <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
-  //           <h3 className="text-lg font-semibold">Access Denied</h3>
-  //           <p className="text-muted-foreground">Only administrators can access user management.</p>
-  //           <p className="text-xs text-muted-foreground mt-2">Current role: {userRole}</p>
-  //         </div>
-  //       </CardContent>
-  //     </Card>
-  //   );
-  // }
+  if (!isAdmin) {
+    console.log('UserManagement - Access denied, isAdmin:', isAdmin);
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            User Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center h-32 text-center">
+            <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">Access Denied</h3>
+            <p className="text-muted-foreground">Only administrators can access user management.</p>
+            <p className="text-xs text-muted-foreground mt-2">Current role: {userRole}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
@@ -362,21 +403,32 @@ const UserManagement = () => {
                         <DropdownMenuItem onClick={() => handleEditUser(user)}>
                           Edit Display Name
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleChangeRole(user)}>
-                          Change Role
+                        <DropdownMenuItem 
+                          onClick={() => handleChangeRole(user)}
+                          disabled={!isAdmin}
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          Change Role {!isAdmin && '(Admin Only)'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSetPassword(user)}>
+                        <DropdownMenuItem 
+                          onClick={() => handleSetPassword(user)}
+                          disabled={!isAdmin}
+                        >
                           <Key className="h-4 w-4 mr-2" />
-                          Set Password
+                          Set Password {!isAdmin && '(Admin Only)'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleUserStatus(user)}>
-                          {user.banned_until ? 'Activate' : 'Deactivate'}
+                        <DropdownMenuItem 
+                          onClick={() => handleToggleUserStatus(user)}
+                          disabled={!isAdmin}
+                        >
+                          {user.banned_until ? 'Activate' : 'Deactivate'} {!isAdmin && '(Admin Only)'}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDeleteUser(user)}
                           className="text-destructive"
+                          disabled={!isAdmin}
                         >
-                          Delete User
+                          Delete User {!isAdmin && '(Admin Only)'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

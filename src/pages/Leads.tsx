@@ -1,12 +1,12 @@
 
-import { LeadTable } from "@/components/LeadTable";
+import LeadTable from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Settings, Plus, Trash2, ChevronDown, Upload, Download } from "lucide-react";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useSimpleLeadsImportExport } from "@/hooks/useSimpleLeadsImportExport";
-import { useCRUDAudit } from "@/hooks/useCRUDAudit";
+import { useLeadDeletion } from "@/hooks/useLeadDeletion";
+import { LeadDeleteConfirmDialog } from "@/components/LeadDeleteConfirmDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,45 +16,34 @@ import {
 
 const Leads = () => {
   const { toast } = useToast();
-  const { logBulkDelete } = useCRUDAudit();
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { handleImport, handleExport, isImporting } = useSimpleLeadsImportExport(() => {
     setRefreshTrigger(prev => prev + 1);
   });
 
-  const handleBulkDelete = async () => {
+  const { deleteLeads, isDeleting } = useLeadDeletion();
+
+  const handleBulkDelete = async (deleteLinkedRecords: boolean = true) => {
     if (selectedLeads.length === 0) return;
 
-    try {
-      const { error } = await supabase
-        .from('leads')
-        .delete()
-        .in('id', selectedLeads);
-
-      if (error) throw error;
-
-      // Log bulk delete operation
-      await logBulkDelete('leads', selectedLeads.length, selectedLeads);
-
-      toast({
-        title: "Success",
-        description: `${selectedLeads.length} leads deleted successfully`,
-      });
-      
+    const result = await deleteLeads(selectedLeads, deleteLinkedRecords);
+    
+    if (result.success) {
       setSelectedLeads([]);
       setRefreshTrigger(prev => prev + 1);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete leads",
-        variant: "destructive",
-      });
+      setShowBulkDeleteDialog(false);
     }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedLeads.length === 0) return;
+    setShowBulkDeleteDialog(true);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,10 +81,11 @@ const Leads = () => {
           {selectedLeads.length > 0 && (
             <Button 
               variant="destructive"
-              onClick={handleBulkDelete}
+              onClick={handleBulkDeleteClick}
+              disabled={isDeleting}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Delete Selected ({selectedLeads.length})
+              {isDeleting ? 'Deleting...' : `Delete Selected (${selectedLeads.length})`}
             </Button>
           )}
 
@@ -116,12 +106,12 @@ const Leads = () => {
                 Export CSV
               </DropdownMenuItem>
               <DropdownMenuItem 
-                onClick={handleBulkDelete}
-                disabled={selectedLeads.length === 0}
+                onClick={handleBulkDeleteClick}
+                disabled={selectedLeads.length === 0 || isDeleting}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected ({selectedLeads.length})
+                {isDeleting ? 'Deleting...' : `Delete Selected (${selectedLeads.length})`}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -151,6 +141,15 @@ const Leads = () => {
         selectedLeads={selectedLeads}
         setSelectedLeads={setSelectedLeads}
         key={refreshTrigger}
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <LeadDeleteConfirmDialog
+        open={showBulkDeleteDialog}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowBulkDeleteDialog(false)}
+        isMultiple={true}
+        count={selectedLeads.length}
       />
     </div>
   );

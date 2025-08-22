@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { useSecurityAudit } from '@/hooks/useSecurityAudit';
 
@@ -11,6 +12,7 @@ export const useCRUDAudit = () => {
   ) => {
     await logSecurityEvent('CREATE', tableName, recordId, {
       operation: 'INSERT',
+      status: 'Success',
       timestamp: new Date().toISOString(),
       record_data: recordData,
       module: tableName.charAt(0).toUpperCase() + tableName.slice(1)
@@ -39,6 +41,7 @@ export const useCRUDAudit = () => {
 
     await logSecurityEvent('UPDATE', tableName, recordId, {
       operation: 'UPDATE',
+      status: 'Success',
       timestamp: new Date().toISOString(),
       updated_fields: updatedFields,
       old_data: oldData,
@@ -51,10 +54,14 @@ export const useCRUDAudit = () => {
     tableName: string,
     recordId?: string,
     deletedData?: any,
-    bulkCount?: number
+    bulkCount?: number,
+    status: string = 'Success'
   ) => {
-    await logSecurityEvent('DELETE', tableName, recordId, {
+    const action = status === 'Success' ? 'DELETE' : 'Unauthorized Delete Attempt';
+    
+    await logSecurityEvent(action, tableName, recordId, {
       operation: 'DELETE',
+      status: status,
       timestamp: new Date().toISOString(),
       deleted_data: deletedData,
       bulk_count: bulkCount,
@@ -69,6 +76,7 @@ export const useCRUDAudit = () => {
   ) => {
     await logSecurityEvent('BULK_CREATE', tableName, undefined, {
       operation: 'BULK_INSERT',
+      status: 'Success',
       timestamp: new Date().toISOString(),
       record_count: recordCount,
       sample_records: records?.slice(0, 3) // Log first 3 as sample
@@ -82,6 +90,7 @@ export const useCRUDAudit = () => {
   ) => {
     await logSecurityEvent('BULK_UPDATE', tableName, undefined, {
       operation: 'BULK_UPDATE',
+      status: 'Success',
       timestamp: new Date().toISOString(),
       record_count: recordCount,
       update_data: updateData
@@ -95,6 +104,7 @@ export const useCRUDAudit = () => {
   ) => {
     await logSecurityEvent('BULK_DELETE', tableName, undefined, {
       operation: 'BULK_DELETE',
+      status: 'Success',
       timestamp: new Date().toISOString(),
       record_count: recordCount,
       record_ids: recordIds?.slice(0, 10) // Log first 10 IDs
