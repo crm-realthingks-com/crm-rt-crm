@@ -1,39 +1,28 @@
-import { useState, useEffect } from "react";
+
+import React, { useState, useEffect } from 'react';
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { useCRUDAudit } from "@/hooks/useCRUDAudit";
-import { Card } from "@/components/ui/card";
-import { ContactTableHeader } from "./contact-table/ContactTableHeader";
-import { ContactTableBody } from "./contact-table/ContactTableBody";
-import { ContactTablePagination } from "./contact-table/ContactTablePagination";
 import { ContactModal } from "./ContactModal";
 import { ContactColumnCustomizer, ContactColumnConfig } from "./ContactColumnCustomizer";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { MoreVertical, Edit, Trash2, Star, ExternalLink } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCRUDAudit } from "@/hooks/useCRUDAudit";
 
-interface Contact {
-  id: string;
-  contact_name: string;
-  company_name?: string;
-  position?: string;
-  email?: string;
-  phone_no?: string;
-  mobile_no?: string;
-  region?: string; // Changed from country to region
-  city?: string;
-  state?: string;
-  contact_owner?: string;
-  created_time?: string;
-  modified_time?: string;
-  lead_status?: string;
-  industry?: string;
-  contact_source?: string;
-  linkedin?: string;
-  website?: string;
-  description?: string;
-  annual_revenue?: number;
-  no_of_employees?: number;
-  created_by?: string;
-  modified_by?: string;
+interface ContactTableProps {
+  showColumnCustomizer: boolean;
+  setShowColumnCustomizer: (show: boolean) => void;
+  showModal: boolean;
+  setShowModal: (show: boolean) => void;
+  selectedContacts: string[];
+  setSelectedContacts: (contacts: string[]) => void;
+  refreshTrigger: number;
 }
 
 const defaultColumns: ContactColumnConfig[] = [
@@ -42,24 +31,16 @@ const defaultColumns: ContactColumnConfig[] = [
   { field: 'position', label: 'Position', visible: true, order: 2 },
   { field: 'email', label: 'Email', visible: true, order: 3 },
   { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
-  { field: 'region', label: 'Region', visible: true, order: 5 }, // Changed from country to region
+  { field: 'region', label: 'Region', visible: true, order: 5 },
   { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 6 },
+  { field: 'industry', label: 'Industry', visible: true, order: 7 },
+  { field: 'contact_source', label: 'Source', visible: true, order: 8 },
 ];
 
-interface ContactTableProps {
-  showColumnCustomizer: boolean;
-  setShowColumnCustomizer: (show: boolean) => void;
-  showModal: boolean;
-  setShowModal: (show: boolean) => void;
-  selectedContacts: string[];
-  setSelectedContacts: React.Dispatch<React.SetStateAction<string[]>>;
-  refreshTrigger?: number;
-}
-
-export const ContactTable = ({ 
-  showColumnCustomizer, 
-  setShowColumnCustomizer, 
-  showModal, 
+export const ContactTable = ({
+  showColumnCustomizer,
+  setShowColumnCustomizer,
+  showModal,
   setShowModal,
   selectedContacts,
   setSelectedContacts,
@@ -67,249 +48,261 @@ export const ContactTable = ({
 }: ContactTableProps) => {
   const { toast } = useToast();
   const { logDelete } = useCRUDAudit();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
-  const [columns, setColumns] = useState(defaultColumns);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(50); // Default 50 contacts per page
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [editingContact, setEditingContact] = useState<any>(null);
+  const [columns, setColumns] = useState<ContactColumnConfig[]>(defaultColumns);
 
-  console.log('ContactTable: Rendering with contacts:', contacts.length);
+  // Load column configuration from localStorage on component mount
+  useEffect(() => {
+    const savedColumns = localStorage.getItem('contactColumns');
+    if (savedColumns) {
+      try {
+        const parsedColumns = JSON.parse(savedColumns);
+        setColumns(parsedColumns);
+      } catch (error) {
+        console.error('Error parsing saved columns:', error);
+        setColumns(defaultColumns);
+      }
+    }
+  }, []);
 
-  const fetchContacts = async () => {
-    try {
-      console.log('ContactTable: Starting to fetch contacts...');
-      setLoading(true);
-      
+  const { data: contacts = [], refetch, isLoading } = useQuery({
+    queryKey: ['contacts', refreshTrigger],
+    queryFn: async () => {
+      console.log('ContactTable: Fetching contacts with refreshTrigger:', refreshTrigger);
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
         .order('created_time', { ascending: false });
-
+      
       if (error) {
-        console.error('ContactTable: Supabase error:', error);
+        console.error('ContactTable: Error fetching contacts:', error);
         throw error;
       }
       
-      console.log('ContactTable: Successfully fetched contacts:', data?.length || 0);
-      setContacts(data || []);
-      
-    } catch (error) {
-      console.error('ContactTable: Error fetching contacts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch contacts. Please refresh the page.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-      console.log('ContactTable: Finished fetching contacts');
-    }
-  };
+      console.log('ContactTable: Fetched contacts:', data?.length, 'records');
+      return data || [];
+    },
+  });
 
-  // Initial load
-  useEffect(() => {
-    console.log('ContactTable: Initial mount, fetching contacts');
-    fetchContacts();
-  }, []);
+  const filteredContacts = contacts.filter(contact =>
+    Object.values(contact).some(value =>
+      value && value.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
 
-  // Handle refresh trigger
-  useEffect(() => {
-    if (refreshTrigger && refreshTrigger > 0) {
-      console.log('ContactTable: Refresh triggered:', refreshTrigger);
-      fetchContacts();
-    }
-  }, [refreshTrigger]);
-
-  // Filter and sort contacts
-  useEffect(() => {
-    console.log('ContactTable: Filtering contacts, search term:', searchTerm);
-    let filtered = contacts.filter(contact =>
-      contact.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // Apply sorting
-    if (sortField) {
-      filtered.sort((a, b) => {
-        const aValue = a[sortField as keyof Contact] || '';
-        const bValue = b[sortField as keyof Contact] || '';
-        
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          const comparison = aValue.toLowerCase().localeCompare(bValue.toLowerCase());
-          return sortDirection === 'asc' ? comparison : -comparison;
-        }
-        
-        // For non-string values, convert to string for comparison
-        const aStr = String(aValue).toLowerCase();
-        const bStr = String(bValue).toLowerCase();
-        const comparison = aStr.localeCompare(bStr);
-        return sortDirection === 'asc' ? comparison : -comparison;
-      });
-    }
-
-    setFilteredContacts(filtered);
-    setCurrentPage(1);
-    console.log('ContactTable: Filtered contacts:', filtered.length);
-  }, [contacts, searchTerm, sortField, sortDirection]);
-
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      // Toggle direction if same field
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      // New field, start with ascending
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (contactId: string) => {
     try {
-      // Find the contact first to log the deleted data
-      const contactToDelete = contacts.find(c => c.id === id);
-      
       const { error } = await supabase
         .from('contacts')
         .delete()
-        .eq('id', id);
+        .eq('id', contactId);
 
       if (error) throw error;
 
-      // Log delete operation
-      await logDelete('contacts', id, contactToDelete);
-
+      await logDelete('contacts', contactId, { contact_id: contactId });
+      
       toast({
         title: "Success",
         description: "Contact deleted successfully",
       });
       
-      fetchContacts();
+      refetch();
     } catch (error) {
-      console.error('Delete error:', error);
+      console.error('Error deleting contact:', error);
       toast({
-        title: "Error",
+        title: "Error", 
         description: "Failed to delete contact",
         variant: "destructive",
       });
     }
   };
 
-  const handleEditContact = (contact: Contact) => {
-    console.log('ContactTable: Editing contact:', contact.id);
+  const handleEdit = (contact: any) => {
     setEditingContact(contact);
     setShowModal(true);
   };
 
-  const visibleColumns = columns.filter(col => col.visible);
-  const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const pageContacts = filteredContacts.slice(startIndex, startIndex + itemsPerPage);
+  const handleModalClose = () => {
+    setShowModal(false);
+    setEditingContact(null);
+  };
 
-  console.log('ContactTable: Render state - loading:', loading, 'contacts:', contacts.length, 'pageContacts:', pageContacts.length);
+  const handleContactSaved = () => {
+    refetch();
+    handleModalClose();
+  };
 
-  if (loading) {
+  const toggleContactSelection = (contactId: string) => {
+    setSelectedContacts(prev => {
+      if (prev.includes(contactId)) {
+        return prev.filter(id => id !== contactId);
+      } else {
+        return [...prev, contactId];
+      }
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedContacts.length === filteredContacts.length) {
+      setSelectedContacts([]);
+    } else {
+      setSelectedContacts(filteredContacts.map(contact => contact.id));
+    }
+  };
+
+  const isAllSelected = selectedContacts.length === filteredContacts.length && filteredContacts.length > 0;
+
+  const handleColumnsChange = (newColumns: ContactColumnConfig[]) => {
+    setColumns(newColumns);
+    localStorage.setItem('contactColumns', JSON.stringify(newColumns));
+  };
+
+  const visibleColumns = columns.filter(col => col.visible).sort((a, b) => a.order - b.order);
+
+  const renderCellValue = (contact: any, field: string) => {
+    const value = contact[field];
+    
+    if (!value) return '-';
+    
+    switch (field) {
+      case 'email':
+        return (
+          <a href={`mailto:${value}`} className="text-blue-600 hover:underline">
+            {value}
+          </a>
+        );
+      case 'phone_no':
+        return (
+          <a href={`tel:${value}`} className="text-blue-600 hover:underline">
+            {value}
+          </a>
+        );
+      case 'contact_source':
+        return (
+          <Badge variant="outline" className="capitalize">
+            {value}
+          </Badge>
+        );
+      case 'industry':
+        return (
+          <Badge variant="secondary" className="capitalize">
+            {value}
+          </Badge>
+        );
+      default:
+        return value;
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading contacts...</p>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">Loading contacts...</div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <ContactTableHeader 
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedContacts={selectedContacts}
-        setSelectedContacts={setSelectedContacts}
-        pageContacts={pageContacts}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        onSort={handleSort}
-      />
-
+    <>
       <Card>
-        <ContactTableBody
-          loading={loading}
-          pageContacts={pageContacts}
-          visibleColumns={visibleColumns}
-          selectedContacts={selectedContacts}
-          setSelectedContacts={setSelectedContacts}
-          onEdit={handleEditContact}
-          onDelete={(id) => {
-            setContactToDelete(id);
-            setShowDeleteDialog(true);
-          }}
-          searchTerm={searchTerm}
-          onRefresh={fetchContacts}
-          sortField={sortField}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-        />
+        <CardHeader>
+          <CardTitle>Contacts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Input
+              placeholder="Search contacts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-sm"
+            />
+
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    {visibleColumns.map(column => (
+                      <TableHead key={column.field}>{column.label}</TableHead>
+                    ))}
+                    <TableHead className="w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredContacts.map(contact => (
+                    <TableRow key={contact.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedContacts.includes(contact.id)}
+                          onCheckedChange={() => toggleContactSelection(contact.id)}
+                          aria-label={`Select ${contact.contact_name}`}
+                        />
+                      </TableCell>
+                      {visibleColumns.map(column => (
+                        <TableCell key={`${contact.id}-${column.field}`}>
+                          {renderCellValue(contact, column.field)}
+                        </TableCell>
+                      ))}
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(contact)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(contact.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredContacts.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
+                        No contacts found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
-      {totalPages > 1 && (
-        <ContactTablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredContacts.length}
-          onPageChange={setCurrentPage}
-        />
-      )}
-
-      {/* Modals */}
       <ContactModal
         open={showModal}
-        onOpenChange={setShowModal}
+        onOpenChange={handleModalClose}
         contact={editingContact}
-        onSuccess={() => {
-          fetchContacts();
-          setEditingContact(null);
-        }}
+        onContactSaved={handleContactSaved}
       />
 
       <ContactColumnCustomizer
         open={showColumnCustomizer}
         onOpenChange={setShowColumnCustomizer}
         columns={columns}
-        onColumnsChange={setColumns}
+        onColumnsChange={handleColumnsChange}
       />
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the contact.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (contactToDelete) {
-                  handleDelete(contactToDelete);
-                  setContactToDelete(null);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+    </>
   );
 };
