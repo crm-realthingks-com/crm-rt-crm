@@ -103,54 +103,61 @@ export class LeadsCSVProcessor {
           continue;
         }
 
-        // Check for existing lead by name and company
-        const { data: existingLeads } = await supabase
-          .from('leads')
-          .select('id')
-          .eq('lead_name', leadRecord.lead_name)
-          .eq('company_name', leadRecord.company_name || '');
-
         let leadId: string;
+        let isUpdate = false;
 
-        if (existingLeads && existingLeads.length > 0) {
-          // Update existing lead
-          leadId = existingLeads[0].id;
-          const { error: updateError } = await supabase
+        // Check for existing lead by ID only (as per requirements)
+        if (rowObj.id && rowObj.id.trim() !== '') {
+          console.log('Checking for existing lead with ID:', rowObj.id);
+          const { data: existingLead } = await supabase
             .from('leads')
-            .update(leadRecord)
-            .eq('id', leadId);
+            .select('id')
+            .eq('id', rowObj.id.trim())
+            .single();
 
-          if (updateError) {
-            result.errorCount++;
-            result.errors.push(`Update failed: ${updateError.message}`);
-            continue;
+          if (existingLead) {
+            // Update existing lead
+            leadId = existingLead.id;
+            const { error: updateError } = await supabase
+              .from('leads')
+              .update(leadRecord)
+              .eq('id', leadId);
+
+            if (updateError) {
+              result.errorCount++;
+              result.errors.push(`Update failed: ${updateError.message}`);
+              continue;
+            }
+            result.updateCount++;
+            isUpdate = true;
+            console.log('Updated existing lead:', leadId);
+          } else {
+            // Insert new lead with provided ID
+            const leadToInsert = {
+              id: rowObj.id.trim(),
+              ...leadRecord
+            };
+
+            const { data: insertedLead, error: insertError } = await supabase
+              .from('leads')
+              .insert([leadToInsert])
+              .select('id')
+              .single();
+
+            if (insertError) {
+              result.errorCount++;
+              result.errors.push(`Insert failed: ${insertError.message}`);
+              continue;
+            }
+            leadId = insertedLead.id;
+            result.successCount++;
+            console.log('Inserted new lead with ID:', leadId);
           }
-          result.updateCount++;
         } else {
-          // Insert new lead - ensure we have a proper lead record with all required fields
-          const leadToInsert = {
-            lead_name: leadRecord.lead_name, // Ensure this is always present
-            company_name: leadRecord.company_name,
-            position: leadRecord.position,
-            email: leadRecord.email,
-            phone_no: leadRecord.phone_no,
-            linkedin: leadRecord.linkedin,
-            website: leadRecord.website,
-            contact_source: leadRecord.contact_source,
-            lead_status: leadRecord.lead_status,
-            industry: leadRecord.industry,
-            country: leadRecord.country,
-            description: leadRecord.description,
-            contact_owner: leadRecord.contact_owner,
-            created_by: leadRecord.created_by,
-            modified_by: leadRecord.modified_by,
-            created_time: leadRecord.created_time,
-            modified_time: leadRecord.modified_time
-          };
-
+          // Insert new lead without ID (let database generate it)
           const { data: insertedLead, error: insertError } = await supabase
             .from('leads')
-            .insert([leadToInsert])
+            .insert([leadRecord])
             .select('id')
             .single();
 
@@ -161,11 +168,12 @@ export class LeadsCSVProcessor {
           }
           leadId = insertedLead.id;
           result.successCount++;
+          console.log('Inserted new lead without ID:', leadId);
         }
 
         // Process action items if any
         if (actionItemsData.length > 0) {
-          await this.processActionItems(leadId, actionItemsData, options.userId);
+          await this.processActionItems(leadId, actionItemsData, options.userId, isUpdate);
         }
 
       } catch (error: any) {
@@ -179,11 +187,15 @@ export class LeadsCSVProcessor {
 
   private prepareLead(rowObj: Record<string, any>, userId: string): Record<string, any> {
     const leadRecord: Record<string, any> = {
-      created_by: userId,
       modified_by: userId
     };
 
-    // Map CSV fields to database fields
+    // If this is a new record (no existing ID), set created_by
+    if (!rowObj.id || rowObj.id.trim() === '') {
+      leadRecord.created_by = userId;
+    }
+
+    // Map CSV fields to database fields in exact order
     const fieldMapping: Record<string, string> = {
       'lead_name': 'lead_name',
       'company_name': 'company_name',
@@ -197,7 +209,9 @@ export class LeadsCSVProcessor {
       'industry': 'industry',
       'country': 'country',
       'description': 'description',
-      'contact_owner': 'contact_owner'
+      'contact_owner': 'contact_owner',
+      'created_by': 'created_by',
+      'modified_by': 'modified_by'
     };
 
     Object.entries(fieldMapping).forEach(([csvField, dbField]) => {
@@ -206,7 +220,7 @@ export class LeadsCSVProcessor {
       }
     });
 
-    // Ensure lead_name is always set, even if empty from CSV
+    // Ensure lead_name is always set
     if (!leadRecord.lead_name) {
       leadRecord.lead_name = rowObj.name || rowObj.contact_name || rowObj.full_name || '';
     }
@@ -225,13 +239,15 @@ export class LeadsCSVProcessor {
     return leadRecord;
   }
 
-  private async processActionItems(leadId: string, actionItemsData: any[], userId: string) {
+  private async processActionItems(leadId: string, actionItemsData: any[], userId: string, isUpdate: boolean = false) {
     try {
-      // Clear existing action items for this lead (optional - you might want to keep them)
-      await supabase
-        .from('lead_action_items')
-        .delete()
-        .eq('lead_id', leadId);
+      // Clear existing action items only for updates to avoid conflicts
+      if (isUpdate) {
+        await supabase
+          .from('lead_action_items')
+          .delete()
+          .eq('lead_id', leadId);
+      }
 
       // Insert new action items
       const actionItemsToInsert = actionItemsData.map(item => ({
