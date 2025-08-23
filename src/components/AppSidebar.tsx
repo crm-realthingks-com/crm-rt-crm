@@ -1,3 +1,4 @@
+
 import { 
   Home, 
   Users, 
@@ -80,12 +81,15 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
         width: sidebarOpen ? '220px' : '60px',
         minWidth: sidebarOpen ? '220px' : '60px',
         maxWidth: sidebarOpen ? '220px' : '60px',
-        overflow: 'visible' // Allow content to overflow for dropdowns
+        overflow: 'visible'
       }}
     >
       {/* Header */}
-      <div className="flex items-center border-b border-sidebar-border relative" style={{ height: '72px', padding: '0 16px' }}>
-        <div className="flex items-center cursor-pointer" onClick={handleLogoClick}>
+      <div className="flex items-center border-b border-sidebar-border relative" style={{ height: '72px' }}>
+        <div 
+          className="flex items-center cursor-pointer absolute left-4"
+          onClick={handleLogoClick}
+        >
           <img 
             src="/lovable-uploads/12bdcc4a-a1c8-4ccf-ba6a-931fd566d3c8.png" 
             alt="Logo" 
@@ -107,7 +111,7 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
             const menuButton = (
               <NavLink
                 to={item.url}
-                 className={`
+                className={`
                   flex items-center rounded-lg relative transition-colors duration-200 font-medium
                   ${active 
                     ? 'text-sidebar-primary bg-sidebar-accent' 
@@ -115,10 +119,10 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
                   }
                 `}
                 style={{ 
-                  paddingLeft: sidebarOpen ? '16px' : '0px',
-                  paddingRight: sidebarOpen ? '16px' : '0px',
                   paddingTop: '10px',
                   paddingBottom: '10px',
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
                   minHeight: '44px',
                   fontFamily: 'Inter, system-ui, sans-serif',
                   fontSize: '15px',
@@ -126,12 +130,13 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
                 }}
               >
                 <div 
-                  className="flex items-center justify-center"
+                  className="flex items-center justify-start"
                   style={{ 
-                    width: sidebarOpen ? '20px' : '60px',
+                    width: '20px',
                     height: '20px',
                     minWidth: '20px',
-                    minHeight: '20px'
+                    minHeight: '20px',
+                    marginRight: sidebarOpen ? '12px' : '0px'
                   }}
                 >
                   <item.icon 
@@ -144,7 +149,7 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
                 </div>
                 {sidebarOpen && (
                   <span 
-                    className="ml-3 opacity-100 transition-opacity duration-300"
+                    className="opacity-100 transition-opacity duration-300"
                   >
                     {item.title}
                   </span>
@@ -176,18 +181,14 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
 
       {/* Bottom Section - Pin Toggle & User & Sign Out */}
       <div className="border-t border-sidebar-border p-4 space-y-3 relative" style={{ overflow: 'visible', zIndex: 100 }}>
-
-        {/* Pin Toggle Button - Always bottom-left aligned */}
-        <div className="flex" style={{ justifyContent: sidebarOpen ? 'flex-start' : 'flex-start', paddingLeft: sidebarOpen ? '0px' : '6px' }}>
+        {/* Pin Toggle Button */}
+        <div className="flex justify-start">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={togglePin}
-                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
-                  sidebarOpen 
-                    ? 'text-sidebar-primary bg-sidebar-accent hover:bg-sidebar-accent/80' 
-                    : 'text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50'
-                }`}
+                className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-sidebar-accent/50"
+                style={{ marginLeft: '8px' }}
               >
                 {sidebarOpen ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
               </button>
@@ -199,40 +200,30 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
         </div>
 
         {/* User & Sign Out */}
-        {!sidebarOpen ? (
-          <div className="flex justify-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center justify-center w-10 h-10 text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/50 rounded-lg transition-colors"
-                  style={{ minWidth: '40px', minHeight: '40px' }}
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="ml-2">
-                <p>Sign Out</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        ) : (
-          <div className="flex items-center relative" style={{ minHeight: '40px' }}>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center justify-center text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/50 rounded-lg transition-colors"
-              style={{ 
-                position: 'absolute',
-                left: '6px',
-                width: '40px',
-                height: '40px',
-                minWidth: '40px'
-              }}
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+        <div className="flex items-center relative" style={{ minHeight: '40px' }}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center justify-center text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/50 rounded-lg transition-colors"
+                style={{ 
+                  width: '40px',
+                  height: '40px',
+                  minWidth: '40px',
+                  marginLeft: '6px'
+                }}
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={sidebarOpen ? "bottom" : "right"}>
+              <p>Sign Out</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          {sidebarOpen && (
             <p 
-              className="text-sidebar-foreground text-sm font-medium truncate ml-16 opacity-100 transition-opacity duration-300"
+              className="text-sidebar-foreground text-sm font-medium truncate ml-3 opacity-100 transition-opacity duration-300"
               style={{ 
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fontSize: '15px'
@@ -240,8 +231,8 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
             >
               {getUserDisplayName()}
             </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
