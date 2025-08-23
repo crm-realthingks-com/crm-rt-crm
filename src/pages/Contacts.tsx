@@ -127,21 +127,16 @@ const Contacts = () => {
           </TooltipProvider>
           
           <DropdownMenu>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" disabled={isImporting}>
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Actions</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" disabled={isImporting}>
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => setShowColumnCustomizer(true)}>
+                <Settings className="w-4 h-4 mr-2" />
+                Customize Columns
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleImportClick} disabled={isImporting}>
                 <Upload className="w-4 h-4 mr-2" />
                 Import CSV
@@ -202,4 +197,3 @@ const Contacts = () => {
 };
 
 export default Contacts;
-
