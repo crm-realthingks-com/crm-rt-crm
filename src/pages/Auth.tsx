@@ -147,10 +147,9 @@ const Auth = () => {
       <Card className="w-full max-w-md shadow-2xl border-0">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-            RealThingks Deals
+            RealThingks CRM
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            Sign in to access your deals pipeline
           </CardDescription>
         </CardHeader>
         <CardContent>

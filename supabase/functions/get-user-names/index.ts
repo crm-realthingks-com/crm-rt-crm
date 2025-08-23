@@ -35,9 +35,48 @@ Deno.serve(async (req) => {
     // Create a Supabase client with service role key for admin access
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userIds } = await req.json();
-    console.log('get-user-names: Received user IDs:', userIds);
+    const requestBody = await req.json();
+    const { userIds, getAllUsers } = requestBody;
+    
+    console.log('get-user-names: Request params:', { userIds, getAllUsers });
 
+    // If getAllUsers is true, fetch all users from auth table
+    if (getAllUsers) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        
+        console.log('get-user-names: Fetching all users, count:', authData?.users?.length || 0);
+
+        if (authError) {
+          console.error('get-user-names: Error fetching all users:', authError);
+          throw authError;
+        }
+
+        const users = authData?.users?.map(user => ({
+          id: user.id,
+          email: user.email,
+          user_metadata: user.user_metadata || {}
+        })) || [];
+
+        return new Response(
+          JSON.stringify({ users }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      } catch (error) {
+        console.error('get-user-names: Error fetching all users:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch users' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
+    // Original functionality for specific user IDs
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       console.log('get-user-names: No valid user IDs provided');
       return new Response(

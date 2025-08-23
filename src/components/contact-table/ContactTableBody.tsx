@@ -225,8 +225,8 @@ export const ContactTableBody = ({
     <div className="overflow-auto">
       <Table>
         <TableHeader className="sticky top-0 z-10">
-          <TableRow className="bg-muted/30 hover:bg-muted/40">
-            <TableHead className="w-12 text-center font-semibold">
+          <TableRow className="bg-muted/50 hover:bg-muted/60 border-b-2">
+            <TableHead className="w-12 text-center font-bold text-foreground">
               <div className="flex justify-center">
                 <Checkbox
                   checked={selectedContacts.length > 0 && selectedContacts.length === Math.min(pageContacts.length, 50)}
@@ -235,26 +235,26 @@ export const ContactTableBody = ({
               </div>
             </TableHead>
             {visibleColumns.map((column) => (
-              <TableHead key={column.field} className="text-center font-semibold px-4">
+              <TableHead key={column.field} className="text-left font-bold text-foreground px-4 py-3">
                 <Button
                   variant="ghost"
-                  className="h-auto p-0 font-semibold hover:bg-transparent w-full justify-center"
+                  className="h-auto p-0 font-bold hover:bg-transparent w-full justify-start text-foreground"
                   onClick={() => onSort(column.field)}
                 >
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center gap-2">
                     {column.label}
                     {getSortIcon(column.field)}
                   </div>
                 </Button>
               </TableHead>
             ))}
-            <TableHead className="text-center font-semibold w-32">Actions</TableHead>
+            <TableHead className="text-center font-bold text-foreground w-32">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {pageContacts.map((contact) => (
             <TableRow key={contact.id} className="hover:bg-muted/20">
-              <TableCell className="text-center px-4">
+              <TableCell className="text-center px-4 py-3">
                 <div className="flex justify-center">
                   <Checkbox
                     checked={selectedContacts.includes(contact.id)}
@@ -263,20 +263,24 @@ export const ContactTableBody = ({
                 </div>
               </TableCell>
               {visibleColumns.map((column) => (
-                <TableCell key={column.field} className="text-center px-4">
-                  {column.field === 'contact_name' ? (
-                    <button
-                      onClick={() => onEdit(contact)}
-                      className="text-primary hover:underline font-medium"
-                    >
-                      {contact[column.field as keyof Contact]}
-                    </button>
-                  ) : (
-                    getDisplayValue(contact, column.field)
-                  )}
+                <TableCell key={column.field} className="text-left px-4 py-3 align-middle">
+                  <div className="flex items-center min-h-[1.5rem]">
+                    {column.field === 'contact_name' ? (
+                      <button
+                        onClick={() => onEdit(contact)}
+                        className="text-primary hover:underline font-medium text-left"
+                      >
+                        {contact[column.field as keyof Contact]}
+                      </button>
+                    ) : (
+                      <span className="truncate max-w-[200px]" title={String(getDisplayValue(contact, column.field))}>
+                        {getDisplayValue(contact, column.field)}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
               ))}
-              <TableCell className="w-32">
+              <TableCell className="w-32 py-3">
                 <div className="flex items-center justify-end gap-1 pr-2">
                   <Button
                     variant="ghost"

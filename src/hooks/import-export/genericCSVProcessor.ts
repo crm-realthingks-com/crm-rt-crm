@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CSVParser } from '@/utils/csvParser';
 import { createHeaderMapper } from './headerMapper';
@@ -106,7 +107,6 @@ export class GenericCSVProcessor {
   ): Promise<ProcessingResult> {
     
     const recordValidator = createRecordValidator(options.tableName);
-    const duplicateChecker = createDuplicateChecker(options.tableName);
     
     const result: ProcessingResult = {
       successCount: 0,
@@ -131,10 +131,6 @@ export class GenericCSVProcessor {
           }
         });
 
-        // Add metadata
-        rowObj.created_by = options.userId;
-        rowObj.modified_by = options.userId;
-
         // Validate record
         const isValid = recordValidator(rowObj);
         if (!isValid) {
@@ -143,30 +139,67 @@ export class GenericCSVProcessor {
           continue;
         }
 
-        // Check for duplicates
-        const isDuplicate = await duplicateChecker(rowObj);
-        
-        if (isDuplicate) {
-          result.duplicateCount++;
-          console.log('Duplicate record found, skipping');
-          continue;
+        // Check if record exists by ID (if ID is provided)
+        let existingRecord = null;
+        if (rowObj.id) {
+          const { data: existing } = await supabase
+            .from(options.tableName as any)
+            .select('id')
+            .eq('id', rowObj.id)
+            .single();
+          
+          existingRecord = existing;
         }
 
-        // Insert new record
-        const { error: insertError } = await supabase
-          .from(options.tableName as any)
-          .insert([rowObj]);
+        if (existingRecord) {
+          // Update existing record
+          const updateData = { ...rowObj };
+          updateData.modified_by = options.userId;
+          updateData.modified_time = new Date().toISOString();
+          
+          // Remove id from update data to avoid conflicts
+          delete updateData.id;
+          
+          const { error: updateError } = await supabase
+            .from(options.tableName as any)
+            .update(updateData)
+            .eq('id', existingRecord.id);
 
-        if (insertError) {
-          result.errorCount++;
-          result.errors.push(`Insert failed: ${insertError.message}`);
+          if (updateError) {
+            result.errorCount++;
+            result.errors.push(`Update failed: ${updateError.message}`);
+          } else {
+            result.updateCount++;
+            console.log('Record updated successfully:', existingRecord.id);
+          }
         } else {
-          result.successCount++;
+          // Insert new record
+          const insertData = { ...rowObj };
+          insertData.created_by = options.userId;
+          insertData.modified_by = options.userId;
+          
+          // If no ID provided, let database generate one
+          if (!insertData.id) {
+            delete insertData.id;
+          }
+
+          const { error: insertError } = await supabase
+            .from(options.tableName as any)
+            .insert([insertData]);
+
+          if (insertError) {
+            result.errorCount++;
+            result.errors.push(`Insert failed: ${insertError.message}`);
+          } else {
+            result.successCount++;
+            console.log('New record inserted successfully');
+          }
         }
 
       } catch (error: any) {
         result.errorCount++;
         result.errors.push(`Row processing error: ${error.message}`);
+        console.error('Row processing error:', error);
       }
     }
 

@@ -264,7 +264,7 @@ const DealsPage = () => {
         <div className="px-6 py-4">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Deals Pipeline</h1>
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Deals</h1>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
               <div className="bg-muted rounded-lg p-1 flex">
