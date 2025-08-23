@@ -8,7 +8,7 @@ import { Deal, DealStage, DEAL_STAGES, STAGE_COLORS } from "@/types/deal";
 import { Search, Filter, X, Edit, Trash2, ArrowUp, ArrowDown, CheckSquare } from "lucide-react";
 import { format } from "date-fns";
 import { InlineEditCell } from "./InlineEditCell";
-import { ColumnCustomizer, ColumnConfig } from "./ColumnCustomizer";
+import { DealColumnCustomizer, DealColumnConfig } from "./DealColumnCustomizer";
 import { ImportExportBar } from "./ImportExportBar";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { DealsAdvancedFilter, AdvancedFilterState } from "./DealsAdvancedFilter";
@@ -51,60 +51,44 @@ export const ListView = ({
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [selectedDealForActions, setSelectedDealForActions] = useState<Deal | null>(null);
 
-  const [columns, setColumns] = useState<ColumnConfig[]>([
+  // Column customizer state
+  const [columnCustomizerOpen, setColumnCustomizerOpen] = useState(false);
+
+  const [columns, setColumns] = useState<DealColumnConfig[]>([
     { field: 'project_name', label: 'Project', visible: true, order: 0 },
     { field: 'customer_name', label: 'Customer', visible: true, order: 1 },
-    { field: 'lead_owner', label: 'Lead Owner', visible: true, order: 2 },
-    { field: 'stage', label: 'Stage', visible: true, order: 3 },
-    { field: 'priority', label: 'Priority', visible: true, order: 4 },
-    { field: 'total_contract_value', label: 'Value', visible: true, order: 5 },
-    { field: 'expected_closing_date', label: 'Expected Close', visible: true, order: 6 },
-    { field: 'lead_name', label: 'Lead Name', visible: false, order: 7 },
-    { field: 'region', label: 'Region', visible: false, order: 8 },
-    { field: 'probability', label: 'Probability', visible: false, order: 9 },
-    { field: 'internal_comment', label: 'Comment', visible: false, order: 10 },
-    { field: 'customer_need', label: 'Customer Need', visible: false, order: 11 },
-    { field: 'customer_challenges', label: 'Customer Challenges', visible: false, order: 12 },
-    { field: 'relationship_strength', label: 'Relationship Strength', visible: false, order: 13 },
-    { field: 'budget', label: 'Budget', visible: false, order: 14 },
-    { field: 'business_value', label: 'Business Value', visible: false, order: 15 },
-    { field: 'decision_maker_level', label: 'Decision Maker Level', visible: false, order: 16 },
-    { field: 'is_recurring', label: 'Is Recurring', visible: false, order: 17 },
-    { field: 'project_duration', label: 'Duration', visible: false, order: 18 },
-    { field: 'start_date', label: 'Start Date', visible: false, order: 19 },
-    { field: 'end_date', label: 'End Date', visible: false, order: 20 },
-    { field: 'rfq_received_date', label: 'RFQ Received', visible: false, order: 21 },
-    { field: 'proposal_due_date', label: 'Proposal Due', visible: false, order: 22 },
-    { field: 'rfq_status', label: 'RFQ Status', visible: false, order: 23 },
-    { field: 'currency_type', label: 'Currency', visible: false, order: 24 },
-    { field: 'action_items', label: 'Action Items', visible: false, order: 25 },
-    { field: 'current_status', label: 'Current Status', visible: false, order: 26 },
-    { field: 'closing', label: 'Closing', visible: false, order: 27 },
-    { field: 'won_reason', label: 'Won Reason', visible: false, order: 28 },
-    { field: 'lost_reason', label: 'Lost Reason', visible: false, order: 29 },
-    { field: 'need_improvement', label: 'Need Improvement', visible: false, order: 30 },
-    { field: 'drop_reason', label: 'Drop Reason', visible: false, order: 31 },
-    { field: 'quarterly_revenue_q1', label: 'Q1 Revenue', visible: false, order: 32 },
-    { field: 'quarterly_revenue_q2', label: 'Q2 Revenue', visible: false, order: 33 },
-    { field: 'quarterly_revenue_q3', label: 'Q3 Revenue', visible: false, order: 34 },
-    { field: 'quarterly_revenue_q4', label: 'Q4 Revenue', visible: false, order: 35 },
-    { field: 'total_revenue', label: 'Total Revenue', visible: false, order: 36 },
-    { field: 'signed_contract_date', label: 'Signed Date', visible: false, order: 37 },
-    { field: 'implementation_start_date', label: 'Implementation Start', visible: false, order: 38 },
-    { field: 'handoff_status', label: 'Handoff Status', visible: false, order: 39 },
-    { field: 'created_at', label: 'Created', visible: false, order: 40 },
-    { field: 'modified_at', label: 'Updated', visible: false, order: 41 },
+    { field: 'lead_name', label: 'Lead Name', visible: true, order: 2 },
+    { field: 'lead_owner', label: 'Lead Owner', visible: true, order: 3 },
+    { field: 'stage', label: 'Stage', visible: true, order: 4 },
+    { field: 'priority', label: 'Priority', visible: true, order: 5 },
+    { field: 'total_contract_value', label: 'Value', visible: true, order: 6 },
+    { field: 'probability', label: 'Probability', visible: true, order: 7 },
+    { field: 'expected_closing_date', label: 'Expected Close', visible: true, order: 8 },
+    { field: 'region', label: 'Region', visible: false, order: 9 },
+    { field: 'project_duration', label: 'Duration', visible: false, order: 10 },
+    { field: 'start_date', label: 'Start Date', visible: false, order: 11 },
+    { field: 'end_date', label: 'End Date', visible: false, order: 12 },
+    { field: 'proposal_due_date', label: 'Proposal Due', visible: false, order: 13 },
+    { field: 'total_revenue', label: 'Total Revenue', visible: false, order: 14 },
   ]);
 
   // Column width state
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     'project_name': 200,
     'customer_name': 150,
+    'lead_name': 150,
     'lead_owner': 140,
     'stage': 120,
     'priority': 100,
     'total_contract_value': 120,
+    'probability': 120,
     'expected_closing_date': 140,
+    'region': 120,
+    'project_duration': 120,
+    'start_date': 120,
+    'end_date': 120,
+    'proposal_due_date': 140,
+    'total_revenue': 120,
   });
 
   // Resize state
@@ -237,27 +221,14 @@ export const ListView = ({
   const getFieldType = (field: string): 'text' | 'number' | 'date' | 'select' | 'textarea' | 'boolean' | 'stage' | 'priority' | 'currency' => {
     if (field === 'stage') return 'stage';
     if (field === 'priority') return 'priority';
-    if (['total_contract_value', 'total_revenue', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4'].includes(field)) return 'currency';
-    if (['expected_closing_date', 'start_date', 'end_date', 'rfq_received_date', 'proposal_due_date', 'signed_contract_date', 'implementation_start_date'].includes(field)) return 'date';
-    if (['internal_comment', 'customer_need', 'action_items', 'won_reason', 'lost_reason', 'need_improvement', 'drop_reason'].includes(field)) return 'textarea';
-    if (['is_recurring'].includes(field)) return 'boolean';
-    if (['customer_challenges', 'relationship_strength', 'business_value', 'decision_maker_level', 'rfq_status', 'handoff_status'].includes(field)) return 'select';
+    if (['total_contract_value', 'total_revenue'].includes(field)) return 'currency';
+    if (['expected_closing_date', 'start_date', 'end_date', 'proposal_due_date'].includes(field)) return 'date';
     if (['probability', 'project_duration'].includes(field)) return 'number';
     return 'text';
   };
 
   const getFieldOptions = (field: string): string[] => {
-    const optionsMap: Record<string, string[]> = {
-      customer_challenges: ['Open', 'Ongoing', 'Done'],
-      relationship_strength: ['Low', 'Medium', 'High'],
-      business_value: ['Open', 'Ongoing', 'Done'],
-      decision_maker_level: ['Open', 'Ongoing', 'Done'],
-      is_recurring: ['Yes', 'No', 'Unclear'],
-      rfq_status: ['Drafted', 'Submitted', 'Rejected', 'Accepted'],
-      handoff_status: ['Not Started', 'In Progress', 'Complete'],
-      currency_type: ['EUR', 'USD', 'INR'],
-    };
-    return optionsMap[field] || [];
+    return [];
   };
 
   const visibleColumns = columns
@@ -333,18 +304,14 @@ export const ListView = ({
       if (['priority', 'probability', 'project_duration'].includes(sortBy)) {
         aValue = a[sortBy as keyof Deal] || 0;
         bValue = b[sortBy as keyof Deal] || 0;
-      } else if (['total_contract_value', 'total_revenue', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4'].includes(sortBy)) {
+      } else if (['total_contract_value', 'total_revenue'].includes(sortBy)) {
         aValue = a[sortBy as keyof Deal] || 0;
         bValue = b[sortBy as keyof Deal] || 0;
-      } else if (['expected_closing_date', 'start_date', 'end_date', 'created_at', 'modified_at', 'rfq_received_date', 'proposal_due_date', 'signed_contract_date', 'implementation_start_date'].includes(sortBy)) {
+      } else if (['expected_closing_date', 'start_date', 'end_date', 'created_at', 'modified_at', 'proposal_due_date'].includes(sortBy)) {
         const aDateValue = a[sortBy as keyof Deal];
         const bDateValue = b[sortBy as keyof Deal];
         aValue = new Date(typeof aDateValue === 'string' ? aDateValue : 0);
         bValue = new Date(typeof bDateValue === 'string' ? bDateValue : 0);
-      } else if (sortBy === 'is_recurring') {
-        // Handle boolean field
-        aValue = a.is_recurring ? 1 : 0;
-        bValue = b.is_recurring ? 1 : 0;
       } else {
         // String fields
         aValue = String(a[sortBy as keyof Deal] || '').toLowerCase();
@@ -452,10 +419,14 @@ export const ListView = ({
               selectedDeals={selectedDealObjects}
               onRefresh={() => {}}
             />
-            <ColumnCustomizer
-              columns={columns}
-              onUpdate={setColumns}
-            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setColumnCustomizerOpen(true)}
+              className="flex items-center gap-2"
+            >
+              Columns
+            </Button>
           </div>
         </div>
       </div>
@@ -661,6 +632,13 @@ export const ListView = ({
         open={actionModalOpen}
         onOpenChange={setActionModalOpen}
         deal={selectedDealForActions}
+      />
+
+      <DealColumnCustomizer
+        open={columnCustomizerOpen}
+        onOpenChange={setColumnCustomizerOpen}
+        columns={columns}
+        onColumnsChange={setColumns}
       />
     </div>
   );
