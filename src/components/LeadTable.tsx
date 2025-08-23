@@ -81,12 +81,12 @@ const defaultColumns: LeadColumnConfig[] = [{
 }, {
   field: 'industry',
   label: 'Industry',
-  visible: false,
+  visible: true,
   order: 8
 }, {
   field: 'contact_source',
   label: 'Source',
-  visible: false,
+  visible: true,
   order: 9
 }];
 
