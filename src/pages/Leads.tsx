@@ -1,7 +1,7 @@
 
 import LeadTable from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
-import { Settings, Plus, Trash2, ChevronDown, Upload, Download } from "lucide-react";
+import { Settings, Plus, Trash2, MoreVertical, Upload, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -115,7 +115,7 @@ const Leads = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="outline" size="icon">
-                      <ChevronDown className="w-4 h-4" />
+                      <MoreVertical className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>

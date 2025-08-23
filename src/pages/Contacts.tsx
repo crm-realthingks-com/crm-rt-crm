@@ -1,7 +1,7 @@
 import { ContactTable } from "@/components/ContactTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Settings, Download, Upload, Plus, Trash2 } from "lucide-react";
+import { Settings, MoreVertical, Upload, Plus, Trash2, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
@@ -131,7 +131,7 @@ const Contacts = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="outline" size="icon" disabled={isImporting}>
-                      <Download className="w-4 h-4" />
+                      <MoreVertical className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
