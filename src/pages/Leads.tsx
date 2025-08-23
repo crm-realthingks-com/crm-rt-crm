@@ -1,4 +1,3 @@
-
 import LeadTable from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Settings, Plus, Trash2, MoreVertical, Upload, Download } from "lucide-react";
@@ -8,45 +7,41 @@ import { useToast } from "@/hooks/use-toast";
 import { useSimpleLeadsImportExport } from "@/hooks/useSimpleLeadsImportExport";
 import { useLeadDeletion } from "@/hooks/useLeadDeletion";
 import { LeadDeleteConfirmDialog } from "@/components/LeadDeleteConfirmDialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 const Leads = () => {
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { handleImport, handleExport, isImporting } = useSimpleLeadsImportExport(() => {
+  const {
+    handleImport,
+    handleExport,
+    isImporting
+  } = useSimpleLeadsImportExport(() => {
     setRefreshTrigger(prev => prev + 1);
   });
-
-  const { deleteLeads, isDeleting } = useLeadDeletion();
-
+  const {
+    deleteLeads,
+    isDeleting
+  } = useLeadDeletion();
   const handleBulkDelete = async (deleteLinkedRecords: boolean = true) => {
     if (selectedLeads.length === 0) return;
-
     const result = await deleteLeads(selectedLeads, deleteLinkedRecords);
-    
     if (result.success) {
       setSelectedLeads([]);
       setRefreshTrigger(prev => prev + 1);
       setShowBulkDeleteDialog(false);
     }
   };
-
   const handleBulkDeleteClick = () => {
     if (selectedLeads.length === 0) return;
     setShowBulkDeleteDialog(true);
   };
-
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type === 'text/csv') {
@@ -55,7 +50,7 @@ const Leads = () => {
       toast({
         title: "Error",
         description: "Please select a valid CSV file",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
     // Reset the input value so the same file can be selected again
@@ -63,9 +58,7 @@ const Leads = () => {
       fileInputRef.current.value = '';
     }
   };
-
-  return (
-    <div className="p-6 space-y-6">
+  return <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -75,13 +68,7 @@ const Leads = () => {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowColumnCustomizer(true)}
-                >
-                  <Settings className="w-4 h-4" />
-                </Button>
+                
               </TooltipTrigger>
               <TooltipContent>
                 <p>Customize Columns</p>
@@ -89,16 +76,10 @@ const Leads = () => {
             </Tooltip>
           </TooltipProvider>
           
-          {selectedLeads.length > 0 && (
-            <TooltipProvider>
+          {selectedLeads.length > 0 && <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline"
-                    size="icon"
-                    onClick={handleBulkDeleteClick}
-                    disabled={isDeleting}
-                  >
+                  <Button variant="outline" size="icon" onClick={handleBulkDeleteClick} disabled={isDeleting}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
@@ -106,8 +87,7 @@ const Leads = () => {
                   <p>{isDeleting ? 'Deleting...' : `Delete Selected (${selectedLeads.length})`}</p>
                 </TooltipContent>
               </Tooltip>
-            </TooltipProvider>
-          )}
+            </TooltipProvider>}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -128,11 +108,7 @@ const Leads = () => {
                 <Download className="w-4 h-4 mr-2" />
                 Export CSV
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={handleBulkDeleteClick}
-                disabled={selectedLeads.length === 0 || isDeleting}
-                className="text-destructive focus:text-destructive"
-              >
+              <DropdownMenuItem onClick={handleBulkDeleteClick} disabled={selectedLeads.length === 0 || isDeleting} className="text-destructive focus:text-destructive">
                 <Trash2 className="w-4 h-4 mr-2" />
                 {isDeleting ? 'Deleting...' : `Delete Selected (${selectedLeads.length})`}
               </DropdownMenuItem>
@@ -155,35 +131,15 @@ const Leads = () => {
       </div>
 
       {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv"
-        onChange={handleFileSelect}
-        style={{ display: 'none' }}
-      />
+      <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileSelect} style={{
+      display: 'none'
+    }} />
 
       {/* Lead Table */}
-      <LeadTable 
-        showColumnCustomizer={showColumnCustomizer}
-        setShowColumnCustomizer={setShowColumnCustomizer}
-        showModal={showModal}
-        setShowModal={setShowModal}
-        selectedLeads={selectedLeads}
-        setSelectedLeads={setSelectedLeads}
-        key={refreshTrigger}
-      />
+      <LeadTable showColumnCustomizer={showColumnCustomizer} setShowColumnCustomizer={setShowColumnCustomizer} showModal={showModal} setShowModal={setShowModal} selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads} key={refreshTrigger} />
 
       {/* Bulk Delete Confirmation Dialog */}
-      <LeadDeleteConfirmDialog
-        open={showBulkDeleteDialog}
-        onConfirm={handleBulkDelete}
-        onCancel={() => setShowBulkDeleteDialog(false)}
-        isMultiple={true}
-        count={selectedLeads.length}
-      />
-    </div>
-  );
+      <LeadDeleteConfirmDialog open={showBulkDeleteDialog} onConfirm={handleBulkDelete} onCancel={() => setShowBulkDeleteDialog(false)} isMultiple={true} count={selectedLeads.length} />
+    </div>;
 };
-
 export default Leads;
