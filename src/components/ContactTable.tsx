@@ -134,13 +134,10 @@ export const ContactTable = ({
   };
 
   const toggleContactSelection = (contactId: string) => {
-    setSelectedContacts(prev => {
-      if (prev.includes(contactId)) {
-        return prev.filter(id => id !== contactId);
-      } else {
-        return [...prev, contactId];
-      }
-    });
+    const updatedSelection = selectedContacts.includes(contactId)
+      ? selectedContacts.filter(id => id !== contactId)
+      : [...selectedContacts, contactId];
+    setSelectedContacts(updatedSelection);
   };
 
   const toggleSelectAll = () => {
@@ -294,7 +291,7 @@ export const ContactTable = ({
         open={showModal}
         onOpenChange={handleModalClose}
         contact={editingContact}
-        onContactSaved={handleContactSaved}
+        onSuccess={handleContactSaved}
       />
 
       <ContactColumnCustomizer
