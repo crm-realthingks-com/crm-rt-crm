@@ -9,7 +9,7 @@ import { Search, Filter, X, Edit, Trash2, ArrowUp, ArrowDown, CheckSquare } from
 import { format } from "date-fns";
 import { InlineEditCell } from "./InlineEditCell";
 import { DealColumnCustomizer, DealColumnConfig } from "./DealColumnCustomizer";
-import { DealActionsDropdown } from "./DealActionsDropdown";
+import { ImportExportBar } from "./ImportExportBar";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { DealsAdvancedFilter, AdvancedFilterState } from "./DealsAdvancedFilter";
 import { DealActionItemsModal } from "./DealActionItemsModal";
@@ -412,15 +412,21 @@ export const ListView = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <DealActionsDropdown
+            <ImportExportBar
               deals={deals}
-              selectedDeals={selectedDealObjects}
               onImport={onImportDeals}
+              onExport={() => {}}
+              selectedDeals={selectedDealObjects}
               onRefresh={() => {}}
-              showColumns={true}
-              columns={columns}
-              onColumnsChange={setColumns}
             />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setColumnCustomizerOpen(true)}
+              className="flex items-center gap-2"
+            >
+              Columns
+            </Button>
           </div>
         </div>
       </div>
@@ -626,6 +632,13 @@ export const ListView = ({
         open={actionModalOpen}
         onOpenChange={setActionModalOpen}
         deal={selectedDealForActions}
+      />
+
+      <DealColumnCustomizer
+        open={columnCustomizerOpen}
+        onOpenChange={setColumnCustomizerOpen}
+        columns={columns}
+        onColumnsChange={setColumns}
       />
     </div>
   );
