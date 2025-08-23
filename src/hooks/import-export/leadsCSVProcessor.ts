@@ -132,9 +132,10 @@ export class LeadsCSVProcessor {
             isUpdate = true;
             console.log('Updated existing lead:', leadId);
           } else {
-            // Insert new lead with provided ID
+            // Insert new lead with provided ID - ensure all required fields are present
             const leadToInsert = {
               id: rowObj.id.trim(),
+              lead_name: leadRecord.lead_name, // Ensure lead_name is explicitly included
               ...leadRecord
             };
 
@@ -154,10 +155,15 @@ export class LeadsCSVProcessor {
             console.log('Inserted new lead with ID:', leadId);
           }
         } else {
-          // Insert new lead without ID (let database generate it)
+          // Insert new lead without ID (let database generate it) - ensure all required fields are present
+          const leadToInsert = {
+            lead_name: leadRecord.lead_name, // Ensure lead_name is explicitly included
+            ...leadRecord
+          };
+
           const { data: insertedLead, error: insertError } = await supabase
             .from('leads')
-            .insert([leadRecord])
+            .insert([leadToInsert])
             .select('id')
             .single();
 
