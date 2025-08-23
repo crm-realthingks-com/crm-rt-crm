@@ -9,7 +9,8 @@ import { ListView } from "@/components/ListView";
 import { DealForm } from "@/components/DealForm";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
+import { Plus, LayoutGrid, List } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCRUDAudit } from "@/hooks/useCRUDAudit";
 
 const DealsPage = () => {
@@ -268,30 +269,55 @@ const DealsPage = () => {
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
               <div className="bg-muted rounded-lg p-1 flex">
-                <Button
-                  variant={activeView === 'kanban' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setActiveView('kanban')}
-                  className={activeView === 'kanban' ? 'bg-primary text-primary-foreground' : ''}
-                >
-                  Kanban
-                </Button>
-                <Button
-                  variant={activeView === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setActiveView('list')}
-                  className={activeView === 'list' ? 'bg-primary text-primary-foreground' : ''}
-                >
-                  List
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={activeView === 'kanban' ? 'default' : 'outline'}
+                        size="icon"
+                        onClick={() => setActiveView('kanban')}
+                      >
+                        <LayoutGrid className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Kanban View</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={activeView === 'list' ? 'default' : 'outline'}
+                        size="icon"
+                        onClick={() => setActiveView('list')}
+                      >
+                        <List className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>List View</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-              <Button 
-                onClick={() => handleCreateDeal('Lead')}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">New Deal</span>
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleCreateDeal('Lead')}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>New Deal</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         </div>

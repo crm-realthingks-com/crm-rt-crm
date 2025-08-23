@@ -2,6 +2,7 @@
 import LeadTable from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Settings, Plus, Trash2, ChevronDown, Upload, Download } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useSimpleLeadsImportExport } from "@/hooks/useSimpleLeadsImportExport";
@@ -71,30 +72,57 @@ const Leads = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Leads</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="default"
-            onClick={() => setShowColumnCustomizer(true)}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowColumnCustomizer(true)}
+                >
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Customize Columns</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
           {selectedLeads.length > 0 && (
-            <Button 
-              variant="destructive"
-              onClick={handleBulkDeleteClick}
-              disabled={isDeleting}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              {isDeleting ? 'Deleting...' : `Delete Selected (${selectedLeads.length})`}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    size="icon"
+                    onClick={handleBulkDeleteClick}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isDeleting ? 'Deleting...' : `Delete Selected (${selectedLeads.length})`}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="default">
-                Actions
-                <ChevronDown className="w-4 h-4 ml-2" />
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Actions</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
@@ -116,10 +144,18 @@ const Leads = () => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={() => setShowModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Lead
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => setShowModal(true)}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Add Lead</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 

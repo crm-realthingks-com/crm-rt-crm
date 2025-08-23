@@ -2,6 +2,7 @@ import { ContactTable } from "@/components/ContactTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Settings, Download, Upload, Plus, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -107,20 +108,37 @@ const Contacts = () => {
           <p className="text-muted-foreground"> </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="default"
-            onClick={() => setShowColumnCustomizer(true)}
-            size="icon"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowColumnCustomizer(true)}
+                >
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Customize Columns</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="default" disabled={isImporting}>
-                <Download className="w-4 h-4 mr-2" />
-                {isImporting ? 'Importing...' : 'Action'}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" disabled={isImporting}>
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Actions</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={handleImportClick} disabled={isImporting}>
@@ -143,10 +161,18 @@ const Contacts = () => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={() => setShowModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Contact
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => setShowModal(true)}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Add Contact</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
