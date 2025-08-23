@@ -9,10 +9,10 @@ import { Search, Filter, X, Edit, Trash2, ArrowUp, ArrowDown, CheckSquare } from
 import { format } from "date-fns";
 import { InlineEditCell } from "./InlineEditCell";
 import { DealColumnCustomizer, DealColumnConfig } from "./DealColumnCustomizer";
-import { ImportExportBar } from "./ImportExportBar";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { DealsAdvancedFilter, AdvancedFilterState } from "./DealsAdvancedFilter";
 import { DealActionItemsModal } from "./DealActionItemsModal";
+import { DealActionsDropdown } from "./DealActionsDropdown";
 import { useToast } from "@/hooks/use-toast";
 
 interface ListViewProps {
@@ -199,7 +199,7 @@ export const ListView = ({
 
   const handleBulkExport = () => {
     const selectedDealObjects = deals.filter(deal => selectedDeals.has(deal.id));
-    // Export logic handled by ImportExportBar
+    // Export logic handled by DealActionsDropdown
   };
 
   const handleInlineEdit = async (dealId: string, field: string, value: any) => {
@@ -412,21 +412,14 @@ export const ListView = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <ImportExportBar
+            <DealActionsDropdown
               deals={deals}
               onImport={onImportDeals}
-              onExport={() => {}}
-              selectedDeals={selectedDealObjects}
               onRefresh={() => {}}
+              selectedDeals={selectedDealObjects}
+              onColumnCustomize={() => setColumnCustomizerOpen(true)}
+              showColumns={true}
             />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setColumnCustomizerOpen(true)}
-              className="flex items-center gap-2"
-            >
-              Columns
-            </Button>
           </div>
         </div>
       </div>
