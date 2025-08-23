@@ -1,4 +1,5 @@
 
+
 import LeadTable from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Settings, Plus, Trash2, MoreVertical, Upload, Download } from "lucide-react";
@@ -110,20 +111,20 @@ const Leads = () => {
           )}
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon">
                       <MoreVertical className="w-4 h-4" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Actions</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </DropdownMenuTrigger>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Actions</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
                 <Upload className="w-4 h-4 mr-2" />
@@ -192,3 +193,4 @@ const Leads = () => {
 };
 
 export default Leads;
+

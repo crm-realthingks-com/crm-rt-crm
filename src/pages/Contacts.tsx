@@ -1,3 +1,4 @@
+
 import { ContactTable } from "@/components/ContactTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -126,20 +127,20 @@ const Contacts = () => {
           </TooltipProvider>
           
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon" disabled={isImporting}>
                       <MoreVertical className="w-4 h-4" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Actions</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </DropdownMenuTrigger>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Actions</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={handleImportClick} disabled={isImporting}>
                 <Upload className="w-4 h-4 mr-2" />
@@ -201,3 +202,4 @@ const Contacts = () => {
 };
 
 export default Contacts;
+
