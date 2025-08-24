@@ -52,6 +52,80 @@ export const useSecureDeals = () => {
     }
   };
 
+  const updateDeal = async (id: string, updates: Partial<Deal>) => {
+    try {
+      console.log(`=== UPDATING DEAL ${id} ===`);
+      console.log('Updates:', updates);
+      
+      // Get the existing deal for audit logging
+      const existingDeal = deals.find(d => d.id === id);
+      
+      const query = supabase
+        .from('deals')
+        .update({ ...updates, modified_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      const result = await secureQuery('deals', query, 'UPDATE');
+      
+      if (result.data) {
+        // Update local state
+        setDeals(prev => prev.map(deal => 
+          deal.id === id ? { ...deal, ...updates } : deal
+        ));
+        
+        console.log('Deal updated successfully');
+        toast({
+          title: "Success",
+          description: "Deal updated successfully",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating deal:', error);
+      
+      // Check if this is a permission error (RLS policy violation)
+      if (error.message?.includes('row-level security') || 
+          error.message?.includes('permission') ||
+          error.code === 'PGRST301' || 
+          error.code === '42501') {
+        
+        // Log unauthorized attempt
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          await supabase.from('security_audit_log').insert({
+            user_id: user?.id,
+            action: 'Unauthorized Update Attempt',
+            resource_type: 'deals',
+            resource_id: id,
+            details: {
+              operation: 'UPDATE',
+              status: 'Blocked',
+              timestamp: new Date().toISOString(),
+              module: 'Deals',
+              reason: 'Insufficient permissions'
+            }
+          });
+        } catch (logError) {
+          console.error('Failed to log unauthorized attempt:', logError);
+        }
+
+        toast({
+          title: "Permission Denied",
+          description: "You don't have permission to update this record.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update deal",
+          variant: "destructive",
+        });
+      }
+      throw error;
+    }
+  };
+
   const deleteDeal = async (id: string) => {
     try {
       // First get the deal to check ownership and get data for logging
@@ -132,6 +206,7 @@ export const useSecureDeals = () => {
     deals,
     loading,
     fetchDeals,
+    updateDeal,
     deleteDeal
   };
 };

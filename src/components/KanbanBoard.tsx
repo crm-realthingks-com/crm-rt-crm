@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Deal, DealStage, DEAL_STAGES, STAGE_COLORS } from "@/types/deal";
@@ -130,11 +129,6 @@ export const KanbanBoard = ({
     setDraggedDeal(start.draggableId);
   };
 
-  const canMoveToStage = (deal: Deal, targetStage: DealStage): boolean => {
-    console.log(`=== ALLOWING MOVE FROM ${deal.stage} TO ${targetStage} ===`);
-    return true;
-  };
-
   const onDragEnd = async (result: DropResult) => {
     setDraggedDeal(null);
     
@@ -150,7 +144,14 @@ export const KanbanBoard = ({
 
     try {
       console.log(`Moving deal ${draggableId} to stage ${newStage}`);
-      await onUpdateDeal(draggableId, { stage: newStage });
+      
+      // Create update object with the new stage
+      const updates: Partial<Deal> = {
+        stage: newStage
+      };
+      
+      await onUpdateDeal(draggableId, updates);
+      
       toast({
         title: "Deal Updated",
         description: `Deal moved to ${newStage} stage`,
@@ -221,7 +222,14 @@ export const KanbanBoard = ({
   const handleDealCardAction = async (dealId: string, newStage: DealStage) => {
     try {
       console.log(`Card action: Moving deal ${dealId} to stage ${newStage}`);
-      await onUpdateDeal(dealId, { stage: newStage });
+      
+      // Create update object with the new stage
+      const updates: Partial<Deal> = {
+        stage: newStage
+      };
+      
+      await onUpdateDeal(dealId, updates);
+      
       toast({
         title: "Deal Updated",
         description: `Deal moved to ${newStage} stage`,

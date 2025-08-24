@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +35,7 @@ const DealsPage = () => {
         .order('modified_at', { ascending: false });
 
       if (error) {
+        console.error('Supabase error fetching deals:', error);
         toast({
           title: "Error",
           description: "Failed to fetch deals",
@@ -46,6 +46,7 @@ const DealsPage = () => {
 
       setDeals((data || []) as unknown as Deal[]);
     } catch (error) {
+      console.error('Unexpected error fetching deals:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred",
@@ -65,9 +66,18 @@ const DealsPage = () => {
       // Get the existing deal for audit logging
       const existingDeal = deals.find(deal => deal.id === dealId);
       
+      // Ensure we have all required fields for the update
+      const updateData = {
+        ...updates,
+        modified_at: new Date().toISOString(),
+        modified_by: user?.id
+      };
+
+      console.log("Final update data:", updateData);
+
       const { data, error } = await supabase
         .from('deals')
-        .update({ ...updates, modified_at: new Date().toISOString() })
+        .update(updateData)
         .eq('id', dealId)
         .select()
         .single();
@@ -82,15 +92,16 @@ const DealsPage = () => {
       // Log update operation
       await logUpdate('deals', dealId, updates, existingDeal);
       
+      // Update local state
       setDeals(prev => prev.map(deal => 
-        deal.id === dealId ? { ...deal, ...updates } : deal
+        deal.id === dealId ? { ...deal, ...updateData } : deal
       ));
       
       toast({
         title: "Success",
         description: "Deal updated successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Update deal error:", error);
       toast({
         title: "Error",
@@ -103,19 +114,34 @@ const DealsPage = () => {
 
   const handleSaveDeal = async (dealData: Partial<Deal>) => {
     try {
+      console.log("=== SAVE DEAL DEBUG ===");
+      console.log("Is creating:", isCreating);
+      console.log("Deal data:", dealData);
+      
       if (isCreating) {
+        const insertData = { 
+          ...dealData, 
+          deal_name: dealData.project_name || dealData.deal_name || 'Untitled Deal',
+          created_by: user?.id,
+          modified_by: user?.id,
+          created_at: new Date().toISOString(),
+          modified_at: new Date().toISOString()
+        };
+        
+        console.log("Insert data:", insertData);
+
         const { data, error } = await supabase
           .from('deals')
-          .insert([{ 
-            ...dealData, 
-            deal_name: dealData.project_name || 'Untitled Deal',
-            created_by: user?.id,
-            modified_by: user?.id 
-          }])
+          .insert([insertData])
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Insert error:", error);
+          throw error;
+        }
+
+        console.log("Insert successful:", data);
 
         // Log create operation
         await logCreate('deals', data.id, dealData);
@@ -124,15 +150,17 @@ const DealsPage = () => {
       } else if (selectedDeal) {
         const updateData = {
           ...dealData,
-          deal_name: dealData.project_name || selectedDeal.project_name || 'Untitled Deal',
+          deal_name: dealData.project_name || selectedDeal.project_name || selectedDeal.deal_name || 'Untitled Deal',
           modified_at: new Date().toISOString(),
           modified_by: user?.id
         };
         
+        console.log("Update data for existing deal:", updateData);
+        
         await handleUpdateDeal(selectedDeal.id, updateData);
         await fetchDeals();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in handleSaveDeal:", error);
       throw error;
     }
