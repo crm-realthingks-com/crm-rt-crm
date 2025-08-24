@@ -182,23 +182,59 @@ const DealsPage = () => {
 
   const handleDeleteDeals = async (dealIds: string[]) => {
     try {
-      const { error } = await supabase
+      console.log("Attempting to delete deals:", dealIds);
+
+      // Request the IDs of the rows that were actually deleted (RLS will filter)
+      const { data, error } = await supabase
         .from('deals')
         .delete()
-        .in('id', dealIds);
+        .in('id', dealIds)
+        .select('id');
 
-      if (error) throw error;
+      if (error) {
+        console.error("Delete error:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete deals",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Log bulk delete operation
-      await logBulkDelete('deals', dealIds.length, dealIds);
+      const deletedIds = (data || []).map((row: { id: string }) => row.id);
+      const notDeleted = dealIds.filter(id => !deletedIds.includes(id));
 
-      setDeals(prev => prev.filter(deal => !dealIds.includes(deal.id)));
-      
-      toast({
-        title: "Success",
-        description: `Deleted ${dealIds.length} deal(s)`,
-      });
+      console.log("Deleted IDs:", deletedIds);
+      console.log("Not deleted due to RLS/permissions:", notDeleted);
+
+      // Update local state only for deals that were actually deleted
+      if (deletedIds.length > 0) {
+        setDeals(prev => prev.filter(deal => !deletedIds.includes(deal.id)));
+
+        // Log bulk delete with only the successfully deleted IDs
+        await logBulkDelete('deals', deletedIds.length, deletedIds);
+
+        toast({
+          title: "Success",
+          description: `Deleted ${deletedIds.length} deal(s)`,
+        });
+      }
+
+      // Show a clear permission message for deals that couldn't be deleted
+      if (notDeleted.length > 0) {
+        toast({
+          title: "Permission Denied",
+          description: `You don't have permission to delete ${notDeleted.length} deal(s).`,
+          variant: "destructive",
+        });
+      }
+
+      // If nothing was deleted at all, ensure user is informed
+      if (deletedIds.length === 0 && notDeleted.length === dealIds.length) {
+        console.warn("No deals were deleted due to RLS. User may be non-owner/non-admin.");
+      }
     } catch (error) {
+      console.error("Unexpected delete error:", error);
       toast({
         title: "Error",
         description: "Failed to delete deals",
