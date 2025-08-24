@@ -122,7 +122,7 @@ const DealsPage = () => {
         const insertData = { 
           ...dealData, 
           deal_name: dealData.project_name || dealData.deal_name || 'Untitled Deal',
-          created_by: user?.id,
+          created_by: user?.id, // Ensure created_by is set for RLS
           modified_by: user?.id,
           created_at: new Date().toISOString(),
           modified_at: new Date().toISOString()
@@ -138,6 +138,20 @@ const DealsPage = () => {
 
         if (error) {
           console.error("Insert error:", error);
+          
+          // Check for RLS policy violation
+          if (error.message?.includes('row-level security') || 
+              error.message?.includes('permission') ||
+              error.code === 'PGRST301' || 
+              error.code === '42501') {
+            toast({
+              title: "Permission Denied",
+              description: "You don't have permission to create deals.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
           throw error;
         }
 
