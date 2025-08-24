@@ -47,6 +47,9 @@ export const ConvertToDealModal = ({ open, onOpenChange, lead, onSuccess }: Conv
         throw new Error("User not authenticated");
       }
 
+      // Get the lead owner display name from the hook
+      const leadOwnerDisplayName = lead.created_by ? displayNames[lead.created_by] || 'Unknown User' : '';
+
       // Ensure required fields are present and remove any undefined/null values that could cause UUID errors
       const dealToInsert = {
         deal_name: dealData.deal_name || `Deal for ${lead.lead_name}`,
@@ -54,7 +57,7 @@ export const ConvertToDealModal = ({ open, onOpenChange, lead, onSuccess }: Conv
         project_name: dealData.project_name || '',
         customer_name: dealData.customer_name || lead.company_name || '',
         lead_name: dealData.lead_name || lead.lead_name,
-        lead_owner: dealData.lead_owner || (lead.created_by ? displayNames[lead.created_by] || 'Unknown User' : ''),
+        lead_owner: dealData.lead_owner || leadOwnerDisplayName,
         region: dealData.region || lead.country || '',
         priority: dealData.priority || 3,
         created_by: user.id, // Ensure created_by is set for RLS
@@ -122,7 +125,7 @@ export const ConvertToDealModal = ({ open, onOpenChange, lead, onSuccess }: Conv
     project_name: '', // Keep blank as requested
     customer_name: lead.company_name || '',
     lead_name: lead.lead_name,
-    lead_owner: lead.created_by ? (displayNames[lead.created_by] || 'Unknown User') : '', // Show display name instead of UUID
+    lead_owner: lead.created_by ? (displayNames[lead.created_by] || 'Unknown User') : '', // Use display name from hook
     region: lead.country || '',
     priority: 3, // Default priority
   };

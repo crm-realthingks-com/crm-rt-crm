@@ -152,27 +152,24 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error 
       }
     });
 
-    // Get lead owner display name if available
+    // Set lead owner using the useUserDisplayNames hook approach
     if (lead.created_by) {
-      const fetchLeadOwner = async () => {
-        try {
-          const { data, error } = await supabase.functions.invoke('admin-list-users');
-          if (!error && data?.users) {
-            const user = data.users.find((u: any) => u.id === lead.created_by);
-            if (user) {
-              onChange('lead_owner', user.user_metadata?.display_name || "Unknown");
-              return;
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching user display name:", error);
+      // Trigger fetching of user display names
+      setLeadOwnerIds(prev => {
+        const newIds = [...prev];
+        if (!newIds.includes(lead.created_by)) {
+          newIds.push(lead.created_by);
         }
-        
-        // Fallback if user fetch fails
-        onChange('lead_owner', "Unknown");
-      };
-      
-      fetchLeadOwner();
+        return newIds;
+      });
+
+      // Use a timeout to allow the hook to fetch the display name
+      setTimeout(() => {
+        const leadOwnerName = displayNames[lead.created_by] || 'Unknown User';
+        onChange('lead_owner', leadOwnerName);
+      }, 100);
+    } else {
+      onChange('lead_owner', 'Unknown User');
     }
 
     if (onLeadSelect) {
