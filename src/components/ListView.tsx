@@ -500,11 +500,10 @@ export const ListView = ({
                   {visibleColumns.map(column => (
                     <TableCell 
                       key={column.field} 
-                      className="font-medium"
+                      className="font-medium whitespace-normal"
                       style={{ 
                         width: `${columnWidths[column.field] || 120}px`,
-                        minWidth: `${columnWidths[column.field] || 120}px`,
-                        maxWidth: `${columnWidths[column.field] || 120}px`
+                        minWidth: `${columnWidths[column.field] || 120}px`
                       }}
                     >
                       <InlineEditCell

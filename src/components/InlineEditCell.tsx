@@ -102,7 +102,7 @@ export const InlineEditCell = ({
         }}
         title="Click to edit"
       >
-        <span className="truncate flex-1">{formatDisplayValue()}</span>
+        <span className="flex-1 break-words">{formatDisplayValue()}</span>
         <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity ml-1 text-muted-foreground" />
       </div>
     );
