@@ -482,7 +482,7 @@ export const ListView = ({
               paginatedDeals.map((deal) => (
                 <TableRow 
                   key={deal.id} 
-                  className={`hover:bg-primary/5 transition-all duration-200 hover:shadow-sm ${
+                  className={`hover:bg-primary/5 transition-all duration-200 hover:shadow-sm h-10 ${
                     selectedDeals.has(deal.id) ? 'bg-primary/10 shadow-sm' : ''
                   }`}
                   style={{ 
@@ -490,7 +490,7 @@ export const ListView = ({
                     borderLeft: selectedDeals.has(deal.id) ? '3px solid hsl(var(--primary))' : undefined 
                   }}
                 >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell onClick={(e) => e.stopPropagation()} className="py-1 px-2">
                     <Checkbox
                       checked={selectedDeals.has(deal.id)}
                       onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
@@ -500,7 +500,7 @@ export const ListView = ({
                   {visibleColumns.map(column => (
                     <TableCell 
                       key={column.field} 
-                      className="font-medium whitespace-normal"
+                      className="font-medium whitespace-normal py-1 px-2"
                       style={{ 
                         width: `${columnWidths[column.field] || 120}px`,
                         minWidth: `${columnWidths[column.field] || 120}px`
@@ -516,7 +516,7 @@ export const ListView = ({
                       />
                     </TableCell>
                   ))}
-                  <TableCell>
+                  <TableCell className="py-1 px-2">
                     <div className="flex items-center gap-1">
                       <Button
                         size="sm"

@@ -95,7 +95,7 @@ export const InlineEditCell = ({
   if (!isEditing) {
     return (
       <div 
-        className="group flex items-center justify-between cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors min-h-[32px]"
+        className="group flex items-center justify-between cursor-pointer hover:bg-muted/50 p-0.5 rounded transition-colors min-h-[24px]"
         onClick={(e) => {
           e.stopPropagation();
           setIsEditing(true);
