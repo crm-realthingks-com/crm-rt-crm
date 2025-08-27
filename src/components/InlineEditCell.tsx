@@ -237,16 +237,16 @@ export const InlineEditCell = ({
   };
 
   return (
-    <div className="flex flex-col gap-2 animate-fade-in p-2 bg-background border rounded-md shadow-sm min-w-[200px]" onClick={(e) => e.stopPropagation()}>
+    <div className="flex flex-col gap-1 animate-fade-in p-1 bg-background border rounded-md shadow-sm min-w-[180px]" onClick={(e) => e.stopPropagation()}>
       <div className="flex-1">
         {renderEditControl()}
       </div>
-      <div className="flex gap-2 justify-end">
+      <div className="flex gap-1 justify-end">
         <Button
           size="sm"
           variant="outline"
           onClick={handleSave}
-          className="h-7 px-3 hover:bg-green-50"
+          className="h-6 px-2 text-xs hover:bg-green-50"
           title="Save changes"
         >
           <Check className="w-3 h-3 text-green-600 mr-1" />
@@ -256,7 +256,7 @@ export const InlineEditCell = ({
           size="sm"
           variant="outline"
           onClick={handleCancel}
-          className="h-7 px-3 hover:bg-red-50"
+          className="h-6 px-2 text-xs hover:bg-red-50"
           title="Cancel"
         >
           <X className="w-3 h-3 text-red-600 mr-1" />
