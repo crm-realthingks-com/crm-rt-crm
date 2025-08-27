@@ -379,12 +379,12 @@ export const ListView = ({
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex flex-col sm:flex-row gap-4 flex-1">
             <div className="relative w-full sm:w-80">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground w-3 h-3" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
                 placeholder="Search all deal details..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-8 text-sm transition-all hover:border-primary/50 focus:border-primary w-full"
+                className="pl-10 transition-all hover:border-primary/50 focus:border-primary"
               />
             </div>
             
@@ -482,7 +482,7 @@ export const ListView = ({
               paginatedDeals.map((deal) => (
                 <TableRow 
                   key={deal.id} 
-                  className={`hover:bg-primary/5 transition-all duration-200 hover:shadow-sm h-10 ${
+                  className={`hover:bg-primary/5 transition-all duration-200 hover:shadow-sm ${
                     selectedDeals.has(deal.id) ? 'bg-primary/10 shadow-sm' : ''
                   }`}
                   style={{ 
@@ -490,7 +490,7 @@ export const ListView = ({
                     borderLeft: selectedDeals.has(deal.id) ? '3px solid hsl(var(--primary))' : undefined 
                   }}
                 >
-                  <TableCell onClick={(e) => e.stopPropagation()} className="py-1 px-2">
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selectedDeals.has(deal.id)}
                       onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
@@ -500,10 +500,11 @@ export const ListView = ({
                   {visibleColumns.map(column => (
                     <TableCell 
                       key={column.field} 
-                      className="font-medium whitespace-normal py-1 px-2"
+                      className="font-medium"
                       style={{ 
                         width: `${columnWidths[column.field] || 120}px`,
-                        minWidth: `${columnWidths[column.field] || 120}px`
+                        minWidth: `${columnWidths[column.field] || 120}px`,
+                        maxWidth: `${columnWidths[column.field] || 120}px`
                       }}
                     >
                       <InlineEditCell
@@ -516,7 +517,7 @@ export const ListView = ({
                       />
                     </TableCell>
                   ))}
-                  <TableCell className="py-1 px-2">
+                  <TableCell>
                     <div className="flex items-center gap-1">
                       <Button
                         size="sm"

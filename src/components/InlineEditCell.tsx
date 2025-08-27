@@ -95,14 +95,14 @@ export const InlineEditCell = ({
   if (!isEditing) {
     return (
       <div 
-        className="group flex items-center justify-between cursor-pointer hover:bg-muted/50 p-0.5 rounded transition-colors min-h-[24px]"
+        className="group flex items-center justify-between cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors min-h-[32px]"
         onClick={(e) => {
           e.stopPropagation();
           setIsEditing(true);
         }}
         title="Click to edit"
       >
-        <span className="flex-1 break-words">{formatDisplayValue()}</span>
+        <span className="truncate flex-1">{formatDisplayValue()}</span>
         <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity ml-1 text-muted-foreground" />
       </div>
     );
@@ -237,30 +237,28 @@ export const InlineEditCell = ({
   };
 
   return (
-    <div className="flex flex-col gap-1 animate-fade-in p-1 bg-background border rounded-md shadow-sm w-3/4 max-w-full" onClick={(e) => e.stopPropagation()}>
+    <div className="flex items-center gap-1 animate-fade-in" onClick={(e) => e.stopPropagation()}>
       <div className="flex-1">
         {renderEditControl()}
       </div>
-      <div className="flex gap-1 justify-end">
+      <div className="flex gap-1 ml-1">
         <Button
           size="sm"
-          variant="outline"
+          variant="ghost"
           onClick={handleSave}
-          className="h-6 px-2 text-xs hover:bg-green-50"
+          className="h-6 w-6 p-0 hover:bg-green-100"
           title="Save changes"
         >
-          <Check className="w-3 h-3 text-green-600 mr-1" />
-          Save
+          <Check className="w-3 h-3 text-green-600" />
         </Button>
         <Button
           size="sm"
-          variant="outline"
+          variant="ghost"
           onClick={handleCancel}
-          className="h-6 px-2 text-xs hover:bg-red-50"
+          className="h-6 w-6 p-0 hover:bg-red-100"
           title="Cancel"
         >
-          <X className="w-3 h-3 text-red-600 mr-1" />
-          Cancel
+          <X className="w-3 h-3 text-red-600" />
         </Button>
       </div>
     </div>
