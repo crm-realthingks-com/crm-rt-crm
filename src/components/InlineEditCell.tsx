@@ -129,7 +129,7 @@ export const InlineEditCell = ({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full min-w-[180px]"
+            className="w-full"
             autoFocus
             onFocus={(e) => e.target.select()}
           />
@@ -228,7 +228,7 @@ export const InlineEditCell = ({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full min-w-[180px]"
+            className="w-full"
             autoFocus
             onFocus={(e) => e.target.select()}
           />
@@ -237,7 +237,7 @@ export const InlineEditCell = ({
   };
 
   return (
-    <div className="flex flex-col gap-1 animate-fade-in p-1 bg-background border rounded-md shadow-sm min-w-[180px]" onClick={(e) => e.stopPropagation()}>
+    <div className="flex flex-col gap-1 animate-fade-in p-1 bg-background border rounded-md shadow-sm w-3/4 max-w-full" onClick={(e) => e.stopPropagation()}>
       <div className="flex-1">
         {renderEditControl()}
       </div>
