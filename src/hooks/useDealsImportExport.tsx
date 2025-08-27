@@ -16,7 +16,7 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
   const { logSecurityEvent } = useSecurityAudit();
   
   const handleImport = async (file: File) => {
-    console.log('useDealsImportExport: Starting import process with action items');
+    console.log('useDealsImportExport: Starting import process with standardized YYYY-MM-DD date format');
 
     if (!user?.id) {
       const errorMsg = 'User not authenticated. Please log in and try again.';
@@ -67,7 +67,7 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
       // Show initial loading toast
       toast({
         title: "Import Started",
-        description: `Processing ${file.name} with action items...`,
+        description: `Processing ${file.name} with YYYY-MM-DD date format validation...`,
       });
 
       const text = await file.text();
@@ -86,7 +86,7 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
       console.log('useDealsImportExport: CSV has', lines.length, 'lines (including header)');
 
       const processor = new SimpleDealsCSVProcessor();
-      console.log('useDealsImportExport: Starting processing with action items logic');
+      console.log('useDealsImportExport: Starting processing with YYYY-MM-DD date format validation');
       
       const result = await processor.processCSV(text, {
         userId: user.id,
@@ -119,7 +119,7 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
         
         toast({
           title: "Import Successful",
-          description: message || "Import completed successfully with action items",
+          description: message || "Import completed successfully with standardized date formats",
         });
         
         console.log('useDealsImportExport: Import successful - triggering real-time refresh...');
@@ -142,9 +142,15 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
           timestamp: new Date().toISOString()
         });
         
+        // Check if errors contain date format issues and provide specific guidance
+        const hasDateErrors = errors.some(error => error.includes('Invalid date format'));
+        const errorDescription = hasDateErrors 
+          ? "Date format errors detected. Please use YYYY-MM-DD format for all dates."
+          : message + (errors.length > 0 ? `. First error: ${errors[0]}` : '');
+        
         toast({
           title: "Import Failed",
-          description: message + (errors.length > 0 ? `. First error: ${errors[0]}` : ''),
+          description: errorDescription,
           variant: "destructive",
         });
       } else {
@@ -164,7 +170,7 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
       console.error('useDealsImportExport: Import failed with error:', error);
       console.error('useDealsImportExport: Error stack:', error.stack);
       
-      const errorMessage = error.message || "Failed to import CSV file. Please check the file format and try again.";
+      const errorMessage = error.message || "Failed to import CSV file. Please check the file format and ensure dates are in YYYY-MM-DD format.";
       
       toast({
         title: "Import Error",
@@ -177,7 +183,7 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
   };
 
   const handleExportAll = async (data: any[]) => {
-    console.log(`useDealsImportExport: Exporting all deals with action items:`, data?.length || 0, 'records');
+    console.log(`useDealsImportExport: Exporting all deals with YYYY-MM-DD date format:`, data?.length || 0, 'records');
     const filename = getExportFilename('deals', 'all');
     
     // Log export attempt
@@ -197,7 +203,7 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
   const handleExportSelected = async (data: any[], selectedIds: string[]) => {
     const selectedData = data.filter(item => selectedIds.includes(item.id));
     const filename = getExportFilename('deals', 'selected');
-    console.log(`useDealsImportExport: Exporting selected deals with action items:`, selectedData.length, 'records');
+    console.log(`useDealsImportExport: Exporting selected deals with YYYY-MM-DD date format:`, selectedData.length, 'records');
     
     // Log export attempt
     await logSecurityEvent('DATA_EXPORT', 'deals', undefined, {
@@ -216,7 +222,7 @@ export const useDealsImportExport = ({ onRefresh }: DealsImportExportOptions) =>
 
   const handleExportFiltered = async (filteredData: any[]) => {
     const filename = getExportFilename('deals', 'filtered');
-    console.log(`useDealsImportExport: Exporting filtered deals with action items:`, filteredData.length, 'records');
+    console.log(`useDealsImportExport: Exporting filtered deals with YYYY-MM-DD date format:`, filteredData.length, 'records');
     
     // Log export attempt
     await logSecurityEvent('DATA_EXPORT', 'deals', undefined, {

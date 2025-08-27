@@ -24,7 +24,7 @@ export class DealsCSVExporter {
   }
   
   async exportToCSV(deals: any[], filename: string) {
-    console.log('DealsCSVExporter: Starting export with action items');
+    console.log('DealsCSVExporter: Starting export with standardized YYYY-MM-DD date format');
     
     if (!deals || deals.length === 0) {
       throw new Error('No deals to export');
@@ -52,13 +52,13 @@ export class DealsCSVExporter {
       return acc;
     }, {} as Record<string, any[]>);
 
-    // Combine deals with their action items
+    // Combine deals with their action items and ensure date format consistency
     const dealsWithActionItems = deals.map(deal => ({
       ...deal,
       action_items_json: JSON.stringify(actionItemsByDeal[deal.id] || [])
     }));
 
     await this.genericExporter.exportToCSV(dealsWithActionItems, filename, DEALS_EXPORT_FIELDS);
-    console.log('DealsCSVExporter: Export completed successfully with action items');
+    console.log('DealsCSVExporter: Export completed successfully with YYYY-MM-DD date format');
   }
 }

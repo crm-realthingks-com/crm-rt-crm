@@ -55,7 +55,7 @@ export const ContactTableHeader = ({
             placeholder="Search contacts..." 
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
-            className="pl-10 w-80" 
+            className="pl-10 w-full sm:w-80" 
           />
         </div>
       </div>

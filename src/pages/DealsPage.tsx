@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, LayoutGrid, List } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCRUDAudit } from "@/hooks/useCRUDAudit";
+import { DealActionsDropdown } from "@/components/DealActionsDropdown";
 
 const DealsPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -380,6 +381,20 @@ const DealsPage = () => {
                   </Tooltip>
                 </TooltipProvider>
               </div>
+
+              {/* Actions icon-only button between view toggle and Add Deal */}
+              <DealActionsDropdown
+                deals={deals}
+                onImport={handleImportDeals}
+                onRefresh={fetchDeals}
+                selectedDeals={[]}
+                showColumns={activeView === 'list'}
+                onColumnCustomize={() => {
+                  // Broadcast to open Columns UI in ListView if applicable
+                  window.dispatchEvent(new CustomEvent('open-deal-columns'));
+                }}
+              />
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

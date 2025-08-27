@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Palette, Sun, Moon, Monitor } from "lucide-react";
+import { Palette, Sun, Moon } from "lucide-react";
 import { useThemePreferences } from "@/hooks/useThemePreferences";
 
 const PreferencesSettings = () => {
@@ -17,7 +17,6 @@ const PreferencesSettings = () => {
   const themeOptions = [
     { value: "light", label: "Light", icon: Sun },
     { value: "dark", label: "Dark", icon: Moon },
-    { value: "auto", label: "Auto", icon: Monitor },
   ];
 
   if (loading) {

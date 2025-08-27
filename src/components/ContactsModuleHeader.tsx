@@ -47,7 +47,7 @@ const ContactsModuleHeader = ({ onAddContact, columns, onColumnsChange }: Contac
           size="sm"
         >
           <Settings className="w-4 h-4 mr-2" />
-          Customize Columns
+          Columns
         </Button>
         <ContactColumnCustomizer 
           open={isCustomizerOpen}

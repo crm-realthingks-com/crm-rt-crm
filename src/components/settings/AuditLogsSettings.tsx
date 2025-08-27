@@ -463,7 +463,6 @@ const AuditLogsSettings = () => {
                 Security Audit Logs
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Track all security-related activities and user management actions
               </p>
             </div>
             <div className="flex items-center gap-2">

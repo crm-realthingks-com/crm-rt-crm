@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -34,6 +33,15 @@ interface DealActionItem {
   updated_at: string;
 }
 
+interface AuthUser {
+  id: string;
+  email: string;
+  user_metadata?: {
+    full_name?: string;
+    display_name?: string;
+  };
+}
+
 interface DealActionItemsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,29 +62,70 @@ export const DealActionItemsModal = ({ open, onOpenChange, deal }: DealActionIte
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<'Open' | 'Ongoing' | 'Closed'>('Open');
 
-  // Get all users for the dropdown
-  const [allUsers, setAllUsers] = useState<{ id: string; full_name: string }[]>([]);
+  // Get all users from auth table
+  const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
   const userIds = allUsers.map(u => u.id);
   const { displayNames } = useUserDisplayNames(userIds);
 
   useEffect(() => {
     if (open && deal) {
       fetchActionItems();
-      fetchUsers();
+      fetchAllUsers();
     }
   }, [open, deal]);
 
-  const fetchUsers = async () => {
+  const fetchAllUsers = async () => {
     try {
-      const { data, error } = await supabase
+      // Call the edge function to get all users from auth table
+      const { data: functionResult, error: functionError } = await supabase.functions.invoke(
+        'get-user-names',
+        {
+          body: { getAllUsers: true }
+        }
+      );
+
+      if (functionError) {
+        console.error('Error fetching users from edge function:', functionError);
+        // Fallback to profiles table
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, "Email ID"')
+          .order('full_name');
+        
+        if (!profilesError && profilesData) {
+          const mappedUsers = profilesData.map(profile => ({
+            id: profile.id,
+            email: profile["Email ID"] || '',
+            user_metadata: {
+              full_name: profile.full_name || ''
+            }
+          }));
+          setAllUsers(mappedUsers);
+        }
+        return;
+      }
+
+      if (functionResult?.users) {
+        setAllUsers(functionResult.users);
+      }
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      // Fallback to profiles table
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, "Email ID"')
         .order('full_name');
       
-      if (error) throw error;
-      setAllUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching users:', error);
+      if (!profilesError && profilesData) {
+        const mappedUsers = profilesData.map(profile => ({
+          id: profile.id,
+          email: profile["Email ID"] || '',
+          user_metadata: {
+            full_name: profile.full_name || ''
+          }
+        }));
+        setAllUsers(mappedUsers);
+      }
     }
   };
 
@@ -277,11 +326,18 @@ export const DealActionItemsModal = ({ open, onOpenChange, deal }: DealActionIte
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {allUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {displayNames[user.id] || user.full_name || 'Unknown User'}
-                        </SelectItem>
-                      ))}
+                      {allUsers.map((user) => {
+                        const displayName = displayNames[user.id] || 
+                                          user.user_metadata?.full_name || 
+                                          user.user_metadata?.display_name ||
+                                          user.email?.split('@')[0] ||
+                                          'Unknown User';
+                        return (
+                          <SelectItem key={user.id} value={user.id}>
+                            {displayName}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>

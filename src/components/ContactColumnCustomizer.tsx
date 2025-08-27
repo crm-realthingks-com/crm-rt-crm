@@ -58,7 +58,7 @@ export const ContactColumnCustomizer = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Customize Columns</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Columns</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">

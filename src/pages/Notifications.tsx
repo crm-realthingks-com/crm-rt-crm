@@ -54,20 +54,47 @@ const Notifications = () => {
   }, []);
 
   const handleNotificationClick = async (notification: any) => {
-    // Mark as read
+    // Mark as read first
     if (notification.status === 'unread') {
       await markAsRead(notification.id);
     }
 
-    // Navigate based on notification type and available IDs
+    // Parse the notification message to extract IDs and navigate accordingly
+    const message = notification.message.toLowerCase();
+    
+    // Check for deal references in the message
+    const dealMatch = message.match(/deal[:\s]+([a-f0-9-]{36})/);
+    const leadMatch = message.match(/lead[:\s]+([a-f0-9-]{36})/);
+    
+    // Navigate based on the notification content and available IDs
     if (notification.lead_id) {
-      navigate(`/leads`);
-    } else if (notification.notification_type === 'action_item' && notification.message.includes('deal:')) {
-      navigate(`/deals`);
+      // Direct lead ID available, navigate to leads page
+      navigate(`/leads?highlight=${notification.lead_id}`);
+    } else if (dealMatch) {
+      // Deal ID found in message, navigate to deals page
+      const dealId = dealMatch[1];
+      navigate(`/deals?highlight=${dealId}`);
+    } else if (leadMatch) {
+      // Lead ID found in message, navigate to leads page  
+      const leadId = leadMatch[1];
+      navigate(`/leads?highlight=${leadId}`);
+    } else if (notification.notification_type === 'action_item') {
+      // Action item notification - try to determine context
+      if (message.includes('deal')) {
+        navigate('/deals');
+      } else if (message.includes('lead') || message.includes('contact')) {
+        navigate('/leads');
+      } else {
+        // Default to deals page for action items
+        navigate('/deals');
+      }
     } else if (notification.notification_type === 'deal_update') {
-      navigate(`/deals`);
+      navigate('/deals');
     } else if (notification.notification_type === 'lead_update') {
-      navigate(`/leads`);
+      navigate('/leads');
+    } else {
+      // Default navigation
+      navigate('/dashboard');
     }
   };
 

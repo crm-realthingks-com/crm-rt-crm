@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BulkActionsBar } from "./BulkActionsBar";
-import { ImportExportBar } from "./ImportExportBar";
 import { DealsAdvancedFilter, AdvancedFilterState } from "./DealsAdvancedFilter";
 
 interface KanbanBoardProps {
@@ -115,10 +114,12 @@ export const KanbanBoard = ({
   };
 
   const getVisibleStages = () => {
+    const leadDeals = getDealsByStage('Lead');
     const lostDeals = getDealsByStage('Lost');
     const droppedDeals = getDealsByStage('Dropped');
     
     return DEAL_STAGES.filter(stage => {
+      if (stage === 'Lead') return leadDeals.length > 0;
       if (stage === 'Lost') return lostDeals.length > 0;
       if (stage === 'Dropped') return droppedDeals.length > 0;
       return true;
@@ -292,71 +293,10 @@ export const KanbanBoard = ({
               )}
             </div>
           </div>
-          
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <ImportExportBar
-              deals={deals}
-              onImport={onImportDeals}
-              onExport={() => {}}
-              selectedDeals={selectedDealObjects}
-              onRefresh={onRefresh}
-            />
-          </div>
         </div>
       </div>
 
-      {/* Fixed stage headers */}
-      <div className="flex-shrink-0 px-3 pt-2 bg-background border-b border-border/30 z-10 sticky top-0">
-        <div 
-          className="grid gap-2"
-          style={{ 
-            gridTemplateColumns: `repeat(${visibleStages.length}, minmax(240px, 1fr))`
-          }}
-        >
-          {visibleStages.map((stage) => {
-            const stageDeals = getDealsByStage(stage);
-            const selectedInStage = stageDeals.filter(deal => selectedDeals.has(deal.id)).length;
-            const allSelected = selectedInStage === stageDeals.length && stageDeals.length > 0;
-            
-            return (
-              <div key={stage} className={`p-2 rounded-lg border-2 ${STAGE_COLORS[stage]} transition-all hover:shadow-md`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {selectionMode && (
-                      <Checkbox
-                        checked={allSelected}
-                        onCheckedChange={(checked) => handleSelectAllInStage(stage, Boolean(checked))}
-                        className="transition-colors flex-shrink-0 h-3 w-3"
-                      />
-                    )}
-                    <h3 className="font-semibold text-sm truncate">{stage}</h3>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs font-medium whitespace-nowrap">
-                      {stageDeals.length}
-                      {selectionMode && selectedInStage > 0 && (
-                        <span className="text-primary ml-1">({selectedInStage})</span>
-                      )}
-                    </span>
-                    {stage === 'Lead' && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onCreateDeal(stage)}
-                        className="hover-scale flex-shrink-0 p-1 h-6 w-6"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Scrollable content area - Takes remaining height */}
+      {/* Scrollable content area with headers and deals together */}
       <div className="flex-1 min-h-0 overflow-hidden px-3 pb-2">
         <style>
           {`
@@ -376,91 +316,147 @@ export const KanbanBoard = ({
             }
           `}
         </style>
-        <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div 
-            className="grid gap-2 h-full overflow-x-auto deals-scrollbar"
-            style={{ 
-              gridTemplateColumns: `repeat(${visibleStages.length}, minmax(240px, 1fr))`,
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'hsl(var(--border)) transparent'
-            }}
-          >
-            {visibleStages.map((stage) => {
-              const stageDeals = getDealsByStage(stage);
-              
-              return (
-                <div key={stage} className="flex flex-col h-full min-w-0">
-                  <Droppable droppableId={stage}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`flex-1 space-y-1.5 p-1.5 rounded-lg transition-all min-h-0 overflow-y-auto deals-scrollbar ${
-                          snapshot.isDraggingOver ? 'bg-muted/50 shadow-inner' : ''
-                        }`}
-                        style={{ 
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: 'hsl(var(--border)) transparent'
-                        }}
-                      >
-                        {stageDeals.map((deal, index) => (
-                          <Draggable 
-                            key={deal.id} 
-                            draggableId={deal.id} 
-                            index={index}
-                            isDragDisabled={selectionMode}
-                          >
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...(!selectionMode ? provided.dragHandleProps : {})}
-                                className="relative group"
-                              >
-                                {selectionMode && (
-                                  <div className="absolute top-1.5 left-1.5 z-10">
-                                    <Checkbox
-                                      checked={selectedDeals.has(deal.id)}
-                                      onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
-                                      className="bg-background border-2 transition-colors h-3 w-3"
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  </div>
-                                )}
-                                <DealCard
-                                  deal={deal}
-                                  onClick={(e) => {
-                                    if (selectionMode) {
-                                      handleSelectDeal(deal.id, !selectedDeals.has(deal.id), e);
-                                    } else {
-                                      onDealClick(deal);
-                                    }
-                                  }}
-                                  isDragging={snapshot.isDragging}
-                                  isSelected={selectedDeals.has(deal.id)}
-                                  selectionMode={selectionMode}
-                                  onDelete={(dealId) => {
-                                    onDeleteDeals([dealId]);
-                                    toast({
-                                      title: "Deal deleted",
-                                      description: `Successfully deleted ${deal.project_name || 'deal'}`,
-                                    });
-                                  }}
-                                  onStageChange={handleDealCardAction}
-                                />
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
+        
+        {/* Single scrollable container for both headers and content */}
+        <div 
+          className="h-full overflow-auto deals-scrollbar"
+          style={{ 
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'hsl(var(--border)) transparent'
+          }}
+        >
+          {/* Stage headers - now inside the scrollable container */}
+          <div className="sticky top-0 bg-background border-b border-border/30 z-10 pt-2 pb-2">
+            <div 
+              className="grid gap-2"
+              style={{ 
+                gridTemplateColumns: `repeat(${visibleStages.length}, minmax(240px, 1fr))`
+              }}
+            >
+              {visibleStages.map((stage) => {
+                const stageDeals = getDealsByStage(stage);
+                const selectedInStage = stageDeals.filter(deal => selectedDeals.has(deal.id)).length;
+                const allSelected = selectedInStage === stageDeals.length && stageDeals.length > 0;
+                
+                return (
+                  <div key={stage} className={`p-2 rounded-lg border-2 ${STAGE_COLORS[stage]} transition-all hover:shadow-md`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {selectionMode && (
+                          <Checkbox
+                            checked={allSelected}
+                            onCheckedChange={(checked) => handleSelectAllInStage(stage, Boolean(checked))}
+                            className="transition-colors flex-shrink-0 h-3 w-3"
+                          />
+                        )}
+                        <h3 className="font-semibold text-sm truncate">{stage}</h3>
                       </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs font-medium whitespace-nowrap">
+                          {stageDeals.length}
+                          {selectionMode && selectedInStage > 0 && (
+                            <span className="text-primary ml-1">({selectedInStage})</span>
+                          )}
+                        </span>
+                        {stage === 'Lead' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onCreateDeal(stage)}
+                            className="hover-scale flex-shrink-0 p-1 h-6 w-6"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </DragDropContext>
+
+          {/* Deal content - aligned with headers */}
+          <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+            <div 
+              className="grid gap-2 pt-2"
+              style={{ 
+                gridTemplateColumns: `repeat(${visibleStages.length}, minmax(240px, 1fr))`
+              }}
+            >
+              {visibleStages.map((stage) => {
+                const stageDeals = getDealsByStage(stage);
+                
+                return (
+                  <div key={stage} className="flex flex-col min-w-0">
+                    <Droppable droppableId={stage}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`flex-1 space-y-1.5 p-1.5 rounded-lg transition-all min-h-[400px] ${
+                            snapshot.isDraggingOver ? 'bg-muted/50 shadow-inner' : ''
+                          }`}
+                        >
+                          {stageDeals.map((deal, index) => (
+                            <Draggable 
+                              key={deal.id} 
+                              draggableId={deal.id} 
+                              index={index}
+                              isDragDisabled={selectionMode}
+                            >
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...(!selectionMode ? provided.dragHandleProps : {})}
+                                  className="relative group"
+                                >
+                                  {selectionMode && (
+                                    <div className="absolute top-1.5 left-1.5 z-10">
+                                      <Checkbox
+                                        checked={selectedDeals.has(deal.id)}
+                                        onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
+                                        className="bg-background border-2 transition-colors h-3 w-3"
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    </div>
+                                  )}
+                                  <DealCard
+                                    deal={deal}
+                                    onClick={(e) => {
+                                      if (selectionMode) {
+                                        handleSelectDeal(deal.id, !selectedDeals.has(deal.id), e);
+                                      } else {
+                                        onDealClick(deal);
+                                      }
+                                    }}
+                                    isDragging={snapshot.isDragging}
+                                    isSelected={selectedDeals.has(deal.id)}
+                                    selectionMode={selectionMode}
+                                    onDelete={(dealId) => {
+                                      onDeleteDeals([dealId]);
+                                      toast({
+                                        title: "Deal deleted",
+                                        description: `Successfully deleted ${deal.project_name || 'deal'}`,
+                                      });
+                                    }}
+                                    onStageChange={handleDealCardAction}
+                                  />
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
+            </div>
+          </DragDropContext>
+        </div>
       </div>
 
       {/* Fixed bottom bulk actions */}

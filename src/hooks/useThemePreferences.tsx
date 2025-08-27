@@ -6,8 +6,9 @@ import { useToast } from '@/hooks/use-toast';
 
 export const useThemePreferences = () => {
   const [theme, setThemeState] = useState(() => {
-    // Get initial theme from localStorage as fallback
-    return localStorage.getItem('theme') || 'auto';
+    // Get initial theme from localStorage as fallback, default to light if auto was set
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme === 'auto' ? 'light' : (savedTheme || 'light');
   });
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -17,13 +18,7 @@ export const useThemePreferences = () => {
   const applyTheme = (newTheme: string) => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
-    
-    if (newTheme === 'auto') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.classList.add(systemTheme);
-    } else {
-      root.classList.add(newTheme);
-    }
+    root.classList.add(newTheme);
   };
 
   // Load user preferences from database
@@ -44,14 +39,22 @@ export const useThemePreferences = () => {
         throw error;
       }
 
-      const userTheme = data?.theme || 'auto';
+      let userTheme = data?.theme || 'light';
+      // Convert auto to light for backwards compatibility
+      if (userTheme === 'auto') {
+        userTheme = 'light';
+      }
+      
       setThemeState(userTheme);
       localStorage.setItem('theme', userTheme);
       applyTheme(userTheme);
     } catch (error) {
       console.error('Error loading theme preferences:', error);
       // Fallback to localStorage or default
-      const fallbackTheme = localStorage.getItem('theme') || 'auto';
+      let fallbackTheme = localStorage.getItem('theme') || 'light';
+      if (fallbackTheme === 'auto') {
+        fallbackTheme = 'light';
+      }
       setThemeState(fallbackTheme);
       applyTheme(fallbackTheme);
     } finally {
@@ -85,7 +88,7 @@ export const useThemePreferences = () => {
 
       toast({
         title: "Theme Updated",
-        description: `Theme changed to ${newTheme === 'auto' ? 'system default' : newTheme}.`,
+        description: `Theme changed to ${newTheme}.`,
       });
     } catch (error) {
       console.error('Error saving theme preference:', error);

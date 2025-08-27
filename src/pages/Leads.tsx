@@ -71,7 +71,7 @@ const Leads = () => {
                 
               </TooltipTrigger>
               <TooltipContent>
-                <p>Customize Columns</p>
+                <p>Columns</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -98,7 +98,7 @@ const Leads = () => {
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => setShowColumnCustomizer(true)}>
                 <Settings className="w-4 h-4 mr-2" />
-                Customize Columns
+                Columns
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
                 <Upload className="w-4 h-4 mr-2" />

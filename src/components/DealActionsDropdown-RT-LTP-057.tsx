@@ -63,10 +63,11 @@ export const DealActionsDropdown = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="icon"
-          className="h-9 w-9"
+          size="sm"
+          className="flex items-center gap-2 h-9 px-3 hover:bg-accent hover:text-accent-foreground"
         >
           <Settings className="w-4 h-4" />
+          Actions
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
@@ -96,7 +97,7 @@ export const DealActionsDropdown = ({
             onClick={onColumnCustomize}
           >
             <Columns className="w-4 h-4" />
-            Columns
+            Customize Columns
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

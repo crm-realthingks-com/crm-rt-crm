@@ -104,7 +104,7 @@ const Contacts = () => {
                 
               </TooltipTrigger>
               <TooltipContent>
-                <p>Customize Columns</p>
+                <p>Columns</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -118,7 +118,7 @@ const Contacts = () => {
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => setShowColumnCustomizer(true)}>
                 <Settings className="w-4 h-4 mr-2" />
-                Customize Columns
+                Columns
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleImportClick} disabled={isImporting}>
                 <Upload className="w-4 h-4 mr-2" />

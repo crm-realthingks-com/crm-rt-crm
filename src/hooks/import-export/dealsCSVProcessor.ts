@@ -17,7 +17,7 @@ export interface DealsProcessingResult {
 
 export class DealsCSVProcessor {
   async processCSV(csvText: string, options: DealsProcessingOptions): Promise<DealsProcessingResult> {
-    console.log('DealsCSVProcessor: Starting processing with action items');
+    console.log('DealsCSVProcessor: Starting processing with standardized YYYY-MM-DD date format');
     
     try {
       const { headers, rows } = CSVParser.parseCSV(csvText);
@@ -38,7 +38,7 @@ export class DealsCSVProcessor {
       const batchSize = 20;
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize);
-        const batchResult = await this.processBatch(batch, headers, options);
+        const batchResult = await this.processBatch(batch, headers, options, i);
         
         result.successCount += batchResult.successCount;
         result.updateCount += batchResult.updateCount;
@@ -62,7 +62,8 @@ export class DealsCSVProcessor {
   private async processBatch(
     rows: string[][],
     headers: string[],
-    options: DealsProcessingOptions
+    options: DealsProcessingOptions,
+    batchOffset: number
   ): Promise<DealsProcessingResult> {
     
     const result: DealsProcessingResult = {
@@ -74,6 +75,7 @@ export class DealsCSVProcessor {
 
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
+      const actualRowNumber = batchOffset + rowIndex + 2; // +2 for header and 1-based indexing
       
       try {
         // Convert row to object
@@ -83,6 +85,14 @@ export class DealsCSVProcessor {
             rowObj[header] = row[index];
           }
         });
+
+        // Validate date formats before processing
+        const dateValidationError = this.validateDateFormats(rowObj, actualRowNumber);
+        if (dateValidationError) {
+          result.errorCount++;
+          result.errors.push(dateValidationError);
+          continue;
+        }
 
         // Extract action items if present
         let actionItemsData: any[] = [];
@@ -101,8 +111,8 @@ export class DealsCSVProcessor {
         // Validate required fields - ensure deal_name is present and not empty
         if (!dealRecord.deal_name || dealRecord.deal_name.trim() === '') {
           result.errorCount++;
-          result.errors.push(`Row ${rowIndex + 2}: Deal name is required and cannot be empty`);
-          console.error(`Row ${rowIndex + 2}: Missing or empty deal_name:`, rowObj);
+          result.errors.push(`Row ${actualRowNumber}: Deal name is required and cannot be empty`);
+          console.error(`Row ${actualRowNumber}: Missing or empty deal_name:`, rowObj);
           continue;
         }
 
@@ -125,7 +135,7 @@ export class DealsCSVProcessor {
 
           if (updateError) {
             result.errorCount++;
-            result.errors.push(`Row ${rowIndex + 2}: Update failed - ${updateError.message}`);
+            result.errors.push(`Row ${actualRowNumber}: Update failed - ${updateError.message}`);
             continue;
           }
           result.updateCount++;
@@ -187,7 +197,7 @@ export class DealsCSVProcessor {
 
           if (insertError) {
             result.errorCount++;
-            result.errors.push(`Row ${rowIndex + 2}: Insert failed - ${insertError.message}`);
+            result.errors.push(`Row ${actualRowNumber}: Insert failed - ${insertError.message}`);
             continue;
           }
           dealId = insertedDeal.id;
@@ -201,11 +211,30 @@ export class DealsCSVProcessor {
 
       } catch (error: any) {
         result.errorCount++;
-        result.errors.push(`Row ${rowIndex + 2}: Processing error - ${error.message}`);
+        result.errors.push(`Row ${actualRowNumber}: Processing error - ${error.message}`);
       }
     }
 
     return result;
+  }
+
+  private validateDateFormats(rowObj: Record<string, any>, rowNumber: number): string | null {
+    const dateFields = [
+      'expected_closing_date', 'start_date', 'end_date', 
+      'signed_contract_date', 'implementation_start_date', 
+      'rfq_received_date', 'proposal_due_date'
+    ];
+
+    for (const field of dateFields) {
+      if (rowObj[field] && rowObj[field].trim() !== '') {
+        const convertedDate = DateFormatUtils.convertDateForImport(rowObj[field]);
+        if (convertedDate === null) {
+          return `Row ${rowNumber}: Invalid date format in field '${field}': '${rowObj[field]}'. Please use YYYY-MM-DD format.`;
+        }
+      }
+    }
+
+    return null; // No validation errors
   }
 
   private prepareDeal(rowObj: Record<string, any>, userId: string): Record<string, any> {
@@ -274,7 +303,7 @@ export class DealsCSVProcessor {
                             '';
     }
 
-    // Handle date fields
+    // Handle date fields - convert to YYYY-MM-DD format
     const dateFields = ['expected_closing_date', 'start_date', 'end_date', 'signed_contract_date', 
                        'implementation_start_date', 'rfq_received_date', 'proposal_due_date'];
     

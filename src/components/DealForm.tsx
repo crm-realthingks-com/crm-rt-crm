@@ -296,6 +296,12 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   const canMoveToFinalStage = !isCreating;
   const canSave = true; // Always allow saving
 
+  const handleActionButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission
+    e.stopPropagation(); // Stop event bubbling
+    setActionModalOpen(true);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
@@ -374,9 +380,10 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
               )}
               {!isCreating && (
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setActionModalOpen(true)}
+                  onClick={handleActionButtonClick}
                 >
                   Action
                 </Button>

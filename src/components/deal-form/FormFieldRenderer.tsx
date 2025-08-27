@@ -135,7 +135,7 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error 
     onChange(fieldName, numericValue);
   };
 
-  const handleLeadSelect = (lead: any) => {
+  const handleLeadSelect = async (lead: any) => {
     console.log("Selected lead:", lead);
     
     // Auto-fill available fields based on lead data
@@ -152,22 +152,58 @@ export const FormFieldRenderer = ({ field, value, onChange, onLeadSelect, error 
       }
     });
 
-    // Set lead owner using the useUserDisplayNames hook approach
+    // Handle lead owner - fetch display name for the lead's creator
     if (lead.created_by) {
-      // Trigger fetching of user display names
-      setLeadOwnerIds(prev => {
-        const newIds = [...prev];
-        if (!newIds.includes(lead.created_by)) {
-          newIds.push(lead.created_by);
-        }
-        return newIds;
-      });
+      console.log("Fetching display name for lead owner:", lead.created_by);
+      
+      try {
+        // Call the edge function to get the display name
+        const { data: functionResult, error: functionError } = await supabase.functions.invoke(
+          'fetch-user-display-names',
+          {
+            body: { userIds: [lead.created_by] }
+          }
+        );
 
-      // Use a timeout to allow the hook to fetch the display name
-      setTimeout(() => {
-        const leadOwnerName = displayNames[lead.created_by] || 'Unknown User';
-        onChange('lead_owner', leadOwnerName);
-      }, 100);
+        if (!functionError && functionResult?.userDisplayNames) {
+          const leadOwnerName = functionResult.userDisplayNames[lead.created_by];
+          if (leadOwnerName) {
+            console.log("Setting lead owner to:", leadOwnerName);
+            onChange('lead_owner', leadOwnerName);
+          } else {
+            onChange('lead_owner', 'Unknown User');
+          }
+        } else {
+          console.log("Edge function failed, trying direct query fallback");
+          
+          // Fallback to direct query
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, "Email ID"')
+            .eq('id', lead.created_by)
+            .single();
+
+          if (!profilesError && profilesData) {
+            let displayName = "Unknown User";
+            
+            if (profilesData.full_name?.trim() && 
+                !profilesData.full_name.includes('@') &&
+                profilesData.full_name !== profilesData["Email ID"]) {
+              displayName = profilesData.full_name.trim();
+            } else if (profilesData["Email ID"]) {
+              displayName = profilesData["Email ID"].split('@')[0];
+            }
+            
+            console.log("Setting lead owner from profiles:", displayName);
+            onChange('lead_owner', displayName);
+          } else {
+            onChange('lead_owner', 'Unknown User');
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching lead owner display name:", error);
+        onChange('lead_owner', 'Unknown User');
+      }
     } else {
       onChange('lead_owner', 'Unknown User');
     }
