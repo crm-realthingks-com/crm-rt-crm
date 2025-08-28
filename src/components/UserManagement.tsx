@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
-import { MoreHorizontal, Plus, RefreshCw, Shield, ShieldAlert, User, Key } from "lucide-react";
+import { MoreHorizontal, Plus, RefreshCw, Shield, ShieldAlert, User, Key, Users } from "lucide-react";
 import { format } from "date-fns";
 import UserModal from "./UserModal";
 import EditUserModal from "./EditUserModal";
@@ -233,6 +232,8 @@ const UserManagement = () => {
     switch (role?.toLowerCase()) {
       case 'admin':
         return 'default';
+      case 'manager':
+        return 'secondary';
       default:
         return 'outline';
     }
@@ -242,6 +243,8 @@ const UserManagement = () => {
     switch (role?.toLowerCase()) {
       case 'admin':
         return <Shield className="h-3 w-3" />;
+      case 'manager':
+        return <Users className="h-3 w-3" />;
       default:
         return <User className="h-3 w-3" />;
     }
@@ -300,6 +303,7 @@ const UserManagement = () => {
             <h3 className="text-lg font-semibold">Access Denied</h3>
             <p className="text-muted-foreground">Only administrators can access user management.</p>
             <p className="text-xs text-muted-foreground mt-2">Current role: {userRole}</p>
+            <p className="text-xs text-muted-foreground">Managers have all other admin permissions except user management.</p>
           </div>
         </CardContent>
       </Card>
@@ -345,7 +349,7 @@ const UserManagement = () => {
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Syncing...' : 'Sync & Refresh'}
               </Button>
-              <Button size="sm" onClick={() => setShowAddModal(true)}>
+              <Button size="sm" onClick={() => setShowAddModal(true)} disabled={!isAdmin}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add User
               </Button>

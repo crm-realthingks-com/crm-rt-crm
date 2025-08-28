@@ -62,12 +62,25 @@ serve(async (req) => {
 
     const effectiveRole = userRoleFromDB?.role || userRole;
     const isAdmin = effectiveRole === 'admin';
+    const isManager = effectiveRole === 'manager';
 
     console.log('User role from metadata:', userRole);
     console.log('User role from database:', userRoleFromDB?.role || 'no role found');
-    console.log('Effective role:', effectiveRole, 'isAdmin:', isAdmin);
+    console.log('Effective role:', effectiveRole, 'isAdmin:', isAdmin, 'isManager:', isManager);
 
-    // GET - List all users (allow all authenticated users to view)
+    // Block ALL user management operations for non-admins (including Managers)
+    if (!isAdmin) {
+      console.log('Non-admin user attempted user management operation:', user.user.email, 'method:', req.method);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Access denied. Only Admins can perform user management operations.',
+          userRole: effectiveRole 
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // GET - List all users (admin only)
     if (req.method === 'GET') {
       console.log('Fetching users list...');
       
@@ -91,21 +104,13 @@ serve(async (req) => {
       );
     }
 
-    // POST - Create new user or handle specific actions
+    // POST - Create new user or handle specific actions (admin only)
     if (req.method === 'POST') {
       const body = await req.json();
       console.log('POST request body:', JSON.stringify(body, null, 2));
       
       // Handle password reset with new password (admin only)
       if (body.action === 'reset-password') {
-        if (!isAdmin) {
-          console.log('Non-admin user attempted password reset:', user.user.email);
-          return new Response(
-            JSON.stringify({ error: 'Only Admins can reset user passwords' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
         const { userId, newPassword } = body;
         if (!userId || !newPassword) {
           return new Response(
@@ -144,18 +149,10 @@ serve(async (req) => {
 
       // Handle role changes (ADMIN ONLY)
       if (body.action === 'change-role') {
-        if (!isAdmin) {
-          console.log('Non-admin user attempted role change:', user.user.email, 'for user:', body.userId);
-          return new Response(
-            JSON.stringify({ error: 'Only Admins can change user roles' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
         const { userId, newRole } = body;
-        if (!userId || !newRole || !['admin', 'user'].includes(newRole)) {
+        if (!userId || !newRole || !['admin', 'manager', 'user'].includes(newRole)) {
           return new Response(
-            JSON.stringify({ error: 'Valid user ID and role (admin/user) are required' }),
+            JSON.stringify({ error: 'Valid user ID and role (admin/manager/user) are required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -217,14 +214,6 @@ serve(async (req) => {
       }
 
       // Handle user creation (admin only)
-      if (!isAdmin) {
-        console.log('Non-admin user attempted user creation:', user.user.email);
-        return new Response(
-          JSON.stringify({ error: 'Only Admins can create new users' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
       const { email, displayName, role, password } = body;
       
       if (!email || !password || !displayName) {
@@ -305,7 +294,7 @@ serve(async (req) => {
       );
     }
 
-    // PUT - Update user (including activation/deactivation)
+    // PUT - Update user (including activation/deactivation) (admin only)
     if (req.method === 'PUT') {
       const { userId, displayName, action } = await req.json();
       
@@ -316,23 +305,12 @@ serve(async (req) => {
         );
       }
 
-      // Check if this is a restricted action that requires admin privileges
-      if (action === 'activate' || action === 'deactivate') {
-        if (!isAdmin) {
-          console.log('Non-admin user attempted user status change:', user.user.email, 'action:', action);
-          return new Response(
-            JSON.stringify({ error: 'Only Admins can activate/deactivate users' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-
       console.log('Updating user:', userId, 'action:', action, 'displayName:', displayName);
 
       // Prepare update data for auth.users
       let updateData: any = {};
 
-      // Handle display name updates (allow all authenticated users for their own profile updates)
+      // Handle display name updates
       if (displayName !== undefined) {
         updateData.user_metadata = { full_name: displayName };
       }
@@ -397,14 +375,6 @@ serve(async (req) => {
 
     // DELETE - Delete user (admin only)
     if (req.method === 'DELETE') {
-      if (!isAdmin) {
-        console.log('Non-admin user attempted user deletion:', user.user.email);
-        return new Response(
-          JSON.stringify({ error: 'Only Admins can delete users' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
       const { userId } = await req.json();
       
       if (!userId) {

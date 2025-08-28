@@ -35,14 +35,16 @@ export const useUserRole = () => {
   }, [user]);
 
   const isAdmin = userRole === 'admin';
-  const canEdit = isAdmin;
-  const canDelete = isAdmin;
-  const canManageUsers = isAdmin;
-  const canAccessSettings = isAdmin;
+  const isManager = userRole === 'manager';
+  const canEdit = isAdmin || isManager;
+  const canDelete = isAdmin || isManager;
+  const canManageUsers = isAdmin; // Only admins can manage users
+  const canAccessSettings = isAdmin || isManager;
 
   return {
     userRole,
     isAdmin,
+    isManager,
     canEdit,
     canDelete,
     canManageUsers,

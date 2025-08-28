@@ -3,12 +3,26 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Shield, FileText } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 import UserManagement from "@/components/UserManagement";
 import SecuritySettings from "@/components/settings/SecuritySettings";
 import AuditLogsSettings from "@/components/settings/AuditLogsSettings";
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState("user-management");
+  const { isAdmin, loading: roleLoading } = useUserRole();
+  const [activeTab, setActiveTab] = useState(isAdmin ? "user-management" : "security");
+
+  // Show loading while checking user role
+  if (roleLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Settings</h1>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -20,11 +34,13 @@ const Settings = () => {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 gap-1">
-          <TabsTrigger value="user-management" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            <span className="hidden sm:inline">User Management</span>
-          </TabsTrigger>
+        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-1`}>
+          {isAdmin && (
+            <TabsTrigger value="user-management" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">User Management</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="w-4 h-4" />
             <span className="hidden sm:inline">Security</span>
@@ -35,9 +51,11 @@ const Settings = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="user-management" className="mt-6">
-          <UserManagement />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="user-management" className="mt-6">
+            <UserManagement />
+          </TabsContent>
+        )}
 
         <TabsContent value="security" className="mt-6">
           <SecuritySettings />
