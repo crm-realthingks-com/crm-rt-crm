@@ -36,27 +36,47 @@ export const useUserRole = () => {
 
   const isAdmin = userRole === 'admin';
   const isManager = userRole === 'manager';
+  const isUser = userRole === 'user';
+  
+  // Core permissions
   const canEdit = isAdmin || isManager;
   const canDelete = isAdmin || isManager;
-  const canManageUsers = isAdmin; // Only admins can manage users
+  
+  // Module access permissions
+  const canAccessDeals = isAdmin || isManager; // Users blocked from deals completely
   const canAccessSettings = true; // All users can access settings
-  const canAccessDeals = isAdmin || isManager; // Users blocked from deals
-  const canViewAuditLogs = isAdmin; // Only admin can view audit logs
-  const canEditContacts = isAdmin || isManager; // Users read-only for contacts
-  const canEditLeads = isAdmin || isManager; // Users read-only for leads
+  
+  // Management permissions
+  const canManageUsers = isAdmin; // Only admins can manage users
+  const canViewAuditLogs = isAdmin; // Only admin can view audit logs (managers blocked)
+  
+  // Data editing permissions
+  const canEditAllContacts = isAdmin || isManager; // Admin/Manager can edit all contacts
+  const canEditOwnContacts = true; // All users can edit their own contacts
+  const canEditAllLeads = isAdmin || isManager; // Admin/Manager can edit all leads  
+  const canEditOwnLeads = true; // All users can edit their own leads
+  
+  // Deletion permissions
+  const canDeleteContacts = isAdmin || isManager; // Only Admin/Manager can delete contacts
+  const canDeleteLeads = isAdmin || isManager; // Only Admin/Manager can delete leads
 
   return {
     userRole,
     isAdmin,
     isManager,
+    isUser,
     canEdit,
     canDelete,
-    canManageUsers,
-    canAccessSettings,
     canAccessDeals,
+    canAccessSettings,
+    canManageUsers,
     canViewAuditLogs,
-    canEditContacts,
-    canEditLeads,
+    canEditAllContacts,
+    canEditOwnContacts,
+    canEditAllLeads,
+    canEditOwnLeads,
+    canDeleteContacts,
+    canDeleteLeads,
     loading
   };
 };

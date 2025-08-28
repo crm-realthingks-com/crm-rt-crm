@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 interface SecurityContextType {
   isSecurityEnabled: boolean;
   hasAdminAccess: boolean;
+  hasManagerAccess: boolean;
+  hasUserAccess: boolean;
   userRole: string | null;
 }
 
@@ -30,6 +32,8 @@ export const SecurityProvider = ({ children }: SecurityProviderProps) => {
   const [userRole, setUserRole] = useState<string | null>(null);
 
   const hasAdminAccess = userRole === 'admin';
+  const hasManagerAccess = userRole === 'manager';
+  const hasUserAccess = userRole === 'user';
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -103,6 +107,8 @@ export const SecurityProvider = ({ children }: SecurityProviderProps) => {
   const value = {
     isSecurityEnabled: true,
     hasAdminAccess,
+    hasManagerAccess,
+    hasUserAccess,
     userRole
   };
 

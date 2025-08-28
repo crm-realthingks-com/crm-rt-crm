@@ -10,8 +10,8 @@ import AuditLogsSettings from "@/components/settings/AuditLogsSettings";
 
 const Settings = () => {
   const { isAdmin, userRole, loading: roleLoading } = useUserRole();
-  const canManageUsers = isAdmin; // Only Admin can manage users
-  const canViewAuditLogs = isAdmin; // Only Admin can view audit logs
+  const canManageUsers = isAdmin; // Only Admin can manage users (not managers)
+  const canViewAuditLogs = isAdmin; // Only Admin can view audit logs (not managers)
   const [activeTab, setActiveTab] = useState(canManageUsers ? "user-management" : "security");
 
   // Show loading while checking user role
