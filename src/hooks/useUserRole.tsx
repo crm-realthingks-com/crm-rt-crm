@@ -39,7 +39,11 @@ export const useUserRole = () => {
   const canEdit = isAdmin || isManager;
   const canDelete = isAdmin || isManager;
   const canManageUsers = isAdmin; // Only admins can manage users
-  const canAccessSettings = isAdmin || isManager;
+  const canAccessSettings = true; // All users can access settings
+  const canAccessDeals = isAdmin || isManager; // Users blocked from deals
+  const canViewAuditLogs = isAdmin; // Only admin can view audit logs
+  const canEditContacts = isAdmin || isManager; // Users read-only for contacts
+  const canEditLeads = isAdmin || isManager; // Users read-only for leads
 
   return {
     userRole,
@@ -49,6 +53,10 @@ export const useUserRole = () => {
     canDelete,
     canManageUsers,
     canAccessSettings,
+    canAccessDeals,
+    canViewAuditLogs,
+    canEditContacts,
+    canEditLeads,
     loading
   };
 };

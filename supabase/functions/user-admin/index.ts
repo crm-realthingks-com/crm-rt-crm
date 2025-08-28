@@ -69,8 +69,9 @@ serve(async (req) => {
     console.log('Effective role:', effectiveRole, 'isAdmin:', isAdmin, 'isManager:', isManager);
 
     // Block ALL user management operations for non-admins (including Managers)
+    // Only Admins can perform user management operations
     if (!isAdmin) {
-      console.log('Non-admin user attempted user management operation:', user.user.email, 'method:', req.method);
+      console.log('Non-admin user attempted user management operation:', user.user.email, 'method:', req.method, 'role:', effectiveRole);
       return new Response(
         JSON.stringify({ 
           error: 'Access denied. Only Admins can perform user management operations.',

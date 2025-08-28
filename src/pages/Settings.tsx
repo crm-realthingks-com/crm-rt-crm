@@ -9,8 +9,10 @@ import SecuritySettings from "@/components/settings/SecuritySettings";
 import AuditLogsSettings from "@/components/settings/AuditLogsSettings";
 
 const Settings = () => {
-  const { isAdmin, loading: roleLoading } = useUserRole();
-  const [activeTab, setActiveTab] = useState(isAdmin ? "user-management" : "security");
+  const { isAdmin, userRole, loading: roleLoading } = useUserRole();
+  const canManageUsers = isAdmin; // Only Admin can manage users
+  const canViewAuditLogs = isAdmin; // Only Admin can view audit logs
+  const [activeTab, setActiveTab] = useState(canManageUsers ? "user-management" : "security");
 
   // Show loading while checking user role
   if (roleLoading) {
@@ -34,8 +36,8 @@ const Settings = () => {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-1`}>
-          {isAdmin && (
+        <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-3' : canViewAuditLogs ? 'grid-cols-2' : 'grid-cols-1'} gap-1`}>
+          {canManageUsers && (
             <TabsTrigger value="user-management" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">User Management</span>
@@ -45,13 +47,15 @@ const Settings = () => {
             <Shield className="w-4 h-4" />
             <span className="hidden sm:inline">Security</span>
           </TabsTrigger>
-          <TabsTrigger value="audit-logs" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">Audit & Logs</span>
-          </TabsTrigger>
+          {canViewAuditLogs && (
+            <TabsTrigger value="audit-logs" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Audit & Logs</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        {isAdmin && (
+        {canManageUsers && (
           <TabsContent value="user-management" className="mt-6">
             <UserManagement />
           </TabsContent>
@@ -61,9 +65,11 @@ const Settings = () => {
           <SecuritySettings />
         </TabsContent>
 
-        <TabsContent value="audit-logs" className="mt-6">
-          <AuditLogsSettings />
-        </TabsContent>
+        {canViewAuditLogs && (
+          <TabsContent value="audit-logs" className="mt-6">
+            <AuditLogsSettings />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

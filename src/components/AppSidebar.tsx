@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useThemePreferences } from "@/hooks/useThemePreferences";
 import { useState } from "react";
 import {
@@ -41,8 +42,17 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { canAccessDeals } = useUserRole();
   const { theme, setTheme } = useThemePreferences();
   const currentPath = location.pathname;
+
+  // Filter menu items based on user role
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.url === "/deals") {
+      return canAccessDeals; // Users can't access deals
+    }
+    return true; // All other items are accessible to all roles
+  });
 
   // Use external state if provided (for fixed mode), otherwise use internal state
   const sidebarOpen = isFixed ? (isOpen ?? false) : isPinned;
@@ -130,7 +140,7 @@ export function AppSidebar({ isFixed = false, isOpen, onToggle }: AppSidebarProp
       {/* Menu Items */}
       <div className="flex-1 py-4">
         <nav className="space-y-1 px-3">
-          {menuItems.map((item) => {
+          {filteredMenuItems.map((item) => {
             const active = isActive(item.url);
             const menuButton = (
               <NavLink
