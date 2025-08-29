@@ -40,11 +40,6 @@ const Meetings = () => {
     // TODO: Add bulk delete functionality
     console.log('Bulk delete functionality coming soon');
   };
-  if (showCreateForm) {
-    return <div className="p-6 space-y-6">
-        <MeetingForm onSuccess={handleCreateSuccess} onCancel={handleCancel} editingMeeting={editingMeeting} />
-      </div>;
-  }
   return <div className="p-6 space-y-6">
       {/* Header */}
       <MeetingsHeader 
@@ -77,6 +72,19 @@ const Meetings = () => {
         onEdit={handleEdit} 
         refreshTrigger={refreshTrigger} 
         statusFilter={statusFilter}
+      />
+
+      {/* Meeting Form Modal */}
+      <MeetingForm 
+        open={showCreateForm}
+        onOpenChange={(open) => {
+          setShowCreateForm(open);
+          if (!open) {
+            setEditingMeeting(null);
+          }
+        }}
+        onSuccess={handleCreateSuccess}
+        editingMeeting={editingMeeting}
       />
     </div>;
 };
