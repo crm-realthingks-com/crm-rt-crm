@@ -2,14 +2,17 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { CalendarIcon, Clock, Users, ExternalLink, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CalendarIcon, Clock, Users, ExternalLink, Edit, Trash2, CheckCircle, XCircle, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { BulkActionsBar } from '@/components/BulkActionsBar';
 
 interface Meeting {
   id: string;
@@ -29,11 +32,16 @@ interface Meeting {
 interface MeetingsTableProps {
   onEdit: (meeting: Meeting) => void;
   refreshTrigger: number;
+  statusFilter?: string;
 }
 
-export const MeetingsTable = ({ onEdit, refreshTrigger }: MeetingsTableProps) => {
+export const MeetingsTable = ({ onEdit, refreshTrigger, statusFilter = 'All' }: MeetingsTableProps) => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMeetings, setSelectedMeetings] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<string>('start_datetime');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -62,15 +70,83 @@ export const MeetingsTable = ({ onEdit, refreshTrigger }: MeetingsTableProps) =>
     fetchMeetings();
   }, [refreshTrigger]);
 
+  // Filter and search logic
+  const filterMeetingsByStatus = (meetings: Meeting[]) => {
+    if (statusFilter === 'All') return meetings;
+    if (statusFilter === 'Upcoming') {
+      return meetings.filter(meeting => 
+        meeting.status === 'Scheduled' && new Date(meeting.start_datetime) > new Date()
+      );
+    }
+    if (statusFilter === 'Done') {
+      return meetings.filter(meeting => meeting.status === 'Completed');
+    }
+    if (statusFilter === 'Cancelled') {
+      return meetings.filter(meeting => meeting.status === 'Cancelled');
+    }
+    return meetings;
+  };
+
+  const filteredMeetings = filterMeetingsByStatus(meetings).filter(meeting =>
+    Object.values(meeting).some(value =>
+      String(value).toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
+
+  // Selection handlers
+  const toggleMeetingSelection = (meetingId: string) => {
+    setSelectedMeetings(prev => {
+      if (prev.includes(meetingId)) {
+        return prev.filter(id => id !== meetingId);
+      } else {
+        return [...prev, meetingId];
+      }
+    });
+  };
+
+  const toggleSelectAllMeetings = () => {
+    if (selectedMeetings.length === filteredMeetings.length) {
+      setSelectedMeetings([]);
+    } else {
+      setSelectedMeetings(filteredMeetings.map(meeting => meeting.id));
+    }
+  };
+
+  const isAllSelected = selectedMeetings.length === filteredMeetings.length && filteredMeetings.length > 0;
+
+  const handleDeleteSelected = () => {
+    selectedMeetings.forEach(meetingId => handleDelete(meetingId));
+    setSelectedMeetings([]);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedMeetings([]);
+  };
+
+  const handleExportSelected = () => {
+    const selectedData = meetings.filter(meeting => selectedMeetings.includes(meeting.id));
+    console.log('Exporting selected meetings:', selectedData);
+    // Export logic would go here
+  };
+
   const getStatusBadge = (status: string) => {
     const variants = {
       'Scheduled': 'default',
-      'Completed': 'secondary',
+      'Completed': 'secondary', 
       'Cancelled': 'destructive',
     } as const;
 
+    const colors = {
+      'Scheduled': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+      'Completed': 'bg-green-100 text-green-800 hover:bg-green-200',
+      'Cancelled': 'bg-red-100 text-red-800 hover:bg-red-200',
+    } as const;
+
     return (
-      <Badge variant={variants[status as keyof typeof variants] || 'default'}>
+      <Badge 
+        variant={variants[status as keyof typeof variants] || 'default'}
+        className={colors[status as keyof typeof colors] || ''}
+      >
         {status}
       </Badge>
     );
@@ -194,7 +270,6 @@ export const MeetingsTable = ({ onEdit, refreshTrigger }: MeetingsTableProps) =>
       <Card>
         <CardHeader>
           <CardTitle>Meetings</CardTitle>
-          <CardDescription>Your scheduled meetings and appointments</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12">
@@ -213,108 +288,219 @@ export const MeetingsTable = ({ onEdit, refreshTrigger }: MeetingsTableProps) =>
     <Card>
       <CardHeader>
         <CardTitle>Meetings</CardTitle>
-        <CardDescription>
-          Manage your scheduled meetings with Teams integration
-        </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-4">
+          <Input
+            type="text"
+            placeholder="Search meetings..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {selectedMeetings.length > 0 && (
+          <BulkActionsBar
+            selectedCount={selectedMeetings.length}
+            onDelete={handleDeleteSelected}
+            onExport={handleExportSelected}
+            onClearSelection={handleClearSelection}
+          />
+        )}
+
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Participants</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Teams Link</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {meetings.map((meeting) => {
-                const startFormatted = formatDateTime(meeting.start_datetime);
-                const endFormatted = formatDateTime(meeting.end_datetime);
-                
-                return (
-                  <TableRow key={meeting.id}>
-                    <TableCell className="font-medium">{meeting.title}</TableCell>
-                    <TableCell className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                      {startFormatted.date}
-                    </TableCell>
-                    <TableCell className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      {startFormatted.time} - {endFormatted.time}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {meeting.participants.length} participant{meeting.participants.length !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(meeting.status)}</TableCell>
-                    <TableCell>
-                      {meeting.teams_meeting_link ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(meeting.teams_meeting_link, '_blank')}
-                          className="flex items-center gap-1"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Join
-                        </Button>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">Not available</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => onEdit(meeting)}
-                            className="flex items-center gap-2"
+          <TooltipProvider>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={toggleSelectAllMeetings}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => {
+                      setSortField('title');
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    }}
+                  >
+                    Title
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => {
+                      setSortField('start_datetime');
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    }}
+                  >
+                    Date
+                  </TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => {
+                      setSortField('participants');
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    }}
+                  >
+                    Participants
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => {
+                      setSortField('status');
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    }}
+                  >
+                    Status
+                  </TableHead>
+                  <TableHead>Teams Link</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMeetings.map((meeting) => {
+                  const startFormatted = formatDateTime(meeting.start_datetime);
+                  const endFormatted = formatDateTime(meeting.end_datetime);
+                  
+                  return (
+                    <TableRow key={meeting.id} className="hover:bg-muted/50">
+                      <TableCell className="w-[50px]">
+                        <Checkbox
+                          checked={selectedMeetings.includes(meeting.id)}
+                          onCheckedChange={() => toggleMeetingSelection(meeting.id)}
+                          aria-label={`Select ${meeting.title}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{meeting.title}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                          {startFormatted.date}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          {startFormatted.time} - {endFormatted.time}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {meeting.participants.length > 0 ? (
+                            meeting.participants.map((participant, index) => (
+                              <span key={index} className="text-sm text-muted-foreground">
+                                {participant}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-muted-foreground">No participants</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(meeting.status)}</TableCell>
+                      <TableCell>
+                        {meeting.teams_meeting_link ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(meeting.teams_meeting_link, '_blank')}
+                            className="flex items-center gap-1 hover:bg-primary hover:text-primary-foreground"
                           >
-                            <Edit className="h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
+                            <ExternalLink className="h-3 w-3" />
+                            Join
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Not available</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                onClick={() => onEdit(meeting)}
+                                className="h-8 w-8"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Edit Meeting</p>
+                            </TooltipContent>
+                          </Tooltip>
+
                           {meeting.status === 'Scheduled' && (
                             <>
-                              <DropdownMenuItem
-                                onClick={() => handleStatusUpdate(meeting.id, 'Completed')}
-                              >
-                                Mark as Completed
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleStatusUpdate(meeting.id, 'Cancelled')}
-                              >
-                                Cancel Meeting
-                              </DropdownMenuItem>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost"
+                                    onClick={() => handleStatusUpdate(meeting.id, 'Completed')}
+                                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Mark as Completed</p>
+                                </TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost"
+                                    onClick={() => handleStatusUpdate(meeting.id, 'Cancelled')}
+                                    className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Cancel Meeting</p>
+                                </TooltipContent>
+                              </Tooltip>
                             </>
                           )}
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(meeting.id)}
-                            className="flex items-center gap-2 text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                onClick={() => handleDelete(meeting.id)}
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Delete Meeting</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filteredMeetings.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center">
+                      {searchQuery ? 'No meetings found matching your search.' : 'No meetings found.'}
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </div>
       </CardContent>
     </Card>
