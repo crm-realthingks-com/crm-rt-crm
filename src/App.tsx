@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import Dashboard from "./pages/Dashboard";
 import Contacts from "./pages/Contacts";
 import Leads from "./pages/Leads";
+import Meetings from "./pages/Meetings";
 import DealsPage from "./pages/DealsPage";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
@@ -115,6 +116,11 @@ const AppRouter = () => (
       <Route path="/leads" element={
         <ProtectedRoute>
           <Leads />
+        </ProtectedRoute>
+      } />
+      <Route path="/meetings" element={
+        <ProtectedRoute>
+          <Meetings />
         </ProtectedRoute>
       } />
       <Route path="/deals" element={

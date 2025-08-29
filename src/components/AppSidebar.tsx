@@ -10,7 +10,8 @@ import {
   PinOff,
   Bell,
   Sun,
-  Moon
+  Moon,
+  Calendar
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +28,7 @@ const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Leads", url: "/leads", icon: UserPlus },
+  { title: "Meetings", url: "/meetings", icon: Calendar },
   { title: "Deals", url: "/deals", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
