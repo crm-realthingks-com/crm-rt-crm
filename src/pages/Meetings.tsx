@@ -1,11 +1,11 @@
 
 import { useState } from "react";
-import { Plus, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MeetingForm } from "@/components/MeetingForm";
 import { MeetingsTable } from "@/components/MeetingsTable";
 import { MeetingsImportExport } from "@/components/MeetingsImportExport";
+import MeetingsHeader from "@/components/MeetingsHeader";
 
 const Meetings = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -34,7 +34,7 @@ const Meetings = () => {
 
   if (showCreateForm) {
     return (
-      <div className="space-y-6">
+      <div className="p-6 space-y-6">
         <MeetingForm
           onSuccess={handleCreateSuccess}
           onCancel={handleCancel}
@@ -45,20 +45,14 @@ const Meetings = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Meetings</h1>
-          <p className="text-muted-foreground">
-            Schedule and manage meetings with Microsoft Teams integration
-          </p>
-        </div>
-        <Button onClick={() => setShowCreateForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Meeting
-        </Button>
-      </div>
+      <MeetingsHeader 
+        onAddMeeting={() => setShowCreateForm(true)}
+        onImport={() => {/* TODO: Add import functionality */}}
+        onExport={() => {/* TODO: Add export functionality */}}
+        onDelete={() => {/* TODO: Add bulk delete functionality */}}
+      />
 
       {/* Main Content */}
       <Tabs defaultValue="meetings" className="space-y-4">
