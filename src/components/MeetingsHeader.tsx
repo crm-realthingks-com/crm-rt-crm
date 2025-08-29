@@ -25,7 +25,7 @@ const MeetingsHeader = ({
     <div className="flex items-center justify-between">
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">Meetings</h1>
-        <p className="text-muted-foreground">Schedule and manage meetings with Microsoft Teams integration</p>
+        <p className="text-muted-foreground"></p>
       </div>
       <div className="flex items-center gap-2">
         <DropdownMenu>
