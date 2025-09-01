@@ -341,7 +341,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
               teamsEventId: editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id
             });
 
-            await supabase.functions.invoke('create-teams-meeting', {
+            const { data: teamsResult, error: teamsError } = await supabase.functions.invoke('create-teams-meeting', {
               body: {
                 title: data.title,
                 startDateTime: utcStart.toISOString(),
@@ -351,6 +351,14 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
                 teamsEventId: editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id,
               },
             });
+
+            if (!teamsError && teamsResult?.success && teamsResult?.meetingLink) {
+              // Update meeting with new Teams link
+              await supabase
+                .from('meetings')
+                .update({ teams_meeting_link: teamsResult.meetingLink })
+                .eq('id', editingMeeting.id);
+            }
           } catch (teamsError) {
             console.error('Teams update failed:', teamsError);
             toast({
@@ -396,9 +404,9 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
               microsoft_event_id: teamsResult.eventId,
             };
             
-            // Only add teams_meeting_link if joinUrl is provided
-            if (teamsResult.joinUrl) {
-              teamsUpdateData.teams_meeting_link = teamsResult.joinUrl;
+            // Use meetingLink (which includes fallback to webLink) or joinUrl
+            if (teamsResult.meetingLink || teamsResult.joinUrl) {
+              teamsUpdateData.teams_meeting_link = teamsResult.meetingLink || teamsResult.joinUrl;
             }
             
             console.log('🔍 Updating meeting with Teams data:', teamsUpdateData);

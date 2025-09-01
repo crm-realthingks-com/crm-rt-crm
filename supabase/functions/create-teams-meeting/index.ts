@@ -173,11 +173,31 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       console.log('Teams event created successfully:', eventResult.id);
+      console.log('Teams event details:', {
+        id: eventResult.id,
+        onlineMeeting: eventResult.onlineMeeting,
+        webLink: eventResult.webLink,
+        joinUrl: eventResult.onlineMeeting?.joinUrl
+      });
+
+      // Extract Teams meeting join URL - try multiple possible paths
+      let joinUrl = null;
+      if (eventResult.onlineMeeting?.joinUrl) {
+        joinUrl = eventResult.onlineMeeting.joinUrl;
+      } else if (eventResult.onlineMeetingInfo?.joinUrl) {
+        joinUrl = eventResult.onlineMeetingInfo.joinUrl;
+      } else if (eventResult.joinWebUrl) {
+        joinUrl = eventResult.joinWebUrl;
+      }
+      
+      // If no direct Teams join URL, use webLink as fallback
+      const meetingLink = joinUrl || eventResult.webLink;
 
       return new Response(JSON.stringify({
         success: true,
         eventId: eventResult.id,
-        joinUrl: eventResult.onlineMeeting?.joinUrl || null,
+        joinUrl: joinUrl,
+        meetingLink: meetingLink,
         webLink: eventResult.webLink,
       }), {
         status: 200,
@@ -231,11 +251,38 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error(`Failed to update Teams event: ${errorResult.error?.message || 'Unknown error'}`);
       }
 
+      // After successful update, fetch the updated event to get meeting link
+      const getResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${userEmail}/events/${teamsEventId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      let meetingLink = null;
+      if (getResponse.ok) {
+        const eventResult = await getResponse.json();
+        
+        // Extract Teams meeting join URL - try multiple possible paths
+        let joinUrl = null;
+        if (eventResult.onlineMeeting?.joinUrl) {
+          joinUrl = eventResult.onlineMeeting.joinUrl;
+        } else if (eventResult.onlineMeetingInfo?.joinUrl) {
+          joinUrl = eventResult.onlineMeetingInfo.joinUrl;
+        } else if (eventResult.joinWebUrl) {
+          joinUrl = eventResult.joinWebUrl;
+        }
+        
+        // If no direct Teams join URL, use webLink as fallback
+        meetingLink = joinUrl || eventResult.webLink;
+      }
+
       console.log('Teams event updated successfully');
 
       return new Response(JSON.stringify({
         success: true,
         message: 'Event updated successfully',
+        meetingLink: meetingLink,
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
