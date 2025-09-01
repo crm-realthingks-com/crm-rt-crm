@@ -376,10 +376,16 @@ export const MeetingsTable = ({
                       </TableCell>
                       <TableCell>{getStatusBadge(meeting.status)}</TableCell>
                       <TableCell>
-                        {meeting.teams_meeting_link ? <Button variant="outline" size="sm" onClick={() => window.open(meeting.teams_meeting_link, '_blank')} className="flex items-center gap-1 hover:bg-primary hover:text-primary-foreground">
-                            <ExternalLink className="h-3 w-3" />
-                            Join
-                          </Button> : <span className="text-muted-foreground text-sm">Not available</span>}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => meeting.teams_meeting_link && window.open(meeting.teams_meeting_link, '_blank')} 
+                          disabled={!meeting.teams_meeting_link}
+                          className="flex items-center gap-1 hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Join Meeting
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
