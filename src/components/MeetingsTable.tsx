@@ -183,11 +183,21 @@ export const MeetingsTable = ({
       if (newStatus === 'Cancelled' && teamsEventId) {
         console.log('Cancelling Teams event for meeting:', meetingId);
         try {
-          await supabase.functions.invoke('create-teams-meeting', {
+          const { data: cancelResult, error: cancelError } = await supabase.functions.invoke('create-teams-meeting', {
             body: {
+              operation: 'delete',
               teamsEventId: teamsEventId
             }
           });
+          
+          if (cancelError) {
+            console.error('Teams cancellation error:', cancelError);
+            throw cancelError;
+          }
+          
+          if (cancelResult?.success) {
+            console.log('Teams event cancelled successfully');
+          }
         } catch (teamsError) {
           console.error('Failed to cancel Teams event:', teamsError);
           toast({
@@ -236,6 +246,7 @@ export const MeetingsTable = ({
         try {
           await supabase.functions.invoke('create-teams-meeting', {
             body: {
+              operation: 'delete',
               teamsEventId: teamsEventId
             }
           });

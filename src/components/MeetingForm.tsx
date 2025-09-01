@@ -343,6 +343,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
 
             const { data: teamsResult, error: teamsError } = await supabase.functions.invoke('create-teams-meeting', {
               body: {
+                operation: 'update',
                 title: data.title,
                 startDateTime: utcStart.toISOString(),
                 endDateTime: utcEnd.toISOString(),

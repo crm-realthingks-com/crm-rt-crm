@@ -88,8 +88,11 @@ const handler = async (req: Request): Promise<Response> => {
     const accessToken = tokenData.access_token;
     const { method } = req;
     const requestData = await req.json();
+    
+    // Check for operation type in request body (for supabase.functions.invoke calls)
+    const operation = requestData.operation || (method === 'POST' ? 'create' : method === 'PUT' ? 'update' : method === 'DELETE' ? 'delete' : 'create');
 
-    if (method === 'POST') {
+    if (operation === 'create' || method === 'POST') {
       // Create Teams event using specific user endpoint instead of /me
       const { title, startDateTime, endDateTime, participants, description } = requestData as CreateMeetingRequest;
 
@@ -204,7 +207,7 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
 
-    } else if (method === 'PUT') {
+    } else if (operation === 'update' || method === 'PUT') {
       // Update Teams event
       const { title, startDateTime, endDateTime, participants, description, teamsEventId } = requestData as UpdateMeetingRequest;
 
@@ -288,7 +291,7 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
 
-    } else if (method === 'DELETE') {
+    } else if (operation === 'delete' || method === 'DELETE') {
       // Cancel Teams event
       const { teamsEventId } = requestData;
 
