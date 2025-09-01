@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MeetingForm } from "@/components/MeetingForm";
 import { MeetingsTable } from "@/components/MeetingsTable";
-import { MeetingsImportExport } from "@/components/MeetingsImportExport";
+import { useMeetingsImportExport } from "@/hooks/useMeetingsImportExport";
 import MeetingsHeader from "@/components/MeetingsHeader";
 const Meetings = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -22,18 +22,19 @@ const Meetings = () => {
     setShowCreateForm(false);
     setEditingMeeting(null);
   };
+  const { exportMeetings, isProcessing } = useMeetingsImportExport();
+
   const handleImportComplete = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
   const handleImport = () => {
-    // TODO: Add import functionality
-    console.log('Import functionality coming soon');
+    // TODO: Add import functionality with file picker
+    console.log('Import functionality - file picker to be implemented');
   };
 
-  const handleExport = () => {
-    // TODO: Add export functionality
-    console.log('Export functionality coming soon');
+  const handleExport = async () => {
+    await exportMeetings();
   };
 
   const handleBulkDelete = () => {

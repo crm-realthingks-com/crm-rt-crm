@@ -51,8 +51,8 @@ export const useMeetingsImportExport = () => {
 
       const processedMeetings = meetings.map(meeting => ({
         title: meeting.title || '',
-        start_time: meeting.start_datetime || '',
-        end_time: meeting.end_datetime || '',
+        start_time: meeting.start_time_utc || '',
+        end_time: meeting.end_time_utc || '',
         location: 'Microsoft Teams',
         agenda: meeting.description || '',
         outcome: '',
@@ -156,8 +156,10 @@ export const useMeetingsImportExport = () => {
             .from('meetings')
             .insert({
               title: rowData.title.trim(),
-              start_datetime: startDateTime.toISOString(),
-              end_datetime: endDateTime.toISOString(),
+              start_time_utc: startDateTime.toISOString(),
+              end_time_utc: endDateTime.toISOString(),
+              time_zone: 'UTC', // Default to UTC for imported meetings
+              duration: Math.round((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60)),
               participants,
               organizer: user.id,
               created_by: user.id,

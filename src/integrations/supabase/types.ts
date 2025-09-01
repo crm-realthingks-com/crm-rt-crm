@@ -400,15 +400,18 @@ export type Database = {
           created_by: string
           description: string | null
           duration: number | null
-          end_datetime: string
+          end_time_utc: string
           id: string
+          microsoft_event_id: string | null
           modified_by: string | null
           organizer: string
           participants: string[]
-          start_datetime: string
+          start_time_utc: string
           status: string
           teams_meeting_id: string | null
           teams_meeting_link: string | null
+          time_zone: string
+          time_zone_display: string | null
           title: string
           updated_at: string
         }
@@ -417,15 +420,18 @@ export type Database = {
           created_by: string
           description?: string | null
           duration?: number | null
-          end_datetime: string
+          end_time_utc: string
           id?: string
+          microsoft_event_id?: string | null
           modified_by?: string | null
           organizer: string
           participants?: string[]
-          start_datetime: string
+          start_time_utc: string
           status?: string
           teams_meeting_id?: string | null
           teams_meeting_link?: string | null
+          time_zone: string
+          time_zone_display?: string | null
           title: string
           updated_at?: string
         }
@@ -434,15 +440,18 @@ export type Database = {
           created_by?: string
           description?: string | null
           duration?: number | null
-          end_datetime?: string
+          end_time_utc?: string
           id?: string
+          microsoft_event_id?: string | null
           modified_by?: string | null
           organizer?: string
           participants?: string[]
-          start_datetime?: string
+          start_time_utc?: string
           status?: string
           teams_meeting_id?: string | null
           teams_meeting_link?: string | null
+          time_zone?: string
+          time_zone_display?: string | null
           title?: string
           updated_at?: string
         }
@@ -654,6 +663,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      format_timezone_display: {
+        Args: { iana_timezone: string }
+        Returns: string
+      }
       get_user_role: {
         Args: { p_user_id: string }
         Returns: string

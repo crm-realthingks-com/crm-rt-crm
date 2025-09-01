@@ -93,6 +93,28 @@ const handler = async (req: Request): Promise<Response> => {
       // Create Teams event using specific user endpoint instead of /me
       const { title, startDateTime, endDateTime, participants, description } = requestData as CreateMeetingRequest;
 
+      console.log('🔍 Teams Meeting Creation - Timezone Flow Debug:', {
+        step: '1. Received from frontend',
+        startDateTime,
+        endDateTime,
+        note: 'Frontend should send UTC-converted datetime strings'
+      });
+
+      // Validate that we received proper UTC ISO strings
+      const parsedStart = new Date(startDateTime);
+      const parsedEnd = new Date(endDateTime);
+      
+      if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
+        throw new Error('Invalid datetime format received');
+      }
+
+      console.log('🔍 Teams Meeting Creation - Validation:', {
+        step: '2. Parsed and validated',
+        parsedStartUTC: parsedStart.toISOString(),
+        parsedEndUTC: parsedEnd.toISOString(),
+        note: 'These are the UTC times that will be sent to Graph API'
+      });
+
       // Ensure participants is an array, default to empty array if undefined
       const safeParticipants = Array.isArray(participants) ? participants : [];
 
@@ -103,11 +125,11 @@ const handler = async (req: Request): Promise<Response> => {
           content: description || '',
         },
         start: {
-          dateTime: startDateTime,
+          dateTime: startDateTime, // Already UTC from frontend
           timeZone: 'UTC',
         },
         end: {
-          dateTime: endDateTime,
+          dateTime: endDateTime, // Already UTC from frontend
           timeZone: 'UTC',
         },
         attendees: safeParticipants.map((email: string) => ({
@@ -121,7 +143,16 @@ const handler = async (req: Request): Promise<Response> => {
         onlineMeetingProvider: 'teamsForBusiness',
       };
 
-      console.log('Creating Teams event with data:', JSON.stringify(eventData, null, 2));
+      console.log('🔍 Teams Meeting Creation - Final Graph API Payload:', {
+        step: '3. Sending to Microsoft Graph',
+        subject: eventData.subject,
+        startDateTime: eventData.start.dateTime,
+        startTimeZone: eventData.start.timeZone,
+        endDateTime: eventData.end.dateTime,
+        endTimeZone: eventData.end.timeZone,
+        note: 'Microsoft Graph will handle timezone display for users'
+      });
+
       console.log('Using organizer email:', userEmail);
 
       // Use the specific user's endpoint instead of /me

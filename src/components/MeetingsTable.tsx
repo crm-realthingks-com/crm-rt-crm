@@ -12,17 +12,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { BulkActionsBar } from '@/components/BulkActionsBar';
+import { MeetingDeleteConfirmDialog } from '@/components/MeetingDeleteConfirmDialog';
+import { getBrowserTimezone, convertUTCToLocal, formatDateTimeWithTimezone } from '@/utils/timezoneUtils';
 interface Meeting {
   id: string;
   title: string;
-  start_datetime: string;
-  end_datetime: string;
-  duration: number;
+  start_time_utc: string;
+  end_time_utc: string;
+  duration?: number;
+  time_zone: string;
+  time_zone_display?: string;
   participants: string[];
   organizer: string;
-  status: string; // Changed from union type to string to match database
+  status: string;
   teams_meeting_link?: string;
   teams_meeting_id?: string;
+  microsoft_event_id?: string;
   description?: string;
   created_at: string;
 }
@@ -42,6 +47,8 @@ export const MeetingsTable = ({
   const [selectedMeetings, setSelectedMeetings] = useState<string[]>([]);
   const [sortField, setSortField] = useState<string>('start_datetime');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
   const {
     toast
   } = useToast();
@@ -50,12 +57,11 @@ export const MeetingsTable = ({
   } = useAuth();
   const fetchMeetings = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('meetings').select('*').order('start_datetime', {
-        ascending: true
-      });
+      const { data, error } = await supabase
+        .from('meetings')
+        .select('*')
+        .order('start_time_utc', { ascending: true });
+      
       if (error) throw error;
       setMeetings(data || []);
     } catch (error: any) {
@@ -77,7 +83,10 @@ export const MeetingsTable = ({
   const filterMeetingsByStatus = (meetings: Meeting[]) => {
     if (statusFilter === 'All') return meetings;
     if (statusFilter === 'Upcoming') {
-      return meetings.filter(meeting => meeting.status === 'Scheduled' && new Date(meeting.start_datetime) > new Date());
+      return meetings.filter(meeting => {
+        const startTime = new Date(meeting.start_time_utc);
+        return meeting.status === 'Scheduled' && !isNaN(startTime.getTime()) && startTime > new Date();
+      });
     }
     if (statusFilter === 'Done') {
       return meetings.filter(meeting => meeting.status === 'Completed');
@@ -134,28 +143,52 @@ export const MeetingsTable = ({
         {status}
       </Badge>;
   };
-  const formatDateTime = (dateTime: string) => {
-    const date = new Date(dateTime);
-    return {
-      date: format(date, 'MMM dd, yyyy'),
-      time: format(date, 'HH:mm')
-    };
+  const formatDateTime = (meeting: Meeting) => {
+    // Use new UTC fields only
+    const startUTC = new Date(meeting.start_time_utc || '');
+    const endUTC = new Date(meeting.end_time_utc || '');
+    const timezone = meeting.time_zone || getBrowserTimezone();
+    
+    try {
+      // Validate dates
+      if (isNaN(startUTC.getTime()) || isNaN(endUTC.getTime())) {
+        throw new Error('Invalid datetime values');
+      }
+
+      // Convert UTC to local time in the meeting's original timezone
+      const { localDate: startLocal, timeString: startTime } = convertUTCToLocal(startUTC, timezone);
+      const { timeString: endTime } = convertUTCToLocal(endUTC, timezone);
+      
+      return {
+        date: format(startLocal, 'MMM dd, yyyy'),
+        time: `${startTime} - ${endTime}`,
+        timezone: meeting.time_zone_display || timezone.split('/').pop()?.replace('_', ' ') || 'UTC'
+      };
+    } catch (error) {
+      console.error('Error formatting datetime for meeting:', meeting.id, error);
+      // Fallback to raw UTC display
+      return {
+        date: 'Invalid Date',
+        time: 'Invalid Time',
+        timezone: 'UTC'
+      };
+    }
   };
   const handleStatusUpdate = async (meetingId: string, newStatus: 'Completed' | 'Cancelled') => {
     try {
       const meeting = meetings.find(m => m.id === meetingId);
 
       // If cancelling and has Teams event, cancel it first
-      if (newStatus === 'Cancelled' && meeting?.teams_meeting_id) {
+      const teamsEventId = meeting?.microsoft_event_id || meeting?.teams_meeting_id;
+      if (newStatus === 'Cancelled' && teamsEventId) {
         console.log('Cancelling Teams event for meeting:', meetingId);
-        const {
-          error: teamsError
-        } = await supabase.functions.invoke('create-teams-meeting', {
-          body: {
-            teamsEventId: meeting.teams_meeting_id
-          }
-        });
-        if (teamsError) {
+        try {
+          await supabase.functions.invoke('create-teams-meeting', {
+            body: {
+              teamsEventId: teamsEventId
+            }
+          });
+        } catch (teamsError) {
           console.error('Failed to cancel Teams event:', teamsError);
           toast({
             title: "Warning",
@@ -187,33 +220,42 @@ export const MeetingsTable = ({
       });
     }
   };
-  const handleDelete = async (meetingId: string) => {
-    if (!confirm('Are you sure you want to delete this meeting?')) return;
-    try {
-      const meeting = meetings.find(m => m.id === meetingId);
+  const handleDeleteClick = (meeting: Meeting) => {
+    setMeetingToDelete(meeting);
+    setDeleteDialogOpen(true);
+  };
 
+  const handleDeleteConfirm = async () => {
+    if (!meetingToDelete) return;
+    
+    try {
       // Cancel Teams event if exists
-      if (meeting?.teams_meeting_id) {
-        console.log('Deleting Teams event for meeting:', meetingId);
-        const {
-          error: teamsError
-        } = await supabase.functions.invoke('create-teams-meeting', {
-          body: {
-            teamsEventId: meeting.teams_meeting_id
-          }
-        });
-        if (teamsError) {
+      const teamsEventId = meetingToDelete.microsoft_event_id || meetingToDelete.teams_meeting_id;
+      if (teamsEventId) {
+        console.log('Deleting Teams event for meeting:', meetingToDelete.id);
+        try {
+          await supabase.functions.invoke('create-teams-meeting', {
+            body: {
+              teamsEventId: teamsEventId
+            }
+          });
+        } catch (teamsError) {
           console.error('Failed to delete Teams event:', teamsError);
         }
       }
-      const {
-        error
-      } = await supabase.from('meetings').delete().eq('id', meetingId);
+      
+      const { error } = await supabase
+        .from('meetings')
+        .delete()
+        .eq('id', meetingToDelete.id);
+        
       if (error) throw error;
+      
       toast({
         title: "Meeting Deleted",
         description: "Meeting has been deleted successfully"
       });
+      
       fetchMeetings();
     } catch (error: any) {
       console.error('Error deleting meeting:', error);
@@ -222,6 +264,15 @@ export const MeetingsTable = ({
         description: "Failed to delete meeting",
         variant: "destructive"
       });
+    } finally {
+      setMeetingToDelete(null);
+    }
+  };
+
+  const handleDelete = async (meetingId: string) => {
+    const meeting = meetings.find(m => m.id === meetingId);
+    if (meeting) {
+      handleDeleteClick(meeting);
     }
   };
   if (loading) {
@@ -295,8 +346,7 @@ export const MeetingsTable = ({
               </TableHeader>
               <TableBody>
                 {filteredMeetings.map(meeting => {
-                const startFormatted = formatDateTime(meeting.start_datetime);
-                const endFormatted = formatDateTime(meeting.end_datetime);
+                const formatted = formatDateTime(meeting);
                 return <TableRow key={meeting.id} className="hover:bg-muted/50">
                       <TableCell className="w-[50px]">
                         <Checkbox checked={selectedMeetings.includes(meeting.id)} onCheckedChange={() => toggleMeetingSelection(meeting.id)} aria-label={`Select ${meeting.title}`} />
@@ -305,13 +355,16 @@ export const MeetingsTable = ({
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                          {startFormatted.date}
+                          {formatted.date}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-muted-foreground" />
-                          {startFormatted.time} - {endFormatted.time}
+                          <div className="flex flex-col">
+                            <span>{formatted.time}</span>
+                            <span className="text-xs text-muted-foreground">{formatted.timezone}</span>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -365,16 +418,16 @@ export const MeetingsTable = ({
                               </Tooltip>
                             </>}
 
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button size="icon" variant="ghost" onClick={() => handleDelete(meeting.id)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Delete Meeting</p>
-                            </TooltipContent>
-                          </Tooltip>
+                           <Tooltip>
+                             <TooltipTrigger asChild>
+                               <Button size="icon" variant="ghost" onClick={() => handleDeleteClick(meeting)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
+                                 <Trash2 className="w-4 h-4" />
+                               </Button>
+                             </TooltipTrigger>
+                             <TooltipContent>
+                               <p>Delete Meeting</p>
+                             </TooltipContent>
+                           </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>;
@@ -389,5 +442,12 @@ export const MeetingsTable = ({
           </TooltipProvider>
         </div>
       </CardContent>
+      
+      <MeetingDeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteConfirm}
+        meetingTitle={meetingToDelete?.title}
+      />
     </Card>;
 };
