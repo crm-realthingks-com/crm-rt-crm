@@ -15,6 +15,7 @@ import { BulkActionsBar } from '@/components/BulkActionsBar';
 import { MeetingDeleteConfirmDialog } from '@/components/MeetingDeleteConfirmDialog';
 import { useMeetingDeletion } from '@/hooks/useMeetingDeletion';
 import { getBrowserTimezone, convertUTCToLocal, formatDateTimeWithTimezone } from '@/utils/timezoneUtils';
+import { useUserDisplayNames } from '@/hooks/useUserDisplayNames';
 
 interface Meeting {
   id: string;
@@ -62,6 +63,10 @@ export const MeetingsTable = ({
     user
   } = useAuth();
   const { deleteMeetings, isDeleting } = useMeetingDeletion();
+
+  // Get unique organizer IDs for display names
+  const organizerIds = [...new Set(meetings.map(meeting => meeting.organizer))];
+  const { displayNames } = useUserDisplayNames(organizerIds);
 
   const fetchMeetings = async () => {
     try {
@@ -448,7 +453,9 @@ export const MeetingsTable = ({
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{meeting.organizer}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {displayNames[meeting.organizer] || 'Unknown User'}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
