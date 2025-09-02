@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CalendarIcon, Clock, Users, ExternalLink, Edit, Trash2, CheckCircle, XCircle, Search } from 'lucide-react';
+import { CalendarIcon, Clock, Users, ExternalLink, Edit, Trash2, CheckCircle, XCircle, Search, ListTodo } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { BulkActionsBar } from '@/components/BulkActionsBar';
 import { MeetingDeleteConfirmDialog } from '@/components/MeetingDeleteConfirmDialog';
+import { MeetingActionItemsModal } from '@/components/MeetingActionItemsModal';
 import { useMeetingDeletion } from '@/hooks/useMeetingDeletion';
 import { getBrowserTimezone, convertUTCToLocal, formatDateTimeWithTimezone } from '@/utils/timezoneUtils';
 import { useUserDisplayNames } from '@/hooks/useUserDisplayNames';
@@ -56,6 +57,8 @@ export const MeetingsTable = ({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
+  const [showActionItemsModal, setShowActionItemsModal] = useState(false);
+  const [selectedMeetingForActions, setSelectedMeetingForActions] = useState<Meeting | null>(null);
   const {
     toast
   } = useToast();
@@ -336,6 +339,11 @@ export const MeetingsTable = ({
     }
   };
 
+  const handleActionItems = (meeting: Meeting) => {
+    setSelectedMeetingForActions(meeting);
+    setShowActionItemsModal(true);
+  };
+
   if (loading) {
     return <Card>
         <CardContent className="p-6">
@@ -501,16 +509,27 @@ export const MeetingsTable = ({
                               </Tooltip>
                             </>}
 
-                           <Tooltip>
-                             <TooltipTrigger asChild>
-                               <Button size="icon" variant="ghost" onClick={() => handleDeleteClick(meeting)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
-                                 <Trash2 className="w-4 h-4" />
-                               </Button>
-                             </TooltipTrigger>
-                             <TooltipContent>
-                               <p>Delete Meeting</p>
-                             </TooltipContent>
-                           </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="icon" variant="ghost" onClick={() => handleActionItems(meeting)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                  <ListTodo className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Action Items</p>
+                              </TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="icon" variant="ghost" onClick={() => handleDeleteClick(meeting)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Delete Meeting</p>
+                              </TooltipContent>
+                            </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>;
@@ -527,5 +546,11 @@ export const MeetingsTable = ({
       </CardContent>
       
       <MeetingDeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDeleteConfirm} meetingTitle={meetingToDelete?.title} />
+      
+      <MeetingActionItemsModal 
+        open={showActionItemsModal} 
+        onOpenChange={setShowActionItemsModal} 
+        meeting={selectedMeetingForActions} 
+      />
     </Card>;
 };
