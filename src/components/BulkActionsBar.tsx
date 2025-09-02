@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,17 +9,27 @@ interface BulkActionsBarProps {
   onDelete: () => void;
   onExport: () => void;
   onClearSelection: () => void;
+  itemType?: string;
 }
 
-export const BulkActionsBar = ({ selectedCount, onDelete, onExport, onClearSelection }: BulkActionsBarProps) => {
+export const BulkActionsBar = ({ 
+  selectedCount, 
+  onDelete, 
+  onExport, 
+  onClearSelection,
+  itemType = "deal"
+}: BulkActionsBarProps) => {
   if (selectedCount === 0) return null;
+
+  const itemLabel = itemType === "meeting" ? "meeting" : "deal";
+  const itemsLabel = itemType === "meeting" ? "meetings" : "deals";
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in">
       <div className="bg-card border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 backdrop-blur-sm"
            style={{ background: 'var(--gradient-subtle)', boxShadow: 'var(--shadow-lg)' }}>
         <Badge variant="secondary" className="text-sm font-bold px-2 py-1 bg-primary text-primary-foreground">
-          {selectedCount} deal{selectedCount !== 1 ? 's' : ''}
+          {selectedCount} {selectedCount !== 1 ? itemsLabel : itemLabel}
         </Badge>
         
         <div className="flex items-center gap-2">
@@ -35,7 +46,7 @@ export const BulkActionsBar = ({ selectedCount, onDelete, onExport, onClearSelec
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Export selected deals to CSV</p>
+              <p>Export selected {itemsLabel} to CSV</p>
             </TooltipContent>
           </Tooltip>
           
@@ -52,7 +63,7 @@ export const BulkActionsBar = ({ selectedCount, onDelete, onExport, onClearSelec
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Delete selected deals</p>
+              <p>Delete selected {itemsLabel}</p>
             </TooltipContent>
           </Tooltip>
           

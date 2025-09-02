@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -17,6 +16,11 @@ interface CreateMeetingRequest {
 
 interface UpdateMeetingRequest extends CreateMeetingRequest {
   teamsEventId: string;
+}
+
+interface DeleteMeetingRequest {
+  teamsEventId: string;
+  operation: 'delete';
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -92,7 +96,56 @@ const handler = async (req: Request): Promise<Response> => {
     // Check for operation type in request body (for supabase.functions.invoke calls)
     const operation = requestData.operation || (method === 'POST' ? 'create' : method === 'PUT' ? 'update' : method === 'DELETE' ? 'delete' : 'create');
 
-    if (operation === 'create' || method === 'POST') {
+    console.log('🔍 Teams Operation Debug:', {
+      operation,
+      method,
+      requestDataKeys: Object.keys(requestData)
+    });
+
+    if (operation === 'delete' || method === 'DELETE') {
+      // Cancel Teams event - NO datetime validation needed for delete operations
+      const { teamsEventId } = requestData as DeleteMeetingRequest;
+
+      console.log('🔍 Teams Delete Operation Debug:', {
+        operation,
+        method,
+        teamsEventId,
+        hasTeamsEventId: !!teamsEventId
+      });
+
+      if (!teamsEventId) {
+        console.error('No Teams event ID provided for cancellation');
+        throw new Error('Teams event ID is required for cancellation');
+      }
+
+      console.log('Cancelling Teams event:', teamsEventId, 'for user:', userEmail);
+
+      const deleteResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${userEmail}/events/${teamsEventId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      console.log('Delete response status:', deleteResponse.status);
+
+      if (!deleteResponse.ok && deleteResponse.status !== 404) {
+        const errorResult = await deleteResponse.json();
+        console.error('Delete event failed:', errorResult);
+        throw new Error(`Failed to cancel Teams event: ${errorResult.error?.message || 'Unknown error'}`);
+      }
+
+      console.log('Teams event cancelled successfully or was not found (404)');
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Event cancelled successfully',
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+
+    } else if (operation === 'create' || method === 'POST') {
       // Create Teams event using specific user endpoint instead of /me
       const { title, startDateTime, endDateTime, participants, description } = requestData as CreateMeetingRequest;
 
@@ -103,7 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
         note: 'Frontend should send UTC-converted datetime strings'
       });
 
-      // Validate that we received proper UTC ISO strings
+      // Validate that we received proper UTC ISO strings (only for create operations)
       const parsedStart = new Date(startDateTime);
       const parsedEnd = new Date(endDateTime);
       
@@ -211,6 +264,14 @@ const handler = async (req: Request): Promise<Response> => {
       // Update Teams event
       const { title, startDateTime, endDateTime, participants, description, teamsEventId } = requestData as UpdateMeetingRequest;
 
+      // Validate datetime fields for update operations
+      const parsedStart = new Date(startDateTime);
+      const parsedEnd = new Date(endDateTime);
+      
+      if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
+        throw new Error('Invalid datetime format received');
+      }
+
       // Ensure participants is an array, default to empty array if undefined
       const safeParticipants = Array.isArray(participants) ? participants : [];
 
@@ -286,39 +347,6 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         message: 'Event updated successfully',
         meetingLink: meetingLink,
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
-
-    } else if (operation === 'delete' || method === 'DELETE') {
-      // Cancel Teams event
-      const { teamsEventId } = requestData;
-
-      if (!teamsEventId) {
-        throw new Error('Teams event ID is required for cancellation');
-      }
-
-      console.log('Cancelling Teams event:', teamsEventId);
-
-      const deleteResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${userEmail}/events/${teamsEventId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!deleteResponse.ok && deleteResponse.status !== 404) {
-        const errorResult = await deleteResponse.json();
-        console.error('Delete event failed:', errorResult);
-        throw new Error(`Failed to cancel Teams event: ${errorResult.error?.message || 'Unknown error'}`);
-      }
-
-      console.log('Teams event cancelled successfully');
-
-      return new Response(JSON.stringify({
-        success: true,
-        message: 'Event cancelled successfully',
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
