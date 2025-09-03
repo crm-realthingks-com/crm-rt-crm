@@ -7,6 +7,8 @@ import { MeetingForm } from "@/components/MeetingForm";
 import { MeetingsTable } from "@/components/MeetingsTable";
 import { useMeetingsImportExport } from "@/hooks/useMeetingsImportExport";
 import MeetingsHeader from "@/components/MeetingsHeader";
+import { useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const Meetings = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -14,6 +16,7 @@ const Meetings = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [statusFilter, setStatusFilter] = useState("Upcoming");
   const [searchQuery, setSearchQuery] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCreateSuccess = () => {
     setShowCreateForm(false);
@@ -31,15 +34,39 @@ const Meetings = () => {
     setEditingMeeting(null);
   };
 
-  const { exportMeetings, isProcessing } = useMeetingsImportExport();
+  const { exportMeetings, importMeetings, isProcessing } = useMeetingsImportExport();
+  const { toast } = useToast();
 
   const handleImportComplete = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
   const handleImport = () => {
-    // TODO: Add import functionality with file picker
-    console.log('Import functionality - file picker to be implemented');
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        toast({
+          title: "Invalid File",
+          description: "Please select a CSV file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        await importMeetings(text);
+        handleImportComplete();
+      } catch (error) {
+        // Error handling is done in the hook
+      }
+    }
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
   };
 
   const handleExport = async () => {
@@ -91,6 +118,15 @@ const Meetings = () => {
         refreshTrigger={refreshTrigger} 
         statusFilter={statusFilter}
         searchQuery={searchQuery}
+      />
+
+      {/* Hidden file input for CSV import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        onChange={handleFileInput}
+        className="hidden"
       />
 
       {/* Meeting Form Modal */}
