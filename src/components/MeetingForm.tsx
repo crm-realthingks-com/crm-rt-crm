@@ -331,12 +331,20 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
         // Update Teams meeting if it exists
         if (editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id) {
           try {
+            const teamsEventId = editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id;
+            
             console.log('🔍 Meeting Form - Teams Update Debug:', {
               step: '4. Updating Teams Meeting',
               startDateTime: utcStart.toISOString(),
               endDateTime: utcEnd.toISOString(),
-              teamsEventId: editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id
+              teamsEventId,
+              hasEventId: !!teamsEventId
             });
+
+            if (!teamsEventId) {
+              console.warn('No Teams event ID found for update');
+              return;
+            }
 
             const { data: teamsResult, error: teamsError } = await supabase.functions.invoke('create-teams-meeting', {
               body: {
@@ -346,22 +354,73 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
                 endDateTime: utcEnd.toISOString(),
                 participants: participantEmails,
                 description: data.description,
-                teamsEventId: editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id,
+                teamsEventId,
               },
             });
 
-            if (!teamsError && teamsResult?.success && teamsResult?.meetingLink) {
-              // Update meeting with new Teams link
-              await supabase
-                .from('meetings')
-                .update({ teams_meeting_link: teamsResult.meetingLink })
-                .eq('id', editingMeeting.id);
+            if (teamsError) {
+              console.error('Teams update error:', teamsError);
+              throw new Error(teamsError.message || 'Teams update failed');
+            }
+
+            if (teamsResult?.success) {
+              console.log('Teams meeting updated successfully');
+              
+              // Update meeting with new Teams link if provided
+              if (teamsResult.meetingLink) {
+                await supabase
+                  .from('meetings')
+                  .update({ teams_meeting_link: teamsResult.meetingLink })
+                  .eq('id', editingMeeting.id);
+              }
+            } else {
+              console.error('Teams update failed - no success response:', teamsResult);
+              throw new Error('Teams update failed');
             }
           } catch (teamsError) {
             console.error('Teams update failed:', teamsError);
             toast({
-              title: "Warning",
+              title: "Warning", 
               description: "Meeting updated but Teams sync failed",
+              variant: "destructive",
+            });
+          }
+        } else {
+          console.log('No Teams event ID found - creating new Teams meeting');
+          
+          // Create new Teams meeting if no existing ID
+          try {
+            const { data: teamsResult, error: teamsError } = await supabase.functions.invoke('create-teams-meeting', {
+              body: {
+                operation: 'create',
+                title: data.title,
+                startDateTime: utcStart.toISOString(),
+                endDateTime: utcEnd.toISOString(),
+                participants: participantEmails,
+                description: data.description,
+              },
+            });
+
+            if (!teamsError && teamsResult?.success) {
+              // Update meeting with Teams info
+              const teamsUpdateData: any = {
+                microsoft_event_id: teamsResult.eventId,
+              };
+              
+              if (teamsResult.meetingLink || teamsResult.joinUrl) {
+                teamsUpdateData.teams_meeting_link = teamsResult.meetingLink || teamsResult.joinUrl;
+              }
+              
+              await supabase
+                .from('meetings')
+                .update(teamsUpdateData)
+                .eq('id', editingMeeting.id);
+            }
+          } catch (teamsError) {
+            console.error('Teams creation failed:', teamsError);
+            toast({
+              title: "Warning",
+              description: "Meeting updated but Teams integration failed", 
               variant: "destructive",
             });
           }
@@ -605,13 +664,19 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
                           <SelectValue placeholder="Select time" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="max-h-[200px]">
-                        {availableTimeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                       <SelectContent className="max-h-[200px] min-h-[120px]">
+                         {availableTimeSlots.length === 0 ? (
+                           <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
+                             No available time slots
+                           </div>
+                         ) : (
+                           availableTimeSlots.map((time) => (
+                             <SelectItem key={time} value={time}>
+                               {time}
+                             </SelectItem>
+                           ))
+                         )}
+                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>

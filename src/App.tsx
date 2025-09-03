@@ -94,68 +94,68 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// App Router Component - inside the auth context
-const AppRouter = () => (
-  <BrowserRouter>
-    <Routes>
-      <Route path="/auth" element={
-        <AuthRoute>
-          <Auth />
-        </AuthRoute>
-      } />
-      <Route path="/" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/contacts" element={
-        <ProtectedRoute>
-          <Contacts />
-        </ProtectedRoute>
-      } />
-      <Route path="/leads" element={
-        <ProtectedRoute>
-          <Leads />
-        </ProtectedRoute>
-      } />
-      <Route path="/meetings" element={
-        <ProtectedRoute>
-          <Meetings />
-        </ProtectedRoute>
-      } />
-      <Route path="/deals" element={
-        <ProtectedRoute>
-          <DealsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/notifications" element={
-        <ProtectedRoute>
-          <Notifications />
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } />
-      <Route path="*" element={
-        <ProtectedRoute>
-          <NotFound />
-        </ProtectedRoute>
-      } />
-    </Routes>
-  </BrowserRouter>
+// App Routes Component - now inside the BrowserRouter context
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/auth" element={
+      <AuthRoute>
+        <Auth />
+      </AuthRoute>
+    } />
+    <Route path="/" element={
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    } />
+    <Route path="/contacts" element={
+      <ProtectedRoute>
+        <Contacts />
+      </ProtectedRoute>
+    } />
+    <Route path="/leads" element={
+      <ProtectedRoute>
+        <Leads />
+      </ProtectedRoute>
+    } />
+    <Route path="/meetings" element={
+      <ProtectedRoute>
+        <Meetings />
+      </ProtectedRoute>
+    } />
+    <Route path="/deals" element={
+      <ProtectedRoute>
+        <DealsPage />
+      </ProtectedRoute>
+    } />
+    <Route path="/notifications" element={
+      <ProtectedRoute>
+        <Notifications />
+      </ProtectedRoute>
+    } />
+    <Route path="/settings" element={
+      <ProtectedRoute>
+        <Settings />
+      </ProtectedRoute>
+    } />
+    <Route path="*" element={
+      <ProtectedRoute>
+        <NotFound />
+      </ProtectedRoute>
+    } />
+  </Routes>
 );
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <SecurityEnhancedApp>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AppRouter />
-      </TooltipProvider>
-    </SecurityEnhancedApp>
+    <BrowserRouter>
+      <SecurityEnhancedApp>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AppRoutes />
+        </TooltipProvider>
+      </SecurityEnhancedApp>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

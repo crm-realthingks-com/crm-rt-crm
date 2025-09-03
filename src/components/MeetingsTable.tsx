@@ -401,7 +401,13 @@ export const MeetingsTable = ({
                   setSortField('start_datetime');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
-                    Date & Time ↕
+                    Date ↕
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => {
+                  setSortField('start_datetime');
+                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                }}>
+                    Time ↕
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => {
                   setSortField('participants');
@@ -434,16 +440,16 @@ export const MeetingsTable = ({
                       </TableCell>
                       <TableCell className="font-medium">{meeting.title}</TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                            <span>{formatted.date}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">{formatted.time}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{formatted.timezone}</span>
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                          <span>{formatted.date}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{formatted.timezone}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span>{formatted.time}</span>
                         </div>
                       </TableCell>
                       <TableCell>
