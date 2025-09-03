@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesInsert } from '@/integrations/supabase/types';
 import { CSVParser } from '@/utils/csvParser';
 import { DateFormatUtils } from '@/utils/dateFormatUtils';
 
@@ -123,7 +124,7 @@ export class MeetingsCSVProcessor {
             .from('meetings')
             .select('id')
             .eq('id', rowObj.id.trim())
-            .single();
+            .maybeSingle();
 
           if (existingMeeting) {
             // Update existing meeting
@@ -143,10 +144,25 @@ export class MeetingsCSVProcessor {
             console.log('Updated existing meeting:', meetingId);
           } else {
             // Insert new meeting with provided ID
-            const meetingToInsert = {
+            const meetingToInsert: TablesInsert<'meetings'> = {
               id: rowObj.id.trim(),
               title: meetingRecord.title,
-              ...meetingRecord
+              organizer: meetingRecord.organizer,
+              created_by: meetingRecord.created_by,
+              modified_by: meetingRecord.modified_by,
+              participants: meetingRecord.participants,
+              status: meetingRecord.status,
+              teams_meeting_link: meetingRecord.teams_meeting_link,
+              teams_meeting_id: meetingRecord.teams_meeting_id,
+              description: meetingRecord.description,
+              created_at: meetingRecord.created_at,
+              updated_at: meetingRecord.updated_at,
+              duration: meetingRecord.duration,
+              start_time_utc: meetingRecord.start_time_utc,
+              end_time_utc: meetingRecord.end_time_utc,
+              time_zone: meetingRecord.time_zone,
+              microsoft_event_id: meetingRecord.microsoft_event_id,
+              time_zone_display: meetingRecord.time_zone_display,
             };
 
             const { data: insertedMeeting, error: insertError } = await supabase
@@ -166,9 +182,24 @@ export class MeetingsCSVProcessor {
           }
         } else {
           // Insert new meeting without ID (let database generate it)
-          const meetingToInsert = {
+          const meetingToInsert: TablesInsert<'meetings'> = {
             title: meetingRecord.title,
-            ...meetingRecord
+            organizer: meetingRecord.organizer,
+            created_by: meetingRecord.created_by,
+            modified_by: meetingRecord.modified_by,
+            participants: meetingRecord.participants,
+            status: meetingRecord.status,
+            teams_meeting_link: meetingRecord.teams_meeting_link,
+            teams_meeting_id: meetingRecord.teams_meeting_id,
+            description: meetingRecord.description,
+            created_at: meetingRecord.created_at,
+            updated_at: meetingRecord.updated_at,
+            duration: meetingRecord.duration,
+            start_time_utc: meetingRecord.start_time_utc,
+            end_time_utc: meetingRecord.end_time_utc,
+            time_zone: meetingRecord.time_zone,
+            microsoft_event_id: meetingRecord.microsoft_event_id,
+            time_zone_display: meetingRecord.time_zone_display,
           };
 
           const { data: insertedMeeting, error: insertError } = await supabase
